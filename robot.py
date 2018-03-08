@@ -13,8 +13,13 @@ from drivers.bus import BusHandler
 
 
 class Robot:
-    def __init__(self, config, logger, application=None):
+    def __init__(self, config, logger, application=None, factory=None):
         self.modules = {}
+
+        if factory is None:
+            factory = all_drivers
+        if application is not None:
+            factory['application'] = application
 
         que = {}
         for module_name, module_config in config['modules'].items():
@@ -25,11 +30,7 @@ class Robot:
             que[module_name] = bus.queue
 
             module_class = module_config['driver']
-            if module_class == 'application':
-                assert application is not None  # external application required
-                module = application(module_config['init'], bus=bus)
-            else:
-                module = all_drivers[module_class](module_config['init'], bus=bus)
+            module = factory[module_class](module_config['init'], bus=bus)
             self.modules[module_name] = module
 
         for from_module, to_module in config['links']:

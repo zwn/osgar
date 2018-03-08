@@ -143,10 +143,14 @@ class LogAsserter(LogReader):
     def __init__(self, filename):
         LogReader.__init__(self, filename)
         self.assert_stream_id = None
+        self.names = []
 
     def write(self, stream_id, data):
         if self.assert_stream_id is not None:
             pass
+
+    def register(self, name):
+        self.names.append(name)
 
 
 if __name__ == "__main__":

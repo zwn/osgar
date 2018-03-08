@@ -7,8 +7,9 @@ import sys
 import math
 from ast import literal_eval
 from datetime import timedelta
+from collections import defaultdict
 
-from lib.logger import LogWriter, LogReader
+from lib.logger import LogWriter, LogReader, LogAsserter
 from lib.config import Config
 from drivers import all_drivers
 from robot import Robot
@@ -132,6 +133,21 @@ class RoboOrienteering2018:
             self.update()
 
 
+# TODO move to common files ... maybe drivers?
+class DummyModule:
+    def __init__(self, config, bus):
+        self.bus = bus
+
+    def start(self):
+        pass
+
+    def request_stop(self):
+        self.bus.shutdown()
+
+    def join(self):
+        pass
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='RoboOrienteering 2018')
     subparsers = parser.add_subparsers(help='sub-command help', dest='command')
@@ -146,16 +162,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'replay':
-        log = LogReader(args.logfile)
+        log = LogAsserter(args.logfile)
         print(next(log.read_gen(0))[-1])  # old arguments
         config_str = next(log.read_gen(0))[-1]
         config = literal_eval(config_str.decode('ascii'))
+        """
         if args.force:
             robot = LogRobot(log, config['robot']['stream_id'], stream_id_out=None)
         else:
-            robot = LogRobot(log, config['robot']['stream_id'], config['robot']['stream_id_out'])
-        game = RoboOrienteering2018(robot)
+            robot = LogRobot(log, config['robot']['stream_id'], config['robot']['stream_id_out'])"""
+
+        #factory = defaultdict(DummyModule)
+        #factory = {'hi':DummyModule}
+        #factory['hi']('bla')
+        factory = {'gps':DummyModule, 'serial':DummyModule, 'imu':DummyModule, 'spider':DummyModule}
+        robot = Robot(config=config['robot'], logger=log, application=RoboOrienteering2018,
+                      factory=factory)
+        game = robot.modules['app']  # TODO nicer reference
+        robot.start()
         game.play()
+        robot.finish()
 
     elif args.command == 'run':
         log = LogWriter(prefix='ro2018-', note=str(sys.argv))
