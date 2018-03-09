@@ -142,15 +142,17 @@ class LogReader:
 class LogAsserter(LogReader):
     def __init__(self, filename):
         LogReader.__init__(self, filename)
+        self.lock = RLock()
         self.assert_stream_id = None
         self.names = []
 
     def write(self, stream_id, data):
         if self.assert_stream_id is not None:
-            pass
+            assert self.assert_stream_id == stream_id, (stream_id, data)
 
     def register(self, name):
         self.names.append(name)
+        return len(self.names)
 
 
 if __name__ == "__main__":

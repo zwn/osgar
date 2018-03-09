@@ -9,13 +9,15 @@ from ast import literal_eval
 from datetime import timedelta
 from collections import defaultdict
 
+import numpy as np  # just because of unpack gps.position
+
 from lib.logger import LogWriter, LogReader, LogAsserter
 from lib.config import Config
 from drivers import all_drivers
 from robot import Robot
 
-from drivers.gps import INVALID_COORDINATES
-from drivers.bus import BusHandler
+from drivers.gps import INVALID_COORDINATES, GPS_MSG_DTYPE
+from drivers.bus import BusHandler, BusShutdownException
 
 
 class LogRobot:
@@ -180,7 +182,28 @@ if __name__ == "__main__":
                       factory=factory)
         game = robot.modules['app']  # TODO nicer reference
         robot.start()
-        game.play()
+        # ['app.move', 'gps.position', 'imu.orientation', 'spider.status']  # TODO name2int conversion
+        log.assert_stream_id = 1  # it is actually ignored?!
+        for dt, channel, data in log.read_gen([1, 2, 4, 7]):
+            if channel == 1:  # move
+                pass
+                # TODO run one step to output??
+#                print(data)
+            elif channel == 2:  # position
+                position = np.frombuffer(data, dtype=GPS_MSG_DTYPE)
+                game.bus.queue.put((dt, 'position', position))
+            elif channel == 4:  # orientation
+                orientation = literal_eval(data.decode('ascii'))
+                game.bus.queue.put((dt, 'orientation', orientation))
+            elif channel == 7:  # status
+                status = literal_eval(data.decode('ascii'))
+                game.bus.queue.put((dt, 'status', status))
+#            print(channel)
+        game.bus.shutdown()
+        try:
+            game.play()
+        except BusShutdownException:
+            pass
         robot.finish()
 
     elif args.command == 'run':
