@@ -353,4 +353,72 @@ $ cat `cat files.txt` | awk '{if($5==396){print $1, $8, $9, $10, $11, $12, $13, 
 
 --------------------------
 
+# 67432 Ext 1599 199892 8
+
+$ cat 1_standby_1.log | awk '{if($6==199892){print $8, $9, $10, $11, $12, $13, $14, $15;}}' | uniq -c
+  10543 0 0 0 0 0 46 255 255
+    118 0 0 0 0 0 44 255 255
+   3095 0 0 0 0 0 46 255 255
+
+last two bytes are always 255, 255
+
+the 5th byte oscilates:
+  10543 46
+    118 44
+  10660 46
+    110 44
+  12263 46
+     22 44
+
+The first three bytes change almost synchronously and biggest changes are in
+test 9 = 9_nastaveni_vysky.log ... setting the height.
+it looks like bit coded?
+
+$ cat `cat files.txt` | awk '{if($6==199892){print $8; print $9; print $10;}}' | sort  -n | uniq -c
+  92380 0
+    687 1
+    594 2
+   1605 4
+    681 6
+   3129 8
+   2072 12
+
+--------------------------
+
+#  67640 Ext 1599 200149 8
+
+for engine off regime it was 24 and zeros
+  13798 1 24 0 0 0 0 0 0 0
+    135 2 24 0 0 0 0 0 0 0
+   7732 3 24 0 0 0 0 0 0 0
+   2181 4 24 0 0 0 0 0 0 0
+    784 5 24 0 0 0 0 0 0 0
+    629 6 24 0 0 0 0 0 0 0
+    540 7 24 0 0 0 0 0 0 0
+
+it did not change with steering test 8
+
+many changes for setting the height 9
+
+no changes during motion back and forth 12
+
+biggest values for mowing - test 13
+
+--------------------------
+
+#  42810 Ext 1599 203747 8
+
+   6682 1 2 0 132 40 90 220 16 20
+... the send half looks like constant
+
+$ cat `cat files.txt` | awk '{if($6==203747){print $12, $13, $14, $15;}}' | uniq -c
+  21012 90 220 16 20
+    393 90 220 0  20
+... almost, changed in test 13 mowing and turning it off
+
+only first two bytes change often. 3rd and 4th look like bit mask - control
+switches?
+
+--------------------------
+
 
