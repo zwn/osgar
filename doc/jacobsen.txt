@@ -115,6 +115,24 @@ $ cat `cat files.txt` | awk '{if($5==1416){print $8, $9, $10, $11, $12, $13, $14
 
       1 75 65 32 2 20 0 0 0
 
+- only when the engine is ON
+- last three bytes always zero
+- the 5th byte changes in periods: 20-13-0, 20-14-0, 21-14-0, 22-14-0, 22-15-0
+$ cat `cat files.txt` | awk '{if($5==1416){print $12;}}' | sort -n | uniq -c
+    772 0
+     10 1
+      9 2
+      3 3
+      2 4
+      3 5
+     33 13
+     99 14
+      2 15
+     63 20
+     45 21
+     25 22
+
+
 --------------------------
 
 # 1541 = 0x605
@@ -155,6 +173,16 @@ $ cat `cat files.txt` | awk '{if($5==1544){print $1, $8, $9, $10, $11, $12, $13,
 ...
 
 variable, sending data after engine was started
+
+- first byte is always 43 or 64
+$ cat `cat files.txt` | awk '{if($5==1544){print $8, $9;}}' | sort -n | uniq -c
+    665 43 37
+    134 64 112
+    134 64 64
+    134 64 65
+      1 64 9
+
+- 3rd byte is always 32
 
 --------------------------
 
