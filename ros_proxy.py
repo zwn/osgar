@@ -19,14 +19,24 @@ s.bind((HOST, PORT))
 s.listen(1)
 conn, addr = s.accept()
 print('Connected by', addr)
+dist = 0
 while 1:
     data = conn.recv(1024)
     print(len(data), data)    
     if not data: break
-    assert len(data) == 10, len(data)
-    frame = struct.unpack('>BHBHBHB', data)
-    print(frame)
-    conn.sendall(data)
+    if len(data) == 10:
+        frame = struct.unpack('<BHBHBHB', data)
+        print(frame)
+        status = 0
+        left = 100 + dist
+        right = -1000 + dist
+        dist += 1
+        data = struct.pack('>BBBBiiiiiii', 0xF0, 0xAF, 0xFA, 7,
+                status, left, right, 0, 0, 0, 100)
+
+        conn.sendall(data)
+    else:
+        print('skipping', len(data))
 conn.close()
 
 
