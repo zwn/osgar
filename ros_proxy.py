@@ -134,9 +134,9 @@ def drive_remotely(metalog):
             if frame[4]:
                 turn = -turn
 
-            # TODO scaling move and turn!!!
+            # TODO scaling turn!!!
             # check limits
-            robot.set_desired_speed(move)
+            robot.set_desired_speed(move/1000.0)
             robot.canproxy.set_turn_raw(turn)
 
             status = 0
