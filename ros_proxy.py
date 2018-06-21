@@ -53,8 +53,11 @@ class RemoteThread(Thread):
 #                else:
 #                    self.data = None
             data = conn.recv(1024)
+            if not data:
+                break            
             print(len(data), data)    
             self.data = data
+        self.data = None
 
     def requestStop(self):
         self.shouldIRun.clear() 
@@ -120,7 +123,7 @@ def drive_remotely(metalog):
 
     moving = False
     turning = False
-    while robot.remote_data != 'END\n':  # TODO termination quit message
+    while robot.remote_data is not None:
         robot.update()
         data = robot.remote_data
 
