@@ -10,6 +10,9 @@ import math
 from socket import timeout
 from threading import Thread,Event,Lock 
 
+import socket
+import struct
+
 from apyros.metalog import MetaLog, disableAsserts
 from apyros.sourcelogger import SourceLogger
 from gps import DummyGPS as DummySensor  # TODO move to apyros, as mock
@@ -95,15 +98,19 @@ def drive_remotely(metalog):
 #    if not metalog.replay:
 #        soc.soc.setblocking(0)
 #        soc.soc.settimeout( SOCKET_TIMEOUT )
-    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    soc.bind((HOST, PORT))  
-    # TODO timeout?
     
     remote_cmd_log_name = metalog.getLog('remote_cmd')
     if metalog.replay:
         robot.remote = DummySensor()
+        class Dummy:
+            def sendall(self, data):
+                pass
+        robot.remote.conn = Dummy()
         function = SourceLogger(None, remote_cmd_log_name).get
     else:
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        soc.bind((HOST, PORT))  
+        # TODO timeout?
         robot.remote = RemoteThread(soc)
         function = SourceLogger(robot.remote.get_data, remote_cmd_log_name).get
 
