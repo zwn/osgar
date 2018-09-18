@@ -61,6 +61,7 @@ class CANSerial(Thread):
         self.can_speed_cmd = CAN_SPEED[speed]
         self.is_canopen = config.get('canopen', False)
         self.can_bridge_initialized = False
+        self.modules_for_restart = set()
 
     @staticmethod
     def split_buffer(data):
@@ -78,6 +79,86 @@ class CANSerial(Thread):
                 return data[2+size:], data[:2+size]
         return data, b''  # no complete packet available yet
 
+    #################### TODO refactor ###################
+    def send_data(self, module_id, data):
+        self.bus.publish('raw', CAN_packet(module_id, data))
+
+    def read_packet(self):
+        while True:
+            self.buf, packet = self.split_buffer(self.buf)
+            if len(packet) > 0:
+                msg_id = ((packet[0]) << 3) | (((packet[1]) >> 5) & 0x1f)
+                return msg_id, packet[2:]
+            else:
+                dt, channel, data = self.bus.listen()
+                if channel == 'raw':
+                    self.buf += data
+                else:
+                    print('Ignoring', channel)
+
+    def reset_modules(self):
+        """Reset all modules"""
+        self.send_data(0, [129,0]) # reset all
+
+        ackBootup = [] # Heart Beat 0, bootup, after reset
+        ackPreop = [] # HB 127
+        ackOp = [] # HB 5
+
+        while len(ackBootup) == 0 or len(ackBootup) > len(ackPreop):
+            msg_id, data = self.read_packet()
+            if (msg_id & 0xF80) == 0x700:
+                nodeID = msg_id & 0x7F
+                if data[0] == 0:
+                    print("Started module", nodeID)
+                    ackBootup.append( nodeID )
+                if data[0] == 127:
+                    if nodeID in ackBootup:
+                        print("Module", nodeID, "in preoperation.")
+                        ackPreop.append( nodeID )
+                    else:
+                        print("WARNING!!! Module", nodeID, "preop BEFORE bootup!!!")
+
+        print("------- Switch to Operation mode --------")
+        self.send_data(0, [1, 0])  # operation mode
+        while len(ackPreop) > len(ackOp):
+            msg_id, data = self.read_packet()
+            if (msg_id & 0xF80) == 0x700:
+                nodeID = msg_id & 0x7F
+                if data[0] == 5:
+                    if nodeID in ackPreop:
+                        print("Module", nodeID, "in operation.")
+                        ackOp.append( nodeID )
+                    else:
+                        print("WARNING!!! Module", nodeID, "op BEFORE preop!!!")
+
+        print("collecting some packets ...")
+        countHB = 0
+        while countHB < len(ackOp) * 3: # ie approx 3s
+            msg_id, data = self.read_packet()
+            if (msg_id & 0xF80) == 0x700:
+                countHB += 1
+                if countHB % len( ackOp ) == 0:
+                    print(countHB/len( ackOp ), '...')
+                assert( len(data) == 1 )
+                if data[0] != 5:
+                    nodeID = id & 0x7F
+                    print('ERROR - module', nodeID, 'data', data)
+        return ackOp
+    ############################# END ##############################
+
+    def check_and_restart_modules(self, module_id, status):
+        if status != 5:  # operational?
+            if module_id not in self.modules_for_restart:
+                print("RESET", module_id)
+                self.bus.publish('raw', CAN_packet(0, [0x81, module_id]))
+                self.modules_for_restart.add(module_id)
+            elif status == 127:  # restarted and in preoperation
+                print("SWITCH TO OPERATION", module_id)
+                self.bus.publish('raw', CAN_packet(0, [1, module_id]))
+        elif module_id in self.modules_for_restart:
+            print("RUNNING", module_id)
+            self.modules_for_restart.remove(module_id)
+
     def process_packet(self, packet):
         if packet == CAN_BRIDGE_READY:
             self.bus.publish('raw', CAN_BRIDGE_SYNC)
@@ -85,6 +166,7 @@ class CANSerial(Thread):
             self.bus.publish('raw', CAN_BRIDGE_START)
             self.can_bridge_initialized = True
             if self.is_canopen:
+                self.reset_modules()  # TODO config
                 self.bus.publish('raw', CAN_packet(0, [1, 0]))  # operational
             return None
 
@@ -92,7 +174,7 @@ class CANSerial(Thread):
         msg_id = ((data[0]) << 3) | (((data[1]) >> 5) & 0x1f)
         if msg_id & 0xFF0 == 0x700:  # heart beat message
             assert len(packet) == 3, len(packet)
-            print(hex(msg_id), data[2])
+            self.check_and_restart_modules(msg_id & 0xF, data[2])
         return packet
 
     def process_gen(self, data):
@@ -120,11 +202,10 @@ class CANSerial(Thread):
                 else:
                     assert False, channel  # unsupported input channel
         except BusShutdownException:
-            pass
+            if self.is_canopen:
+                self.bus.publish('raw', CAN_packet(0, [128, 0]))  # pre-operational
 
     def request_stop(self):
-        if self.is_canopen:
-            self.bus.publish('raw', CAN_packet(0, [128, 0]))  # pre-operational
         self.bus.shutdown()
 
 
