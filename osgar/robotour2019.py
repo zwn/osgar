@@ -83,7 +83,7 @@ class Robotour2019:
         self.buttons = None
         self.is_moving = None  # unknown
 
-        self.max_speed = 0.2  # TODO load from config
+        self.max_speed = 0.8  # TODO load from config
         self.max_angular_speed = math.radians(45)
         self.laser_pose = config['laser_pose2d']
         self.hand_pose = config['hand_pose2d']
@@ -155,7 +155,7 @@ class Robotour2019:
         print(self.time, '=== ver0 ===')
         self.wait_for_start()
         game_start = self.time
-        self.go_straight(10.0)
+        self.go_straight(100.0)
 
     def wait_for_new_scan(self):
         prev_count = self.scan_count
