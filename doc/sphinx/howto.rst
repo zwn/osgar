@@ -92,26 +92,24 @@ want raw NMEA data (to upload to `Robotour Marathon 2019 <https://robotika.cz/co
 
 .. code ::
 
-  python -m osgar.logger myrobot-YYMMDD_hhmmss.json --stream gps_serial.raw --raw > marathon.nmea
+  python -m osgar.logger myrobot-YYMMDD_hhmmss.json --stream gps_serial.raw > marathon.nmea
 
 Is it working? If yes great, if not let us know or check the
 `OSGAR issues <https://github.com/robotika/osgar/issues>`_.
 
 
-Attaching motors
-----------------
+Implementation of robot driver
+------------------------------
 
 Now the harder part which will involve some programming, but you will also
 learn how to use OSGAR as a library. Suppose that there is no driver for your
 robot. In this case you will need to lookup the motor controller documentation
-and if you are the author following then section could help you to reasonably define
-the communication protocol.
+and if you are the author following then section could help you to reasonably
+define the communication protocol. In our example we will use simulation
+of virtual differentially driven robot as demo (see `examples/myrobot 
+<https://github.com/robotika/osgar/blob/master/examples/myrobot>`_).
 
-Again let's assume you can control the motors via serial line. This time surely
-on different port and maybe also with different communication speed but the
-rest will look very similar to GPS setup. At the moment we do not have "named
-driver" for your motor controller, so we will use (some would say misuse)
-generic "app" for "application code" and talk to motors directly.
+First let's have a look in the `myrobot.json <https://github.com/robotika/osgar/blob/master/examples/myrobot/myrobot.json>`_ configuration:
 
 .. code-block:: json
 
@@ -121,19 +119,31 @@ generic "app" for "application code" and talk to motors directly.
       "modules": {
         "app": {
             "driver": "application",
-            "in": ["raw"],
-            "out": ["cmd"],
-            "init": {"move_time_sec":4.0}
+            "in": ["emergency_stop", "pose2d"],
+            "out": ["desired_speed"],
+            "init": {
+              "max_speed": 0.5
+            }
         },
-        "motor_serial": {
-            "driver": "serial",
-            "in": ["raw"],
-            "out": ["raw"],
-            "init": {"port": "COM7", "speed": 38400}
+        "myrobot": {
+            "driver": "myrobot.MyRobot",
+            "in": ["desired_speed"],
+            "out": ["emergency_stop", "pose2d"],
+            "init": {}
+        },
+        "timer": {
+            "driver": "myrobot.MyTimer",
+            "in": [],
+            "out": ["tick"],
+            "init": {
+              "sleep": 0.1
+            }
         }
       },
-      "links": [["motor_serial.raw", "app.raw"],
-                ["app.cmd", "motor_serial.raw"]]
+      "links": [["app.desired_speed", "myrobot.desired_speed"],
+                ["myrobot.emergency_stop", "app.emergency_stop"],
+                ["myrobot.pose2d", "app.pose2d"],
+                ["timer.tick", "myrobot.tick"]]
     }
   }
 
