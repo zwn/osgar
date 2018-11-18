@@ -11,14 +11,14 @@ The first observation is that, similar to humans, every robot is specific, but
 there are some common features. If you are lucky and have some commonly used
 machine and sensors, all you need to do is pick appropriate configuration at
 `osgar/config <https://github.com/robotika/osgar/tree/master/config>`_
-and that's it, you are ready. But typically this is not the case. So
-let's start with some hypothetical example, that you have differentially driven
-robot controlled over serial line. You have also GPS connected via USB.
+and that's it, you are ready. But typically this is not the case.
+Let's start with GPS example and then with virtual differentially
+driven robot.
 
 Attaching GPS
 -------------
 
-We will start with GPS, which is more common and you can easily buy one for
+We will start with GPS, which is relatively common sensor and you can buy one for
 less than 20 USD (see `u-blox M8 <https://www.u-blox.com/en/product/neo-m8-series>`_ for example).
 The GPS typically uses USB-serial converter and is
 available on some COM port on Windows and /dev/tty* on Linux. We can use
@@ -50,29 +50,29 @@ already configuration available on
 
 
 You can see that there are two modules/nodes named "gps_serial" and "gps".
-"gps_serial" directly talks with your GPS device over serial line and receives
-bytes via "serial" driver. The "gps" is already NMEA parser of messages
-received via "raw" named input. The output is then "position" - two elements
+"gps_serial" directly talks to your GPS device over serial line and receives
+bytes via "serial" driver. The "gps" module is already NMEA parser of messages
+received via "raw" input. The output is then "position" (in WGS84 coordinate system) - two elements
 array with longitude and latitude in milliseconds (integer with scale factor
 1/3600000).
 
 OK, but how it fits into my robot?! Check the "gps_serial" "init" section and
 setup your port ("COM5") and communication speed (4800). Save the configuration
-(say you name it "myrobot.json") and now we can test it without any programming
+(say you name it "mygps.json") and now we can test it (without any programming)
 that it works for your setup:
 
 .. code ::
 
-  python -m osgar.record myrobot.json --duration=10 --note "my first GPS test"
+  python -m osgar.record mygps.json --duration=10 --note "my first GPS test"
 
-You can obtain all parameters for recorder via "-h" option:
+You can obtain all recording parameters by "-h" option:
 
 .. code ::
 
   python -m osgar.record -h
 
-In particular the configuration file parameter is required, but *duration* and
-*note* are optional. Nevertheless I would highly recommend to add notes to your
+The configuration file parameter is required, but *duration* and
+*note* are optional. Nevertheless we would highly recommend to add notes to your
 robot trials as they are easy to add before start and priceless once you have
 to analyze some older log files.
 
