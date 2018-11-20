@@ -203,7 +203,6 @@ class GPSNav:
         gps_angle = None
         while geo_length(self.last_gps_position, goal) > 1.0 and self.time - start_time < timeout:
             desired_heading = normalizeAnglePIPI(geo_angle(self.last_gps_position, goal))
-            desired_heading = 0   # HACK!!!
             step = geo_length(self.last_gps_position, self.last_gps_position_angle)
             if False:  #step > 1.0:
                 gps_angle = normalizeAnglePIPI(geo_angle(self.last_gps_position_angle, self.last_gps_position))
