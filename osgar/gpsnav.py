@@ -98,9 +98,10 @@ class GPSNav:
                 x, y, heading = data
                 self.last_pose2d = [x/1000.0, y/1000.0, math.radians(heading/100.0)]
                 self.wheel_heading = heading  # for Eduro it is direction of the robot
-                desired_speed = 0 if self.cmd[0] == 0 else 0.5
-                desired_angular_speed = math.radians(self.cmd[1])  # TODO check sign
-#                print(desired_speed, desired_angular_speed)
+                desired_speed = 0 if self.cmd[0] == 0 else 0.2
+#                desired_angular_speed = math.radians(self.cmd[1])  # TODO check sign
+                desired_angular_speed = self.cmd[1]  # TODO check sign
+#                print((x, y, heading), desired_speed, desired_angular_speed, self.cmd)
                 self.send_speed_cmd(desired_speed, desired_angular_speed)
             elif channel == 'emergency_stop':
                 if self.raise_exception_on_stop and data:
@@ -114,7 +115,8 @@ class GPSNav:
     def set_speed(self, desired_speed, desired_wheel_heading):
         # TODO split this for Car and Spider mode
         speed = int(round(desired_speed))
-        desired_steering = int(-512 * math.degrees(desired_wheel_heading) / 360.0)
+#        desired_steering = int(-512 * math.degrees(desired_wheel_heading) / 360.0)
+        desired_steering = desired_wheel_heading  # HACK
 
         if speed != 0:
             if self.wheel_heading is None:
@@ -201,8 +203,9 @@ class GPSNav:
         gps_angle = None
         while geo_length(self.last_gps_position, goal) > 1.0 and self.time - start_time < timeout:
             desired_heading = normalizeAnglePIPI(geo_angle(self.last_gps_position, goal))
+            desired_heading = 0   # HACK!!!
             step = geo_length(self.last_gps_position, self.last_gps_position_angle)
-            if step > 1.0:
+            if False:  #step > 1.0:
                 gps_angle = normalizeAnglePIPI(geo_angle(self.last_gps_position_angle, self.last_gps_position))
                 print('step', step, math.degrees(gps_angle))
                 self.last_gps_position_angle = self.last_gps_position
