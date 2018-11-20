@@ -72,6 +72,8 @@ class GPSNav:
         self.cmd = [0, 0]
         self.monitors = []
         self.last_gps_position_angle = None  # for angle computation from dGPS
+
+        self.last_pose2d = (0, 0, 0)
         self.raise_exception_on_stop = False
 
     def update(self):
@@ -92,11 +94,22 @@ class GPSNav:
                 else:
                     self.wheel_heading = math.radians(-360 * steering_status[0] / 512)
                 self.bus.publish('move', self.cmd)
+            elif channel == 'pose2d':
+                x, y, heading = data
+                self.last_pose2d = [x/1000.0, y/1000.0, math.radians(heading/100.0)]
+                self.wheel_heading = heading  # for Eduro it is direction of the robot
+                desired_speed = 0 if self.cmd[0] == 0 else 0.5
+                desired_angular_speed = math.radians(self.cmd[1])  # TODO check sign
+#                print(desired_speed, desired_angular_speed)
+                self.send_speed_cmd(desired_speed, desired_angular_speed)
             elif channel == 'emergency_stop':
                 if self.raise_exception_on_stop and data:
                     raise EmergencyStopException()
             for monitor_update in self.monitors:
                 monitor_update(self)
+
+    def send_speed_cmd(self, speed, angular_speed):
+        return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
     def set_speed(self, desired_speed, desired_wheel_heading):
         # TODO split this for Car and Spider mode
