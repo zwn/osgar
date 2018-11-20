@@ -43,16 +43,18 @@ class EmergencyStopMonitor:
         self.robot = robot
 
     def update(self, robot):
-        if (robot.status & GPSNav.EMERGENCY_STOP) == 0:
+        if robot.status is not None and (robot.status & GPSNav.EMERGENCY_STOP) == 0:
             raise EmergencyStopException()
 
     # context manager functions
     def __enter__(self):
         self.callback = self.robot.register(self.update)
+        self.robot.raise_exception_on_stop = True
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.robot.unregister(self.callback)
+        self.robot.raise_exception_on_stop = False
 
 
 class GPSNav:
@@ -70,6 +72,7 @@ class GPSNav:
         self.cmd = [0, 0]
         self.monitors = []
         self.last_position_angle = None  # for angle computation from dGPS
+        self.raise_exception_on_stop = False
 
     def update(self):
         packet = self.bus.listen()
@@ -89,6 +92,9 @@ class GPSNav:
                 else:
                     self.wheel_heading = math.radians(-360 * steering_status[0] / 512)
                 self.bus.publish('move', self.cmd)
+            elif channel == 'emergency_stop':
+                if self.raise_exception_on_stop and data:
+                    raise EmergencyStopException()
             for monitor_update in self.monitors:
                 monitor_update(self)
 
@@ -141,24 +147,25 @@ class GPSNav:
         self.wait(timedelta(seconds=1))
 
     def play(self):
-        print("Waiting for valid GPS position...")
-        while self.last_position is None or self.last_position == INVALID_COORDINATES:
-            self.update()
-        print(self.last_position)
-
-        print("Wait for valid IMU...")
-        while self.last_imu_yaw is None:
-            self.update()
-        print(self.last_imu_yaw)
-
-        print("Wait for steering info...")
-        while self.wheel_heading is None:
-            self.update()
-        print(math.degrees(self.wheel_heading))
-
-        print("Ready", self.goals)
         try:
             with EmergencyStopMonitor(self):
+
+                print("Waiting for valid GPS position...")
+                while self.last_position is None or self.last_position == INVALID_COORDINATES:
+                    self.update()
+                print(self.last_position)
+
+                print("Wait for valid IMU...")
+                while self.last_imu_yaw is None:
+                    self.update()
+                print(self.last_imu_yaw)
+
+                print("Wait for steering info...")
+                while self.wheel_heading is None:
+                    self.update()
+                print(math.degrees(self.wheel_heading))
+
+                print("Ready", self.goals)
                 for goal in self.goals:
                     print("Goal at %.2fm" % geo_length(self.last_position, goal))
                     angle = geo_angle(self.last_position, goal)
@@ -209,7 +216,7 @@ class GPSNav:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='RoboOrienteering 2018')
+    parser = argparse.ArgumentParser(description='GPS Waypoint Navigation')
     subparsers = parser.add_subparsers(help='sub-command help', dest='command')
     subparsers.required = True
     parser_run = subparsers.add_parser('run', help='run on real HW')
@@ -229,7 +236,7 @@ if __name__ == "__main__":
         game.play()
 
     elif args.command == 'run':
-        log = LogWriter(prefix='ro2018-', note=str(sys.argv))
+        log = LogWriter(prefix='gpsnav-', note=str(sys.argv))
         config = config_load(*args.config)
         log.write(0, bytes(str(config), 'ascii'))  # write configuration
         robot = Recorder(config=config['robot'], logger=log, application=GPSNav)
