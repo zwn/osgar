@@ -212,7 +212,7 @@ class GPSNav:
                 desired_wheel_heading = normalizeAnglePIPI(desired_heading - gps_angle + self.wheel_heading)
 
             if gps_angle is None or self.wheel_heading is None:
-                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw - 35.5))
+                spider_heading = normalizeAnglePIPI(math.radians(90 - self.last_imu_yaw))
                 desired_wheel_heading = normalizeAnglePIPI(desired_heading-spider_heading)
 
             self.set_speed(self.maxspeed, desired_wheel_heading)
