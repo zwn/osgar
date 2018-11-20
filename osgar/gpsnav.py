@@ -65,13 +65,13 @@ class GPSNav:
         self.maxspeed = config['maxspeed']
         self.goals = [latlon2xy(lat, lon) for lat, lon in config['waypoints']]
         self.time = None
-        self.last_position = None  # (lon, lat) in milliseconds
+        self.last_gps_position = None  # (lon, lat) in milliseconds
         self.last_imu_yaw = None  # magnetic north in degrees
         self.status = None
         self.wheel_heading = None
         self.cmd = [0, 0]
         self.monitors = []
-        self.last_position_angle = None  # for angle computation from dGPS
+        self.last_gps_position_angle = None  # for angle computation from dGPS
         self.raise_exception_on_stop = False
 
     def update(self):
@@ -81,7 +81,7 @@ class GPSNav:
             timestamp, channel, data = packet
             self.time = timestamp
             if channel == 'position':
-                self.last_position = data
+                self.last_gps_position = data
             elif channel == 'orientation':
                 (yaw, pitch, roll), (magx, y, z), (accx, y, z), (gyrox, y, z) = data
                 self.last_imu_yaw = yaw
@@ -151,9 +151,9 @@ class GPSNav:
             with EmergencyStopMonitor(self):
 
                 print("Waiting for valid GPS position...")
-                while self.last_position is None or self.last_position == INVALID_COORDINATES:
+                while self.last_gps_position is None or self.last_gps_position == INVALID_COORDINATES:
                     self.update()
-                print(self.last_position)
+                print(self.last_gps_position)
 
                 print("Wait for valid IMU...")
                 while self.last_imu_yaw is None:
@@ -167,8 +167,8 @@ class GPSNav:
 
                 print("Ready", self.goals)
                 for goal in self.goals:
-                    print("Goal at %.2fm" % geo_length(self.last_position, goal))
-                    angle = geo_angle(self.last_position, goal)
+                    print("Goal at %.2fm" % geo_length(self.last_gps_position, goal))
+                    angle = geo_angle(self.last_gps_position, goal)
                     if angle is not None:
                         print("Heading %.1fdeg, imu" % math.degrees(angle), self.last_imu_yaw)
                     else:
@@ -184,15 +184,15 @@ class GPSNav:
 
     def navigate_to_goal(self, goal, timeout):
         start_time = self.time
-        self.last_position_angle = self.last_position
+        self.last_gps_position_angle = self.last_gps_position
         gps_angle = None
-        while geo_length(self.last_position, goal) > 1.0 and self.time - start_time < timeout:
-            desired_heading = normalizeAnglePIPI(geo_angle(self.last_position, goal))
-            step = geo_length(self.last_position, self.last_position_angle)
+        while geo_length(self.last_gps_position, goal) > 1.0 and self.time - start_time < timeout:
+            desired_heading = normalizeAnglePIPI(geo_angle(self.last_gps_position, goal))
+            step = geo_length(self.last_gps_position, self.last_gps_position_angle)
             if step > 1.0:
-                gps_angle = normalizeAnglePIPI(geo_angle(self.last_position_angle, self.last_position))
+                gps_angle = normalizeAnglePIPI(geo_angle(self.last_gps_position_angle, self.last_gps_position))
                 print('step', step, math.degrees(gps_angle))
-                self.last_position_angle = self.last_position
+                self.last_gps_position_angle = self.last_gps_position
                 desired_wheel_heading = normalizeAnglePIPI(desired_heading - gps_angle + self.wheel_heading)
 
             if gps_angle is None or self.wheel_heading is None:
@@ -205,7 +205,7 @@ class GPSNav:
             self.update()
 
             if int(prev_time.total_seconds()) != int(self.time.total_seconds()):
-                print(self.time, geo_length(self.last_position, goal), self.last_imu_yaw, self.wheel_heading)
+                print(self.time, geo_length(self.last_gps_position, goal), self.last_imu_yaw, self.wheel_heading)
 
         print("STOP (3s)")
         self.set_speed(0, 0)
