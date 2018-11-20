@@ -1,5 +1,5 @@
 """
-  RoboOrienteering 2018 - experiments with osgar.logger and robot container
+  GPS Waypoint Navigation  (target RoboOrienteering/Magellan contest)
 """
 
 import argparse
@@ -43,7 +43,7 @@ class EmergencyStopMonitor:
         self.robot = robot
 
     def update(self, robot):
-        if (robot.status & RoboOrienteering2018.EMERGENCY_STOP) == 0:
+        if (robot.status & GPSNav.EMERGENCY_STOP) == 0:
             raise EmergencyStopException()
 
     # context manager functions
@@ -55,7 +55,7 @@ class EmergencyStopMonitor:
         self.robot.unregister(self.callback)
 
 
-class RoboOrienteering2018:
+class GPSNav:
     EMERGENCY_STOP = 0x0001
 
     def __init__(self, config, bus):
@@ -225,14 +225,14 @@ if __name__ == "__main__":
     if args.command == 'replay':
         from replay import replay
         args.module = 'app'
-        game = replay(args, application=RoboOrienteering2018)
+        game = replay(args, application=GPSNav)
         game.play()
 
     elif args.command == 'run':
         log = LogWriter(prefix='ro2018-', note=str(sys.argv))
         config = config_load(*args.config)
         log.write(0, bytes(str(config), 'ascii'))  # write configuration
-        robot = Recorder(config=config['robot'], logger=log, application=RoboOrienteering2018)
+        robot = Recorder(config=config['robot'], logger=log, application=GPSNav)
         game = robot.modules['app']  # TODO nicer reference
         robot.start()
         game.play()

@@ -2,11 +2,11 @@ import unittest
 from unittest.mock import MagicMock
 import math
 
-from osgar.ro2018 import (geo_length, geo_angle,
+from osgar.gpsnav import (geo_length, geo_angle,
                           latlon2xy, EmergencyStopMonitor, EmergencyStopException)
 
 
-class RO2018Test(unittest.TestCase):
+class GPSNavTest(unittest.TestCase):
 
     def test_geo_lenght(self):
         self.assertAlmostEqual(
