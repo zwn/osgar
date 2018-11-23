@@ -245,7 +245,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'replay':
-        from replay import replay
+        from osgar.replay import replay
         args.module = 'app'
         game = replay(args, application=GPSNav)
         game.play()
