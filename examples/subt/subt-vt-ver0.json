@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "robot": {
+    "modules": {
+      "app": {
+          "driver": "application",
+          "in": ["emergency_stop", "pose2d"],
+          "out": ["desired_speed"],
+          "init": {
+            "max_speed": 0.5
+          }
+      },
+      "ros": {
+          "driver": "rosproxy",
+          "in": ["desired_speed"],
+          "out": ["emergency_stop", "pose2d"],
+          "init": {}
+      }
+    },
+    "links": [["app.desired_speed", "ros.desired_speed"],
+              ["ros.pose2d", "app.pose2d"]]
+  }
+}
