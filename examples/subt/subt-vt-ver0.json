@@ -14,7 +14,13 @@
           "driver": "rosproxy",
           "in": ["desired_speed"],
           "out": ["emergency_stop", "pose2d"],
-          "init": {}
+          "init": {
+            "ros_master_uri": "http://192.168.23.13:11311",
+            "ros_client_uri": "http://192.168.23.12:8000",
+            "topic": "/X1/cmd_vel",
+            "msgtype": "geometry_msgs/Twist",
+            "msgmd5": "9f195f881246fdfa2798d1d3eebca84a"
+          }
       }
     },
     "links": [["app.desired_speed", "ros.desired_speed"],
