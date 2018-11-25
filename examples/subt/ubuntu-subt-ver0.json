@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "robot": {
+    "modules": {
+      "app": {
+          "driver": "application",
+          "in": ["emergency_stop", "pose2d"],
+          "out": ["desired_speed"],
+          "init": {
+            "max_speed": 0.5
+          }
+      },
+      "ros": {
+          "driver": "rosproxy",
+          "in": ["desired_speed", "cmd_vel"],
+          "out": ["emergency_stop", "pose2d", "cmd_vel"],
+          "init": {
+            "ros_master_uri": "http://127.0.0.1:11311",
+            "ros_client_uri": "http://127.0.0.1:8000",
+            "topic": "/X1/cmd_vel",
+            "topic_type": "geometry_msgs/Twist"
+          }
+      },
+      "tcp_cmd_vel": {
+          "driver": "tcp",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {
+            "server": true,
+            "host": "127.0.0.1",
+            "port": 8123
+          }
+      }
+    },
+    "links": [["app.desired_speed", "ros.desired_speed"],
+              ["ros.pose2d", "app.pose2d"],
+              ["ros.cmd_vel", "tcp_cmd_vel.raw"],
+              ["tcp_cmd_vel.raw", "ros.cmd_vel"]]
+  }
+}
