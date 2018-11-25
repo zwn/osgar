@@ -62,7 +62,16 @@ class LogTCP(LogSocket):
     def __init__(self, config, bus):
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         LogSocket.__init__(self, soc, config, bus)
-        self.socket.connect(self.pair)
+
+        if config.get('server', False):
+            soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            soc.bind((NODE_HOST, PUBLISH_PORT))
+            print("Waiting ...")
+            soc.listen(1)
+            self.socket, addr = soc.accept()
+            print('Connected by', addr)
+        else:
+            self.socket.connect(self.pair)
 
     def _send(self, data):
         self.socket.send(data)
