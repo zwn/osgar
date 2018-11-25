@@ -4,8 +4,6 @@ import threading
 from threading import Thread
 import os
 from xmlrpc.server import SimpleXMLRPCServer
-import xmlrpc
-import time
 
 from osgar.drivers.rosproxy import ROSProxy
 from osgar.bus import BusHandler
@@ -39,19 +37,24 @@ class GlobalExceptionWatcher(object):
             tracebacks = os.linesep.join(self._exceptions)
             raise Exception('Exceptions in other threads: %s' % tracebacks)
 
+
 def getSystemState(path):
     print("RECEIVED", path)
     return (1, 0, ([], 0, 0))
 
+
+def registerPublisher(a, b, c, d):
+    return (1, 0, [])
+
+
 class DummyROSMaster(Thread):
-    def __init__(self, nodeAddrHostPort ):
-            #ros_master_uri):
-        Thread.__init__( self )
-        self.setDaemon( True )
-        self.server = SimpleXMLRPCServer( nodeAddrHostPort )
-        print("Listening on port %d ..." % nodeAddrHostPort[1])
-        self.server.register_function(getSystemState, "getSystemState")
-#        self.server.register_function(requestTopic, "requestTopic")
+    def __init__(self, host_port_addr):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self.server = SimpleXMLRPCServer(host_port_addr)
+        print('Listening on %s:%d ...' % host_port_addr)
+        self.server.register_function(getSystemState, 'getSystemState')
+        self.server.register_function(registerPublisher, 'registerPublisher')
         self.start()
 
     def run( self ):
@@ -70,19 +73,11 @@ class ROSProxyTest(unittest.TestCase):
                 'topic_type': 'std_msgs/String',
                 }
 
-        master = DummyROSMaster(('127.0.0.1', 11311)) #8000)) #11311))  #config['ros_master_uri'])
-        print('time to sleep')
-        time.sleep(1.0)
-        print('start client')
-#        s = xmlrpc.client.ServerProxy('http://127.0.0.1:8000')
-#        s = xmlrpc.client.ServerProxy('http://127.0.0.1:11311')
-#        print(s.getSystemState('/'))
-#        print(s.listMethods())
-#        return
-        
+        master = DummyROSMaster(('127.0.0.1', 11311))
         proxy = ROSProxy(config=config, bus=bus)
         with GlobalExceptionWatcher():
             proxy.start()
+            proxy.request_stop()
             proxy.join()
 
 # vim: expandtab sw=4 ts=4

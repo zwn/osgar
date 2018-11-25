@@ -37,7 +37,7 @@ class ROSProxy(Thread):
 
         caller_id = "/osgar_node"
         code, status_message, subscribers = master.registerPublisher(
-                caller_id, self.topic, self.msgtype, self.ros_client_uri)
+                caller_id, self.topic, self.topic_type, self.ros_client_uri)
 
         print(subscribers)
 
