@@ -6,6 +6,9 @@ from threading import Thread
 import struct
 from xmlrpc.client import ServerProxy
 
+import socket
+
+
 from osgar.bus import BusShutdownException
 
 
@@ -39,7 +42,26 @@ class ROSProxy(Thread):
         code, status_message, subscribers = master.registerPublisher(
                 caller_id, self.topic, self.topic_type, self.ros_client_uri)
 
+        print("Subscribers:")
         print(subscribers)
+
+        NODE_HOST = '192.168.23.12'
+        PUBLISH_PORT = 8123
+
+        serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        serverSocket.bind((NODE_HOST, PUBLISH_PORT))
+        print("Waiting ...")
+        serverSocket.listen(1)
+        soc, addr = serverSocket.accept() 
+        print('Connected by', addr)
+        data = soc.recv(1024) # TODO properly load and parse/check
+        print(data)
+        print("LEN", len(data))
+
+#        code, status_message, num_unreg = master.unregisterPublisher(
+#                caller_id, self.topic, self.ros_client_uri)
+#        print("Unregistered", code, status_message, num_unreg)
 
         try:
             while True:
