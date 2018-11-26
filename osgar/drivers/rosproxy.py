@@ -13,6 +13,7 @@ import socket
 from osgar.bus import BusShutdownException
 
 NODE_HOST, NODE_PORT = ('127.0.0.1', 8000)
+PUBLISH_PORT = 8123
 
 
 ROS_MESSAGE_TYPES = {
