@@ -82,12 +82,17 @@ class ROSProxy(Thread):
             )
 
         try:
-            self.bus.publish('cmd_vel', header)  # TODO topic dependent!
+            ready = False
+#            self.bus.publish('cmd_vel', header)  # TODO topic dependent!
             while True:
                 timestamp, channel, data = self.bus.listen()
-                print(timestamp, channel, data)
-                if channel == 'tick':
-                    cmd = packCmdVel(-0.5, 0.0)
+                if channel != 'tick':
+                    print(timestamp, channel, data)
+                if channel == 'cmd_vel':
+                    self.bus.publish('cmd_vel', header)
+                    ready = True
+                if ready and channel == 'tick':
+                    cmd = prefix4BytesLen(packCmdVel(-0.5, 0.0))
                     self.bus.publish('cmd_vel', cmd)
         except BusShutdownException:
             pass
