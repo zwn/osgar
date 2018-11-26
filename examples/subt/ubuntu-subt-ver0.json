@@ -21,6 +21,14 @@
             "topic_type": "geometry_msgs/Twist"
           }
       },
+      "timer": {
+          "driver": "mytimer:MyTimer",
+          "in": [],
+          "out": ["tick"],
+          "init": {
+            "sleep": 0.1
+          }
+      }
       "tcp_cmd_vel": {
           "driver": "tcp",
           "in": ["raw"],
@@ -35,6 +43,7 @@
     "links": [["app.desired_speed", "ros.desired_speed"],
               ["ros.pose2d", "app.pose2d"],
               ["ros.cmd_vel", "tcp_cmd_vel.raw"],
-              ["tcp_cmd_vel.raw", "ros.cmd_vel"]]
+              ["tcp_cmd_vel.raw", "ros.cmd_vel"],
+              ["timer.tick", "ros.tick"]]
   }
 }
