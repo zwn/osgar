@@ -5,7 +5,7 @@ from threading import Thread
 import os
 from xmlrpc.server import SimpleXMLRPCServer
 
-from osgar.drivers.rosproxy import ROSProxy
+from osgar.drivers.rosproxy import ROSProxy, prefix4BytesLen
 from osgar.bus import BusHandler
 
 
@@ -65,7 +65,7 @@ class ROSProxyTest(unittest.TestCase):
 
     def test_usage(self):
         logger = MagicMock()
-        bus = BusHandler(logger)
+        bus = BusHandler(logger, out={'cmd_vel':[]})
         config = {
                 'ros_master_uri': 'http://127.0.0.1:11311',
                 'ros_client_uri': 'http://127.0.0.1:8000',
@@ -79,5 +79,9 @@ class ROSProxyTest(unittest.TestCase):
             proxy.start()
             proxy.request_stop()
             proxy.join()
+
+    def test_prefix4BytesLen(self):
+        self.assertEqual(prefix4BytesLen('ahoj'), bytes([4, 0, 0, 0]) + b'ahoj')
+        self.assertEqual(prefix4BytesLen(b'\x01bin'), bytes([4, 0, 0, 0]) + b'\x01bin')
 
 # vim: expandtab sw=4 ts=4

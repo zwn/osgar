@@ -18,6 +18,17 @@ ROS_MESSAGE_TYPES = {
 }
 
 
+def prefix4BytesLen(s):
+    "adding ROS length"
+    if type(s) == str:
+        s = bytes(s, encoding='ascii')
+    return struct.pack("I", len(s)) + s
+
+
+def packCmdVel(speed, angularSpeed):
+    return struct.pack("dddddd", speed,0,0, 0,0,angularSpeed)
+
+
 class ROSProxy(Thread):
     def __init__(self, config, bus):
         Thread.__init__(self)
@@ -45,27 +56,39 @@ class ROSProxy(Thread):
         print("Subscribers:")
         print(subscribers)
 
-        NODE_HOST = '192.168.23.12'
-        PUBLISH_PORT = 8123
+#        NODE_HOST = '192.168.23.12'
+#        PUBLISH_PORT = 8123
 
-        serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        serverSocket.bind((NODE_HOST, PUBLISH_PORT))
-        print("Waiting ...")
-        serverSocket.listen(1)
-        soc, addr = serverSocket.accept() 
-        print('Connected by', addr)
-        data = soc.recv(1024) # TODO properly load and parse/check
-        print(data)
-        print("LEN", len(data))
+#        serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#        serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#        serverSocket.bind((NODE_HOST, PUBLISH_PORT))
+#        print("Waiting ...")
+#        serverSocket.listen(1)
+#        soc, addr = serverSocket.accept() 
+#        print('Connected by', addr)
+#        data = soc.recv(1024) # TODO properly load and parse/check
+#        print(data)
+#        print("LEN", len(data))
 
 #        code, status_message, num_unreg = master.unregisterPublisher(
 #                caller_id, self.topic, self.ros_client_uri)
 #        print("Unregistered", code, status_message, num_unreg)
 
+        header = prefix4BytesLen(
+            prefix4BytesLen('callerid=' + caller_id) +
+            prefix4BytesLen('topic=' + self.topic) +
+            prefix4BytesLen('type=' + self.topic_type) +
+            prefix4BytesLen('md5sum=' + ROS_MESSAGE_TYPES[self.topic_type])
+            )
+
         try:
+            self.bus.publish('cmd_vel', header)  # TODO topic dependent!
             while True:
-                packet = self.bus.listen()
+                timestamp, channel, data = self.bus.listen()
+                print(timestamp, channel, data)
+                if channel == 'tick':
+                    cmd = packCmdVel(-0.5, 0.0)
+                    self.bus.publish('cmd_vel', cmd)
         except BusShutdownException:
             pass
 
