@@ -28,7 +28,7 @@
           "init": {
             "sleep": 0.1
           }
-      }
+      },
       "tcp_cmd_vel": {
           "driver": "tcp",
           "in": ["raw"],
