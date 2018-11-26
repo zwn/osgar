@@ -39,11 +39,22 @@
             "port": 8123
           }
       }
+      "tcp_imu_data": {
+          "driver": "tcp",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {
+            "host": "127.0.0.1",
+            "port": 0
+          }
+      }
     },
     "links": [["app.desired_speed", "ros.desired_speed"],
               ["ros.pose2d", "app.pose2d"],
               ["ros.cmd_vel", "tcp_cmd_vel.raw"],
               ["tcp_cmd_vel.raw", "ros.cmd_vel"],
+              ["ros.imu_data", "tcp_imu_data.raw"],
+              ["tcp_imu_data.raw", "ros.imu_data"],
               ["timer.tick", "ros.tick"]]
   }
 }
