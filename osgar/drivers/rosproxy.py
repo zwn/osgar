@@ -85,7 +85,8 @@ class ROSProxy(Thread):
         print(code, status_message, protocol_params)
         
         # define TCP connection
-        self.bus.publish('imu_data', [protocol_params[1], protocol_params[2]])
+        #self.bus.publish('imu_data', [protocol_params[1], protocol_params[2]])
+        self.bus.publish('imu_data', ['127.0.0.1', protocol_params[2]])        
 
         # initialize connection
         header = prefix4BytesLen(
