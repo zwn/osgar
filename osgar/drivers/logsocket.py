@@ -46,6 +46,9 @@ class LogSocket:
             self.socket, addr = self.socket.accept()
             print('Connected by', addr)
         while self.bus.is_alive():
+            if self.pair[1] == 0:
+                self.bus.sleep(0.1)
+                continue
             try:
                 data = self.socket.recv(self.bufsize)
                 if len(data) > 0:
@@ -78,7 +81,7 @@ class LogTCP(LogSocket):
 
     def _send(self, data):
         if self.pair[1] == 0:
-            self.pair = data
+            self.pair = tuple(data)
             self.socket.connect(self.pair)
         else:
             self.socket.send(data)
