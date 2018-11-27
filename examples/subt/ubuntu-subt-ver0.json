@@ -12,8 +12,8 @@
       },
       "ros": {
           "driver": "rosproxy",
-          "in": ["desired_speed", "cmd_vel"],
-          "out": ["emergency_stop", "pose2d", "cmd_vel"],
+          "in": ["desired_speed", "cmd_vel", "imu_data"],
+          "out": ["emergency_stop", "pose2d", "cmd_vel", "imu_data"],
           "init": {
             "ros_master_uri": "http://127.0.0.1:11311",
             "ros_client_uri": "http://127.0.0.1:8000",
@@ -38,7 +38,7 @@
             "host": "127.0.0.1",
             "port": 8123
           }
-      }
+      },
       "tcp_imu_data": {
           "driver": "tcp",
           "in": ["raw"],
