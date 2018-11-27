@@ -73,11 +73,15 @@ class LogTCP(LogSocket):
         if config.get('server', False):
             soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             soc.bind(self.pair)
-        else:
+        elif self.pair[1] != 0:  # 0 for dynamic assignment
             self.socket.connect(self.pair)
 
     def _send(self, data):
-        self.socket.send(data)
+        if self.pair[1] == 0:
+            self.pair = data
+            self.socket.connect(self.pair)
+        else:
+            self.socket.send(data)
 
 
 class LogUDP(LogSocket):
