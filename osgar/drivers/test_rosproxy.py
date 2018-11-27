@@ -47,6 +47,15 @@ def registerPublisher(a, b, c, d):
     return (1, 0, [])
 
 
+def registerSubscriber(a, b, c, d):
+    # re-use master to pretend to be also a node ...
+    return (1, 0, ['http://127.0.0.1:11311'])
+
+
+def requestTopic(a, b, c):
+    return (1, 0, [1, 2, 3])
+
+
 class DummyROSMaster(Thread):
     def __init__(self, host_port_addr):
         Thread.__init__(self)
@@ -55,6 +64,10 @@ class DummyROSMaster(Thread):
         print('Listening on %s:%d ...' % host_port_addr)
         self.server.register_function(getSystemState, 'getSystemState')
         self.server.register_function(registerPublisher, 'registerPublisher')
+        self.server.register_function(registerSubscriber, 'registerSubscriber')
+
+        # fake calls for "real" ROS node
+        self.server.register_function(requestTopic, 'requestTopic')
         self.start()
 
     def run( self ):
@@ -65,12 +78,16 @@ class ROSProxyTest(unittest.TestCase):
 
     def test_usage(self):
         logger = MagicMock()
-        bus = BusHandler(logger, out={'cmd_vel':[]})
+        bus = BusHandler(logger, out={'cmd_vel':[], 'imu_data':[]})
         config = {
                 'ros_master_uri': 'http://127.0.0.1:11311',
                 'ros_client_uri': 'http://127.0.0.1:8000',
                 'topic': '/hello',
                 'topic_type': 'std_msgs/String',
+
+                'subscribe': [
+                        ['/imu/data', 'std_msgs/Imu']
+                    ]
                 }
 
         master = DummyROSMaster(('127.0.0.1', 11311))

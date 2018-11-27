@@ -19,6 +19,7 @@ PUBLISH_PORT = 8123
 ROS_MESSAGE_TYPES = {
     'std_msgs/String': '992ce8a1687cec8c8bd883ec73ca41d1',
     'geometry_msgs/Twist': '9f195f881246fdfa2798d1d3eebca84a',
+    'std_msgs/Imu': '6a62c6daae103f4ff57a132d6f95cec2',
 }
 
 
@@ -66,20 +67,50 @@ class ROSProxy(Thread):
         self.ros_client_uri = config['ros_client_uri']
         self.topic = config['topic']
         self.topic_type = config['topic_type']
+        self.subscribe_list = config.get('subscribe', [])
+        self.caller_id = "/osgar_node"  # do we need this in configuration? (Yes for more ROSProxy nodes)
+
+    def subscribe_topic(self, topic, topic_type):
+        print('Subscribe', topic)
+        code, status_message, publishers = self.master.registerSubscriber(
+                self.caller_id, topic, topic_type, self.ros_client_uri)
+        assert code == 1, (code, status_message)
+        assert len(publishers) == 1, (topic, publishers) # i.e. fails if publisher is not ready now
+        print(publishers)
+
+        publisher = ServerProxy(publishers[0])
+        code, status_message, protocol_params = publisher.requestTopic(self.caller_id, topic, [["TCPROS"]])
+        assert code == 1, (code, status_message)
+        assert len(protocol_params) == 3, protocol_params
+        print(code, status_message, protocol_params)
+        
+        # define TCP connection
+        self.bus.publish('imu_data', [protocol_params[1], protocol_params[2]])
+
+        # initialize connection
+        header = prefix4BytesLen(
+            prefix4BytesLen('callerid=' + self.caller_id) +
+            prefix4BytesLen('topic=' + topic) +
+            prefix4BytesLen('type=' + topic_type) +
+            prefix4BytesLen('md5sum=' + ROS_MESSAGE_TYPES[topic_type])
+            )
+        self.bus.publish('imu_data', header)
 
     def run(self):
         self.server = MyXMLRPCServer( (NODE_HOST, NODE_PORT) )
-        master = ServerProxy(self.ros_master_uri)
-        code, status_message, system_state = master.getSystemState('/')
+        self.master = ServerProxy(self.ros_master_uri)
+        code, status_message, system_state = self.master.getSystemState('/')
         assert code == 1, code
         assert len(system_state) == 3, system_state
         print("Publishers:")
         for s in system_state[0]:
             print(s)
 
-        caller_id = "/osgar_node"
-        code, status_message, subscribers = master.registerPublisher(
-                caller_id, self.topic, self.topic_type, self.ros_client_uri)
+        for topic, topic_type in self.subscribe_list:
+            self.subscribe_topic(topic, topic_type)
+
+        code, status_message, subscribers = self.master.registerPublisher(
+                self.caller_id, self.topic, self.topic_type, self.ros_client_uri)
 
         print("Subscribers:")
         print(subscribers)
@@ -103,7 +134,7 @@ class ROSProxy(Thread):
 #        print("Unregistered", code, status_message, num_unreg)
 
         header = prefix4BytesLen(
-            prefix4BytesLen('callerid=' + caller_id) +
+            prefix4BytesLen('callerid=' + self.caller_id) +
             prefix4BytesLen('topic=' + self.topic) +
             prefix4BytesLen('type=' + self.topic_type) +
             prefix4BytesLen('md5sum=' + ROS_MESSAGE_TYPES[self.topic_type])
