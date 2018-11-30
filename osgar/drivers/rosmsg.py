@@ -1,20 +1,13 @@
 """
-  ROS (Robot Operating System) Proxy
+  ROS (Robot Operating System) Message Parser
 """
 
 from threading import Thread
 import struct
-from xmlrpc.client import ServerProxy
-from xmlrpc.server import SimpleXMLRPCServer
-
-import socket
+import math
 
 
 from osgar.bus import BusShutdownException
-
-NODE_HOST, NODE_PORT = ('127.0.0.1', 8000)
-PUBLISH_PORT = 8123
-
 
 ROS_MESSAGE_TYPES = {
     'std_msgs/String': '992ce8a1687cec8c8bd883ec73ca41d1',
@@ -30,17 +23,26 @@ def prefix4BytesLen(s):
     return struct.pack("I", len(s)) + s
 
 
-def packCmdVel(speed, angularSpeed):
-    return struct.pack("dddddd", speed,0,0, 0,0,angularSpeed)
+def parse_imu( data ):
+    seq, stamp, stampNsec, frameIdLen = struct.unpack("IIII", data[:16])
+#    print(seq, stamp, stampNsec, frameIdLen)
+    data = data[16+frameIdLen:]
+    orientation = struct.unpack("dddd", data[:4*8])
+    data = data[4*8+9*8:] # skip covariance matrix
+    angularVelocity = struct.unpack("ddd", data[:3*8])
+    data = data[3*8+9*8:] # skip velocity covariance
+    linearAcceleration = struct.unpack("ddd", data[:3*8])
+#    print('%d\t%f' % (stamp, sum([x*x for x in linearAcceleration])))
+    data = data[3*8+9*8:] # skip velocity covariance
+    assert len(data) == 0, len(data)
 
+    q0, q1, q2, q3 = orientation  # quaternion
+    x =  math.atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2))
+    y =  math.asin(2*(q0*q2-q3*q1))
+    z =  math.atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3))
+    print('%d\t%f' % (stamp, math.degrees(y)))
 
-def publisherUpdate(caller_id, topic, publishers):
-    print("called 'publisherUpdate' with", (caller_id, topic, publishers))
-    return (1, "Hi, I am fine", 42) # (code, statusMessage, ignore) 
-
-def requestTopic(caller_id, topic, publishers):
-    print("REQ", (caller_id, topic, publishers))
-    return 1, "ready on martind-blabla", ['TCPROS', NODE_HOST, PUBLISH_PORT]
+    return orientation
 
 
 class ROSMsgParser(Thread):
@@ -49,12 +51,23 @@ class ROSMsgParser(Thread):
         self.setDaemon(True)
 
         self.bus = bus
+        self._buf = b''
 
     def get_packet(self):
-        pass
+        data = self._buf
+        if len(data) < 4:
+            return None
+        size = struct.unpack_from('<I', data, 0)[0]
+#        print(size, len(self._buf))
+        assert size > 0, size
+        size += 4  # the length prefix
+        if len(data) < size:
+            return None
+        ret, self._buf = data[:size], data[size:]        
+        return ret
 
     def parse(self, data):
-        pass
+        return parse_imu(data[4:])
 
     def run(self):
         try:
