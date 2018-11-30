@@ -51,6 +51,12 @@
             "host": "127.0.0.1",
             "port": 0
           }
+      },
+      "rosmsg": {
+          "driver": "rosmsg",
+          "in": ["raw"],
+          "out": ["imu_data"],
+          "init": {}
       }
     },
     "links": [["app.desired_speed", "ros.desired_speed"],
@@ -59,6 +65,7 @@
               ["tcp_cmd_vel.raw", "ros.cmd_vel"],
               ["ros.imu_data", "tcp_imu_data.raw"],
               ["tcp_imu_data.raw", "ros.imu_data"],
+              ["tcp_imu_data.raw", "rosmsg.raw"],
               ["timer.tick", "ros.tick"]]
   }
 }
