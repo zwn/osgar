@@ -45,6 +45,36 @@ def parse_imu( data ):
     return orientation
 
 
+def Xparse_image( data ):
+    seq, stamp, stampNsec, frameIdLen = struct.unpack("IIII", data[:16])
+    print(seq, stamp, stampNsec, frameIdLen)
+    data = data[16+frameIdLen:]
+
+# from rosbag.py
+def parse_image(data, dump_filename=None):
+    # http://docs.ros.org/melodic/api/sensor_msgs/html/msg/Image.html
+    size = struct.unpack_from('<I', data)[0]
+    assert size == 230467, size  # expected size for raw image during experiment
+    # http://docs.ros.org/melodic/api/std_msgs/html/msg/Header.html
+    pos = 4
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]
+    print(frame_id, timestamp_sec, timestamp_nsec)
+    pos += frame_id_size
+    height, width, encoding_size = struct.unpack_from('<III', data, pos)
+    pos += 4 + 4 + 4
+    encoding = data[pos:pos+encoding_size]
+    pos += encoding_size
+    print(height, width, encoding)
+    is_bigendian, step, image_arr_size = struct.unpack_from('<BII', data, pos)
+    pos += 1 + 4 + 4
+    if dump_filename is not None:
+        with open(dump_filename, 'wb') as f:
+            f.write(b'P6\n%d %d\n255\n' % (width, height))
+            f.write(data[pos:pos+image_arr_size])
+
+
 class ROSMsgParser(Thread):
     def __init__(self, config, bus):
         Thread.__init__(self)
@@ -68,6 +98,7 @@ class ROSMsgParser(Thread):
 
     def parse(self, data):
         return parse_imu(data[4:])
+#        return parse_image(data)
 
     def run(self):
         try:
