@@ -86,7 +86,7 @@ class ROSProxyTest(unittest.TestCase):
                 'topic_type': 'std_msgs/String',
 
                 'subscribe': [
-                        ['/imu/data', 'std_msgs/Imu']
+                        ['/imu/data', 'std_msgs/Imu', 'imu_data']
                     ]
                 }
 

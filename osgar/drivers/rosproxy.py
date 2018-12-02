@@ -20,6 +20,10 @@ ROS_MESSAGE_TYPES = {
     'std_msgs/String': '992ce8a1687cec8c8bd883ec73ca41d1',
     'geometry_msgs/Twist': '9f195f881246fdfa2798d1d3eebca84a',
     'std_msgs/Imu': '6a62c6daae103f4ff57a132d6f95cec2',
+
+    #hacked
+    'sensor_msgs/LaserScan': '0002c6daae103f4ff57a132d6f95cec2',
+    'sensor_msgs/Image': '0012c6daae103f4ff57a132d6f95cec2',
 }
 
 
@@ -70,7 +74,7 @@ class ROSProxy(Thread):
         self.subscribe_list = config.get('subscribe', [])
         self.caller_id = "/osgar_node"  # do we need this in configuration? (Yes for more ROSProxy nodes)
 
-    def subscribe_topic(self, topic, topic_type):
+    def subscribe_topic(self, topic, topic_type, publish_name):
         print('Subscribe', topic)
         code, status_message, publishers = self.master.registerSubscriber(
                 self.caller_id, topic, topic_type, self.ros_client_uri)
@@ -86,7 +90,7 @@ class ROSProxy(Thread):
         
         # define TCP connection
         #self.bus.publish('imu_data', [protocol_params[1], protocol_params[2]])
-        self.bus.publish('imu_data', ['127.0.0.1', protocol_params[2]])        
+        self.bus.publish(publish_name, ['127.0.0.1', protocol_params[2]])        
 
         # initialize connection
         header = prefix4BytesLen(
@@ -95,7 +99,7 @@ class ROSProxy(Thread):
             prefix4BytesLen('type=' + topic_type) +
             prefix4BytesLen('md5sum=' + ROS_MESSAGE_TYPES[topic_type])
             )
-        self.bus.publish('imu_data', header)
+        self.bus.publish(publish_name, header)
 
     def run(self):
         self.server = MyXMLRPCServer( (NODE_HOST, NODE_PORT) )
@@ -107,8 +111,8 @@ class ROSProxy(Thread):
         for s in system_state[0]:
             print(s)
 
-        for topic, topic_type in self.subscribe_list:
-            self.subscribe_topic(topic, topic_type)
+        for topic, topic_type, publish_name in self.subscribe_list:
+            self.subscribe_topic(topic, topic_type, publish_name)
 
         code, status_message, subscribers = self.master.registerPublisher(
                 self.caller_id, self.topic, self.topic_type, self.ros_client_uri)
@@ -147,7 +151,7 @@ class ROSProxy(Thread):
             while True:
                 timestamp, channel, data = self.bus.listen()
                 if channel != 'tick':
-                    print(timestamp, channel, data)
+                    print(timestamp, channel)
                 if channel == 'cmd_vel':
                     self.bus.publish('cmd_vel', header)
                     ready = True
