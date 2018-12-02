@@ -21,9 +21,8 @@ ROS_MESSAGE_TYPES = {
     'geometry_msgs/Twist': '9f195f881246fdfa2798d1d3eebca84a',
     'std_msgs/Imu': '6a62c6daae103f4ff57a132d6f95cec2',
 
-    #hacked
-    'sensor_msgs/LaserScan': '0002c6daae103f4ff57a132d6f95cec2',
-    'sensor_msgs/Image': '0012c6daae103f4ff57a132d6f95cec2',
+    'sensor_msgs/LaserScan': '90c7ef2dc6895d81024acba2ac42f369',
+    'sensor_msgs/Image': '060021388200f6f0f447d0fcd9c64743',
 }
 
 
