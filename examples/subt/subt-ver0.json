@@ -89,7 +89,7 @@
           "driver": "rosmsg",
           "in": ["raw"],
           "out": ["image"],
-          "init": {}
+          "init": {"topic_type": "sensor_msgs/CompressedImage"}
       }
     },
     "links": [["app.desired_speed", "ros.desired_speed"],
