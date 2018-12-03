@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 import math
 
-from osgar.drivers.rosmsg import ROSMsgParser, parse_image
+from osgar.drivers.rosmsg import ROSMsgParser, parse_jpeg_image
 
 
 class ROSMsgParserTest(unittest.TestCase):
@@ -36,7 +36,7 @@ class ROSMsgParserTest(unittest.TestCase):
             packet = r.get_packet()  # first packet is structure file
             while packet is not None:
                 if index > 0:
-                    parse_image(packet, 'dump_%03d.jpg' % index)
+                    parse_jpeg_image(packet, 'dump_%03d.jpg' % index)
                 packet = r.get_packet()
                 index += 1
                 if index > 10:

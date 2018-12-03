@@ -75,7 +75,7 @@ def parse_raw_image(data, dump_filename=None):
             f.write(data[pos:pos+image_arr_size])
 
 
-def parse_image(data, dump_filename=None):
+def parse_jpeg_image(data, dump_filename=None):
     # http://docs.ros.org/api/sensor_msgs/html/msg/CompressedImage.html
     size = struct.unpack_from('<I', data)[0]
     assert size < 230467, size  # expected size for raw image during experiment
@@ -96,6 +96,7 @@ def parse_image(data, dump_filename=None):
     if dump_filename is not None:
         with open(dump_filename, 'wb') as f:
             f.write(data[pos:])
+    return data[pos:]
 
 
 class ROSMsgParser(Thread):
@@ -105,6 +106,8 @@ class ROSMsgParser(Thread):
 
         self.bus = bus
         self._buf = b''
+
+        self.topic_type = config.get('topic_type')
 
     def get_packet(self):
         data = self._buf
@@ -119,14 +122,19 @@ class ROSMsgParser(Thread):
         ret, self._buf = data[:size], data[size:]        
         return ret
 
-    def parse(self, data):
-        return parse_imu(data[4:])
-#        return parse_image(data)
-
     def run(self):
         try:
+            header = None
+            # initial message contains structure
             while True:
                 timestamp, channel, data = self.bus.listen()
+                self._buf += data
+                packet = self.get_packet()
+                if packet is not None:
+                    if header is None:
+                        header = packet
+                    elif self.topic_type == 'sensor_msgs/CompressedImage':
+                        self.bus.publish('image', parse_jpeg_image(packet))
         except BusShutdownException:
             pass
 
