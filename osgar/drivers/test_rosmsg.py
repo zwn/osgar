@@ -30,13 +30,13 @@ class ROSMsgParserTest(unittest.TestCase):
 
     def test_parse_image(self):
         r = ROSMsgParser(config={}, bus=None)
-        with open('image_raw.bin', 'rb') as f:
+        with open('image_raw2.bin', 'rb') as f:
             r._buf += f.read()
             index = 0
             packet = r.get_packet()  # first packet is structure file
             while packet is not None:
                 if index > 0:
-                    parse_image(packet, 'dump.ppm')
+                    parse_image(packet, 'dump_%03d.jpg' % index)
                 packet = r.get_packet()
                 index += 1
                 if index > 10:

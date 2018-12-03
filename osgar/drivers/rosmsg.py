@@ -51,7 +51,7 @@ def Xparse_image( data ):
     data = data[16+frameIdLen:]
 
 # from rosbag.py
-def parse_image(data, dump_filename=None):
+def parse_raw_image(data, dump_filename=None):
     # http://docs.ros.org/melodic/api/sensor_msgs/html/msg/Image.html
     size = struct.unpack_from('<I', data)[0]
     assert size == 230467, size  # expected size for raw image during experiment
@@ -73,6 +73,29 @@ def parse_image(data, dump_filename=None):
         with open(dump_filename, 'wb') as f:
             f.write(b'P6\n%d %d\n255\n' % (width, height))
             f.write(data[pos:pos+image_arr_size])
+
+
+def parse_image(data, dump_filename=None):
+    # http://docs.ros.org/api/sensor_msgs/html/msg/CompressedImage.html
+    size = struct.unpack_from('<I', data)[0]
+    assert size < 230467, size  # expected size for raw image during experiment
+    # http://docs.ros.org/melodic/api/std_msgs/html/msg/Header.html
+    pos = 4
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]
+    print(frame_id, timestamp_sec, timestamp_nsec)
+    pos += frame_id_size
+    encoding_size = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    encoding = data[pos:pos+encoding_size]
+    pos += encoding_size
+    print(encoding, size)
+    img_size = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    if dump_filename is not None:
+        with open(dump_filename, 'wb') as f:
+            f.write(data[pos:])
 
 
 class ROSMsgParser(Thread):
