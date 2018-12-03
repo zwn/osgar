@@ -20,7 +20,7 @@ from osgar.lib.serialize import deserialize
 
 def create_video(logfile, outfile, add_time=False, start_time_sec=0, fps=25):
     assert outfile.endswith(".avi"), outFilename
-    only_stream = lookup_stream_id(logfile, 'camera.raw')
+    only_stream = lookup_stream_id(logfile, 'rosmsg_image.image') #'camera.raw')
     with LogReader(logfile) as log:
         writer = None
         for timestamp, stream_id, data in log.read_gen(only_stream):
