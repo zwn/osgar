@@ -23,7 +23,7 @@
             "subscribe": [
                         ["/X1/imu/data", "std_msgs/Imu", "imu_data"],
                         ["/X1/front_scan", "sensor_msgs/LaserScan", "laser_data"],
-                        ["/X1/front/image_raw", "sensor_msgs/Image", "image_data"]
+                        ["/X1/front/image_raw/compressed", "sensor_msgs/CompressedImage", "image_data"]
                     ]
 
           }
