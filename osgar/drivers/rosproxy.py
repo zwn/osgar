@@ -23,7 +23,7 @@ ROS_MESSAGE_TYPES = {
 
     'sensor_msgs/LaserScan': '90c7ef2dc6895d81024acba2ac42f369',
     'sensor_msgs/Image': '060021388200f6f0f447d0fcd9c64743',
-    'sensor_msgs/CompressedImage': '000021388200f6f0f447d0fcd9c64743',
+    'sensor_msgs/CompressedImage': '8f7a12909da2c9d3332d540a0977563f',
 }
 
 
