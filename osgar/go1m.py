@@ -15,6 +15,7 @@ class GoOneMeter:
         self.start_pose = None
         self.traveled_dist = 0.0
         self.time = None
+        self.emergency_stop = False
 
     def send_speed_cmd(self, speed, angular_speed):
         return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
@@ -22,15 +23,18 @@ class GoOneMeter:
     def update(self):
         packet = self.bus.listen()
         if packet is not None:
-            print('Go1m', packet)
             timestamp, channel, data = packet
+            print(timestamp, channel)
             self.time = timestamp
             if channel == 'pose2d':
+                print(packet)
                 x, y, heading = data
                 pose = (x/1000.0, y/1000.0, math.radians(heading/100.0))
                 if self.start_pose is None:
                     self.start_pose = pose
                 self.traveled_dist = math.hypot(pose[0] - self.start_pose[0], pose[1] - self.start_pose[1])
+            elif channel == 'emergency_stop':
+                self.emergency_stop = data
                         
     def wait(self, dt):  # TODO refactor to some common class
         if self.time is None:
@@ -44,6 +48,8 @@ class GoOneMeter:
         self.send_speed_cmd(0.5, 0.0)
         while self.traveled_dist < 1.0:
             self.update()
+            if self.emergency_stop:
+                break
         self.send_speed_cmd(0.0, 0.0)
         self.wait(timedelta(seconds=1))
 
