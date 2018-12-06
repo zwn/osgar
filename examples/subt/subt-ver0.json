@@ -83,7 +83,7 @@
           "driver": "rosmsg",
           "in": ["raw"],
           "out": ["scan"],
-          "init": {}
+          "init": {"topic_type": "sensor_msgs/LaserScan"}
       },
       "rosmsg_image": {
           "driver": "rosmsg",
