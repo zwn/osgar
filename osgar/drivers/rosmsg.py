@@ -163,6 +163,8 @@ class ROSMsgParser(Thread):
                         header = packet
                     elif self.topic_type == 'sensor_msgs/CompressedImage':
                         self.bus.publish('image', parse_jpeg_image(packet))
+                    elif self.topic_type == 'sensor_msgs/LaserScan':
+                        self.bus.publish('scan', parse_laser(packet))
         except BusShutdownException:
             pass
 
