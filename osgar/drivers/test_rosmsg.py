@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 import math
 
-from osgar.drivers.rosmsg import ROSMsgParser, parse_jpeg_image
+from osgar.drivers.rosmsg import ROSMsgParser, parse_jpeg_image, parse_laser
 
 
 class ROSMsgParserTest(unittest.TestCase):
@@ -28,7 +28,7 @@ class ROSMsgParserTest(unittest.TestCase):
 #                if index > 10000:
 #                    break
 
-    def test_parse_image(self):
+    def Xtest_parse_image(self):
         r = ROSMsgParser(config={}, bus=None)
         with open('image_raw2.bin', 'rb') as f:
             r._buf += f.read()
@@ -42,6 +42,19 @@ class ROSMsgParserTest(unittest.TestCase):
                 if index > 10:
                     break
 
+    def test_parse_laser(self):
+        r = ROSMsgParser(config={}, bus=None)
+        with open('laser_data.bin', 'rb') as f:
+            r._buf += f.read()
+            index = 0
+            packet = r.get_packet()  # first packet is structure file
+            while packet is not None:
+                if index > 0:
+                    parse_laser(packet)
+                packet = r.get_packet()
+                index += 1
+                if index > 10:
+                    break
 
 
 # vim: expandtab sw=4 ts=4

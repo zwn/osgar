@@ -99,6 +99,34 @@ def parse_jpeg_image(data, dump_filename=None):
     return data[pos:]
 
 
+def parse_laser(data):
+    # http://docs.ros.org/melodic/api/sensor_msgs/html/msg/LaserScan.html
+    size = struct.unpack_from('<I', data)[0]
+    assert size == 5826, size  # expected size for short lidar
+    pos = 4
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]
+    print(frame_id, timestamp_sec, timestamp_nsec)
+    pos += frame_id_size
+    params = struct.unpack_from('<fffffff', data, pos)
+    # angle_min, angle_max, angle_increment, time_increment, scan_time
+    # range_min, range_max
+    print(params)
+    pos += 7*4
+    ranges_size = struct.unpack_from('<I', data, pos)[0]
+    assert ranges_size == 720, ranges_size
+    pos += 4
+    scan = struct.unpack_from('<' + 'f' * ranges_size, data, pos)
+    pos += 4 * ranges_size
+    intensities_size = struct.unpack_from('<I', data, pos)[0]
+    assert intensities_size == 720, intensities_size
+    intensities = struct.unpack_from('<' + 'f' * intensities_size, data, pos)
+    return scan  # TODO conversion to integers??
+
+
+
+
 class ROSMsgParser(Thread):
     def __init__(self, config, bus):
         Thread.__init__(self)
