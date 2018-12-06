@@ -125,6 +125,16 @@ def parse_laser(data):
     return scan  # TODO conversion to integers??
 
 
+def parse_odom(data):
+    # http://docs.ros.org/melodic/api/nav_msgs/html/msg/Odometry.html
+    size = struct.unpack_from('<I', data)[0]
+    assert size == 719, size  # expected size for short lidar
+    pos = 4
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]
+    print(frame_id, timestamp_sec, timestamp_nsec)
+    pos += frame_id_size
 
 
 class ROSMsgParser(Thread):
