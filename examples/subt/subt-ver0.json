@@ -23,7 +23,8 @@
             "subscribe": [
                         ["/X1/imu/data", "std_msgs/Imu", "imu_data"],
                         ["/X1/front_scan", "sensor_msgs/LaserScan", "laser_data"],
-                        ["/X1/front/image_raw/compressed", "sensor_msgs/CompressedImage", "image_data"]
+                        ["/X1/front/image_raw/compressed", "sensor_msgs/CompressedImage", "image_data"],
+                        ["/X1/x1_velocity_controller/odom", "nav_msgs/Odometry", "odom_data"]
                     ]
 
           }
@@ -73,6 +74,15 @@
             "port": 0
           }
       },
+      "tcp_odom_data": {
+          "driver": "tcp",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {
+            "host": "127.0.0.1",
+            "port": 0
+          }
+      },
       "rosmsg_imu": {
           "driver": "rosmsg",
           "in": ["raw"],
@@ -90,6 +100,12 @@
           "in": ["raw"],
           "out": ["image"],
           "init": {"topic_type": "sensor_msgs/CompressedImage"}
+      },
+      "rosmsg_odom": {
+          "driver": "rosmsg",
+          "in": ["raw"],
+          "out": ["pose2d"],
+          "init": {"topic_type": "nav_msgs/Odometry"}
       }
     },
     "links": [["app.desired_speed", "ros.desired_speed"],
@@ -108,6 +124,10 @@
               ["ros.image_data", "tcp_image_data.raw"],
               ["tcp_image_data.raw", "ros.image_data"],
               ["tcp_image_data.raw", "rosmsg_image.raw"],
+
+              ["ros.odom_data", "tcp_odom_data.raw"],
+              ["tcp_odom_data.raw", "ros.odom_data"],
+              ["tcp_odom_data.raw", "rosmsg_odom.raw"],
 
               ["timer.tick", "ros.tick"]]
   }
