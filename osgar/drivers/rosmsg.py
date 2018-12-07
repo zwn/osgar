@@ -135,6 +135,31 @@ def parse_odom(data):
     frame_id = data[pos:pos+frame_id_size]
     print(frame_id, timestamp_sec, timestamp_nsec)
     pos += frame_id_size
+    child_frame_id = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    #print(data[pos:pos + child_frame_id])
+    pos += child_frame_id
+    # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/PoseWithCovariance.html
+    # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Pose.html
+    # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Point.html
+    # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Quaternion.html
+    x, y, z = struct.unpack_from('<ddd', data, pos)
+    pos += 3 * 8
+    quat = struct.unpack_from('<dddd', data, pos)
+    pos += 4 * 8
+    # float64[36] covariance
+    pos += 36 * 8
+    #print(x, y, z)
+
+    # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/Twist.html
+    linear = struct.unpack_from('<ddd', data, pos)
+    pos += 3 * 8
+    angular = struct.unpack_from('<ddd', data, pos)
+    pos += 3 * 8
+    # float64[36] covariance
+    pos += 36 * 8
+    assert pos == len(data), (pos, len(data))
+    return (x, y, 0.0)  # TODO heading from quaternion
 
 
 class ROSMsgParser(Thread):
@@ -175,6 +200,11 @@ class ROSMsgParser(Thread):
                         self.bus.publish('image', parse_jpeg_image(packet))
                     elif self.topic_type == 'sensor_msgs/LaserScan':
                         self.bus.publish('scan', parse_laser(packet))
+                    elif self.topic_type == 'nav_msgs/Odometry':
+                        x, y, heading = parse_odom(packet)
+                        self.bus.publish('pose2d', [round(x*1000),
+                                    round(y*1000),
+                                    round(math.degrees(heading)*100)])
         except BusShutdownException:
             pass
 
