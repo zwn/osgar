@@ -4,7 +4,7 @@
     "modules": {
       "app": {
           "driver": "application",
-          "in": ["emergency_stop", "pose2d"],
+          "in": ["emergency_stop", "pose2d", "scan"],
           "out": ["desired_speed"],
           "init": {
             "max_speed": 0.5
@@ -120,6 +120,7 @@
               ["ros.laser_data", "tcp_laser_data.raw"],
               ["tcp_laser_data.raw", "ros.laser_data"],
               ["tcp_laser_data.raw", "rosmsg_laser.raw"],
+              ["rosmsg_laser.scan", "app.scan"],
 
               ["ros.image_data", "tcp_image_data.raw"],
               ["tcp_image_data.raw", "ros.image_data"],
@@ -128,6 +129,7 @@
               ["ros.odom_data", "tcp_odom_data.raw"],
               ["tcp_odom_data.raw", "ros.odom_data"],
               ["tcp_odom_data.raw", "rosmsg_odom.raw"],
+              ["rosmsg_odom.pose2d", "app.pose2d"],
 
               ["timer.tick", "ros.tick"]]
   }
