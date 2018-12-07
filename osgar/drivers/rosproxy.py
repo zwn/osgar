@@ -6,6 +6,7 @@ from threading import Thread
 import struct
 from xmlrpc.client import ServerProxy
 from xmlrpc.server import SimpleXMLRPCServer
+import math
 
 import socket
 
@@ -68,6 +69,9 @@ class ROSProxy(Thread):
         self.setDaemon(True)
 
         self.bus = bus
+        self.desired_speed = 0.0
+        self.desired_angular_speed = 0.0
+
         self.ros_master_uri = config['ros_master_uri']
         self.ros_client_uri = config['ros_client_uri']
         self.topic = config['topic']
@@ -157,8 +161,11 @@ class ROSProxy(Thread):
                     self.bus.publish('cmd_vel', header)
                     ready = True
                 if ready and channel == 'tick':
-                    cmd = prefix4BytesLen(packCmdVel(-0.5, 0.0))
+                    cmd = prefix4BytesLen(packCmdVel(
+                        self.desired_speed, self.desired_angular_speed))
                     self.bus.publish('cmd_vel', cmd)
+                if channel == "desired_speed":
+                    self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
         except BusShutdownException:
             pass
 
