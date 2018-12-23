@@ -9,6 +9,7 @@ class GazeboHandler(ContentHandler):
     def __init__(self):
         super().__init__()
         self.active = False
+        self.index = 0
 
     def startElement(self, name, attrs):
         assert name in ['gazebo_log', 'header', 'log_version', 'gazebo_version',
@@ -25,7 +26,10 @@ class GazeboHandler(ContentHandler):
 
     def endElement(self, name):
         if name == 'chunk':
-            print(zlib.decompress(base64.b64decode(self.data)))
+            subtree = zlib.decompress(base64.b64decode(self.data))
+            if self.index == 100:
+                print(subtree.decode('ascii'))
+            self.index += 1
 
 
 if __name__ == "__main__":
