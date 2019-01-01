@@ -59,7 +59,8 @@ def follow_wall_angle(laser_data, radius, right_wall=False):
             return laser_angle + angle
         else:
             return laser_angle - angle
-    return None
+    # If the desired wall is out of range, we need to slowly turn to the correct side.
+    return math.radians(-20 if right_wall else 20)
 
 
 class FollowWall(Node):
