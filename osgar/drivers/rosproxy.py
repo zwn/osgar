@@ -26,6 +26,7 @@ ROS_MESSAGE_TYPES = {
     'sensor_msgs/Image': '060021388200f6f0f447d0fcd9c64743',
     'sensor_msgs/CompressedImage': '8f7a12909da2c9d3332d540a0977563f',
     'nav_msgs/Odometry': 'cd5e73d190d741a2f92e81eda573aca7',
+    'sensor_msgs/PointCloud2': '1158d486dd51d683ce2f1be655c3c181',
 }
 
 
