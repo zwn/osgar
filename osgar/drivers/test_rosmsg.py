@@ -64,6 +64,7 @@ class ROSMsgParserTest(unittest.TestCase):
     def Xtest_parse_odom(self):
         r = ROSMsgParser(config={}, bus=None)
         with open('odom_data.bin', 'rb') as f:
+#        with open('x3-odom.bin', 'rb') as f:
             r._buf += f.read()
             index = 0
             packet = r.get_packet()  # first packet is structure file

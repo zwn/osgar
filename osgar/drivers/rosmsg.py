@@ -140,7 +140,7 @@ def parse_laser(data):
 def parse_odom(data):
     # http://docs.ros.org/melodic/api/nav_msgs/html/msg/Odometry.html
     size = struct.unpack_from('<I', data)[0]
-    assert size == 719, size  # expected size for short lidar
+    assert size in [719, 724], size  # expected size for odometry (beware of variable header! i.e. this assert is wrong in general)
     pos = 4
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
     pos += 4 + 4 + 4 + 4
