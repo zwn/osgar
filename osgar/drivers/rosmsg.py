@@ -24,12 +24,18 @@ def prefix4BytesLen(s):
 
 
 def parse_imu( data ):
+    # http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
     size = struct.unpack_from('<I', data)[0]
-    assert size == 324, size  # expected IMU packet size
+    assert size in [324, 323], size  # expected IMU packet size (beware of variable frameIdLen - should be removed!)
     data = data[4:]
     seq, stamp, stampNsec, frameIdLen = struct.unpack("IIII", data[:16])
 #    print(seq, stamp, stampNsec, frameIdLen)
+#    print(data[16:16+frameIdLen])
     data = data[16+frameIdLen:]
+    # variable frameIdLen:
+    #    b'X1/base_link' = 12 bytes
+    #    b'X3/imu_link' = 11 bytes
+    assert len(data) == 296, len(data)  # fixed data size (37 * 8)
     orientation = struct.unpack("dddd", data[:4*8])
     data = data[4*8+9*8:] # skip covariance matrix
     angularVelocity = struct.unpack("ddd", data[:3*8])
