@@ -211,13 +211,19 @@ def parse_points(data):
     is_bigendian, point_step, row_step = struct.unpack_from('<?II', data, pos)
     pos += 9
 #    print(is_bigendian, point_step, row_step)
-#    for i in range(10):
-#        print(struct.unpack_from('<ffff', data, pos + i * 32))
+    arr_size = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    assert arr_size == height * width * 32, arr_size
+    nan = float('nan')
+#    for i in range(height*width):
+#        pt = struct.unpack_from('<ffff', data, pos + i * 32)
+#        assert str(pt) == str((nan, nan, nan, 0.0)), (i, pt)
+
     pos += row_step * height
     is_dense = struct.unpack_from('<?', data, pos)[0]
     pos += 1
 #    print(is_dense)
-    assert pos + 4 == len(data), (pos, len(data))  # why 4?! CRC?? alignment?
+    assert pos == len(data), (pos, len(data))
 
 
 class ROSMsgParser(Thread):
