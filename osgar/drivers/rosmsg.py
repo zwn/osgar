@@ -214,9 +214,11 @@ def parse_points(data):
     arr_size = struct.unpack_from('<I', data, pos)[0]
     pos += 4
     assert arr_size == height * width * 32, arr_size
-    nan = float('nan')
-#    for i in range(height*width):
-#        pt = struct.unpack_from('<ffff', data, pos + i * 32)
+    for i in range(height*width):
+        pt = struct.unpack_from('<ffff', data, pos + i * 32)
+        assert pt[3] == 0.0, pt
+#        if not math.isnan(pt[0]):
+#            print(pt[:3])
 #        assert str(pt) == str((nan, nan, nan, 0.0)), (i, pt)
 
     pos += row_step * height
