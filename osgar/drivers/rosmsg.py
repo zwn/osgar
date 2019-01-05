@@ -179,6 +179,47 @@ def parse_odom(data):
     return (x, y, ax)
 
 
+def parse_points(data):
+    # http://docs.ros.org/melodic/api/sensor_msgs/html/msg/PointCloud2.html
+    size = struct.unpack_from('<I', data)[0]
+    assert size == 2457728, size  # expected size for cloud points (beware of variable header! i.e. this assert is wrong in general)
+    pos = 4
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]
+#    print(frame_id, timestamp_sec, timestamp_nsec)
+    pos += frame_id_size
+    height, width = struct.unpack_from('<II', data, pos)
+    pos += 8
+#    print(height, width)
+    point_field_size = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    assert point_field_size == 4, point_field_size  # RGBD?
+#    print(data[pos:pos + 20])
+    for i in range(point_field_size):
+        str_size = struct.unpack_from('<I', data, pos)[0]
+        pos += 4
+        assert str_size < 10, str_size
+#        print(data[pos:pos + str_size])
+        pos += str_size
+        offset, datatype, count = struct.unpack_from('<IBI', data, pos)
+#        print(offset, datatype, count)
+        assert datatype == 7, datatype  # uint8 FLOAT32 = 7
+        assert count == 1, count
+        pos += 9
+
+    is_bigendian, point_step, row_step = struct.unpack_from('<?II', data, pos)
+    pos += 9
+#    print(is_bigendian, point_step, row_step)
+#    for i in range(10):
+#        print(struct.unpack_from('<ffff', data, pos + i * 32))
+    pos += row_step * height
+    is_dense = struct.unpack_from('<?', data, pos)[0]
+    pos += 1
+#    print(is_dense)
+    assert pos + 4 == len(data), (pos, len(data))  # why 4?! CRC?? alignment?
+
+
 class ROSMsgParser(Thread):
     def __init__(self, config, bus):
         Thread.__init__(self)
