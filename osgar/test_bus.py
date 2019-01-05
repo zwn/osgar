@@ -141,4 +141,15 @@ class BusHandlerTest(unittest.TestCase):
         bus = LogBusHandlerInputsOnly(logger, inputs={})
         bus.sleep(0.1)
 
+    def test_compression(self):
+        logger = MagicMock()
+        logger.register = MagicMock(return_value=1)
+        bus = BusHandler(logger, out={'raw':[]}, name='tcp_point_data')
+        # TODO proper definition what should be compressed - now hardcoded to name "tcp_point_data"
+        self.assertTrue(bus.compressed_output)
+        bus.publish('raw', b'\00'*10000)
+        logger.write.assert_called_once_with(1, 
+            b'x\x9c\xed\xc1\x01\r\x00\x00\x08\x03 #\xbc\x85\xfdC\xd8\xcb\x1e\x1fp\x9b' +
+            b'\x01\x00\x00\x00\x00\x00\x00\x00\x00\x80\x02\x0f\x9f\xba\x00\xfd')
+
 # vim: expandtab sw=4 ts=4
