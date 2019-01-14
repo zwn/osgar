@@ -3,6 +3,7 @@
 """
 import math
 from datetime import timedelta
+from ast import literal_eval
 
 import pygame
 from pygame.locals import *
@@ -20,6 +21,23 @@ def scans_gen(logfile, stream_id):
         for timestamp, stream_id, data in log.read_gen(only_stream):
             scan = deserialize(data)
             yield timestamp, scan
+
+
+def scans_gen_legacy(logfile):
+    # old LIDAR text format
+    timestamp = None
+    start_time_sec = None
+    for line in open(logfile):
+        if line.startswith('['):
+            arr = literal_eval(line)
+            yield timestamp, arr
+        else:
+            s = line.split()
+            if len(s) == 2:
+                time_sec = float(s[1])
+                if start_time_sec is None:
+                    start_time_sec = time_sec
+                timestamp = timedelta(seconds = time_sec - start_time_sec)
 
 
 def scr(x, y):
@@ -81,9 +99,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='View lidar scans')
     parser.add_argument('logfile', help='recorded log file')
     parser.add_argument('--stream', help='stream ID', default='lidar.scan')
+    parser.add_argument('--legacy', help='use old text lidar log format', action='store_true')
     args = parser.parse_args()
 
-    lidarview(scans_gen(args.logfile, args.stream))
+    if args.legacy:
+        lidarview(scans_gen_legacy(args.logfile))
+    else:
+        lidarview(scans_gen(args.logfile, args.stream))
 
 # vim: expandtab sw=4 ts=4 
 
