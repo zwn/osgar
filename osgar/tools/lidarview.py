@@ -73,7 +73,8 @@ def lidarview(gen):
     screen.blit(foreground, (0, 0))
     pygame.display.flip()
 
-    pygame.key.set_repeat(200, 20)  
+    pygame.key.set_repeat(200, 20)
+    pygame.time.set_timer(pygame.USEREVENT + 1, 100)
 
     for timestamp, scan in gen:
         if max(scan) == 0:
