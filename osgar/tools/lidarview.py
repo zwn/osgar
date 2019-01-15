@@ -74,24 +74,35 @@ def lidarview(gen):
     pygame.display.flip()
 
     pygame.key.set_repeat(200, 20)
-    pygame.time.set_timer(pygame.USEREVENT + 1, 100)
+    timer_event = pygame.USEREVENT + 1
+    pygame.time.set_timer(timer_event, 100)
 
+    paused = False
     for timestamp, scan in gen:
         if max(scan) == 0:
             continue
-        pygame.display.set_caption("Time %s" % timestamp)
         foreground.fill((0, 0, 0))
         draw(foreground, scan)
-        event = pygame.event.wait()
-        if event.type == QUIT:
-            break
-        if event.type == KEYDOWN:
-            if event.key in [K_ESCAPE, K_q]:
-                break
-
         screen.blit(background, (0, 0))
         screen.blit(foreground, (0, 0))
         pygame.display.flip() 
+
+        while True:
+            caption = "Time %s" % timestamp
+            if paused:
+                caption += ' (PAUSED)'
+            pygame.display.set_caption(caption)
+
+            event = pygame.event.wait()
+            if event.type == QUIT:
+                return
+            if event.type == KEYDOWN:
+                if event.key in [K_ESCAPE, K_q]:
+                    return
+                if event.key == K_SPACE:
+                    paused = not paused
+            if event.type == timer_event and not paused:
+                break
 
 
 if __name__ == "__main__":
