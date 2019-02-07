@@ -41,6 +41,8 @@ class SubTChallenge:
         self.artifact_data = None
         self.artifact_detected = False
 
+        self.use_right_wall = config.get('right_wall', True)
+
     def send_speed_cmd(self, speed, angular_speed):
         return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
@@ -148,12 +150,12 @@ class SubTChallenge:
     def play(self):
         print("SubT Challenge Ver1!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        dist = self.follow_wall(radius = 1.5, right_wall=True, stop_on_artf=True,
+        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf=True,
                                 timeout=timedelta(hours=3))
         print("Going HOME")
         self.turn(math.radians(90), speed=-0.1)  # it is safer to turn and see the wall + slowly backup
         self.turn(math.radians(90), speed=-0.1)
-        self.follow_wall(radius = 1.5, right_wall=False, timeout=timedelta(hours=3), dist_limit=dist+5)
+        self.follow_wall(radius = 1.5, right_wall=not self.use_right_wall, timeout=timedelta(hours=3), dist_limit=dist+5)
         if self.artifact_xyz is not None:
             x, y, z = self.artifact_xyz
             self.bus.publish('artf_xyz', [self.artifact_data, round(x*1000), round(y*1000), round(z*1000)])
