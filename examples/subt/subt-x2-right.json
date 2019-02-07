@@ -32,6 +32,7 @@
           "init": {
             "ros_master_uri": "http://127.0.0.1:11311",
             "ros_client_uri": "http://127.0.0.1:8000",
+            "node_port": 8000,
             "publish_port": 8123,
             "topic": "/X2R/cmd_vel",
             "topic_type": "geometry_msgs/Twist",
