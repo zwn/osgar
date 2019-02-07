@@ -14,7 +14,7 @@ import socket
 from osgar.bus import BusShutdownException
 
 NODE_HOST, NODE_PORT = ('127.0.0.1', 8000)
-PUBLISH_PORT = 8123
+PUBLISH_PORT = 8123  # can be changed in configuration
 
 
 ROS_MESSAGE_TYPES = {
@@ -67,6 +67,7 @@ class MyXMLRPCServer(Thread):
 
 class ROSProxy(Thread):
     def __init__(self, config, bus):
+        global NODE_PORT, PUBLISH_PORT
         Thread.__init__(self)
         self.setDaemon(True)
 
@@ -77,6 +78,10 @@ class ROSProxy(Thread):
 
         self.ros_master_uri = config['ros_master_uri']
         self.ros_client_uri = config['ros_client_uri']
+
+        NODE_PORT = config.get('node_port', NODE_PORT)  # workaround for dynamic port assignment
+        PUBLISH_PORT = config.get('publish_port', PUBLISH_PORT)
+
         self.topic = config['topic']
         self.topic_type = config['topic_type']
         self.subscribe_list = config.get('subscribe', [])
