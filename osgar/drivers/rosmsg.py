@@ -26,7 +26,7 @@ def prefix4BytesLen(s):
 def parse_imu( data ):
     # http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
     size = struct.unpack_from('<I', data)[0]
-    assert size in [324, 323], size  # expected IMU packet size (beware of variable frameIdLen - should be removed!)
+    #assert size in [324, 323], size  # expected IMU packet size (beware of variable frameIdLen - should be removed!)
     data = data[4:]
     seq, stamp, stampNsec, frameIdLen = struct.unpack("IIII", data[:16])
 #    print(seq, stamp, stampNsec, frameIdLen)
@@ -111,7 +111,7 @@ def parse_jpeg_image(data, dump_filename=None):
 def parse_laser(data):
     # http://docs.ros.org/melodic/api/sensor_msgs/html/msg/LaserScan.html
     size = struct.unpack_from('<I', data)[0]
-    assert size == 5826, size  # expected size for short lidar
+    #assert size == 5826, size  # expected size for short lidar
     pos = 4
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
     pos += 4 + 4 + 4 + 4
@@ -140,7 +140,7 @@ def parse_laser(data):
 def parse_odom(data):
     # http://docs.ros.org/melodic/api/nav_msgs/html/msg/Odometry.html
     size = struct.unpack_from('<I', data)[0]
-    assert size in [719, 724], size  # expected size for odometry (beware of variable header! i.e. this assert is wrong in general)
+    #assert size in [719, 724], size  # expected size for odometry (beware of variable header! i.e. this assert is wrong in general)
     pos = 4
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
     pos += 4 + 4 + 4 + 4
