@@ -84,7 +84,7 @@ class SubTChallenge:
                 size = len(self.scan)
                 dist = min_dist(self.scan[size//3:2*size//3])
                 if dist < 2.0:
-                    desired_speed = 0.1
+                    desired_speed = 1.0 * (dist - 0.4) / 1.6
                 else:
                     desired_speed = 1.0
                 desired_angular_speed = 0.3 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
