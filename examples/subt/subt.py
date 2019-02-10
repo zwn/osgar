@@ -87,7 +87,7 @@ class SubTChallenge:
                     desired_speed = 1.0 * (dist - 0.4) / 1.6
                 else:
                     desired_speed = 2.0
-                desired_angular_speed = 0.3 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
+                desired_angular_speed = 0.7 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
 #                print(self.time, 'desired_angular_speed\t%.1f\t%.3f' % (math.degrees(desired_angular_speed), dist))
                 if desired_angular_speed is None:
                     desired_angular_speed = 0.0
