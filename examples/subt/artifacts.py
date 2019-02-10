@@ -9,6 +9,7 @@ import numpy as np
 from osgar.node import Node
 
 EXTINGUISHER = 'TYPE_EXTINGUISHER'
+BACKPACK = 'TYPE_BACKPACK'
 
 
 def old_count_red(img):
@@ -27,7 +28,14 @@ def count_red(img):
     r = img[:,:,2]
     mask = np.logical_and(r > 100, np.logical_and(r/2 > g, r/2 > b))
     img[mask] = 0, 255, 0
-    return int(mask.sum())
+    count = int(mask.sum())
+    if count == 0:
+        return count, None, None
+    w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
+            - (mask.argmax(axis=0) != 0).argmax())
+    h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax() - 1
+            - (mask.argmax(axis=1) != 0).argmax())
+    return count, w, h
 
 
 class ArtifactDetector(Node):
@@ -35,7 +43,10 @@ class ArtifactDetector(Node):
         super().__init__(config, bus)
         self.best = None
         self.best_count = 0
+        self.best_img = None
+        self.best_info = None
         self.active = True
+        self.verbose = False
 
     def update(self):  # hack, this method should be called run instead!
         channel = super().update()  # define self.time
@@ -52,21 +63,32 @@ class ArtifactDetector(Node):
         # END OF HACK ....
 
         img = cv2.imdecode(np.fromstring(self.image, dtype=np.uint8), 1)
-        count = count_red(img)
-#        print(self.time, img.shape, count)
+        count, w, h = count_red(img)
+        if self.verbose and count > 0:
+            print(self.time, img.shape, count)
         if self.best_count > 0:
             self.best_count -= 1
         if self.best is None:
             if count > 100:
                 self.best = count
                 self.best_count = 10
+                self.best_img = self.image
+                self.best_info = w, h
         elif count > self.best:
             self.best = count
             self.best_count = 10
+            self.best_img = self.image
+            self.best_info = w, h
 
         if self.best is not None and self.best_count == 0:
+            w, h = self.best_info
             print('Published', self.best)
-            self.publish('artf', EXTINGUISHER)
+            if h/w > 2.4:
+                self.publish('artf', EXTINGUISHER)
+            else:
+                self.publish('artf', BACKPACK)
+            with open('artf.jpg', 'wb') as f:
+                f.write(self.best_img)
             self.active = False
         return channel
 
