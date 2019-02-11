@@ -87,7 +87,8 @@ class ArtifactDetector(Node):
                 self.publish('artf', EXTINGUISHER)
             else:
                 self.publish('artf', BACKPACK)
-            with open('artf.jpg', 'wb') as f:
+            filename = 'artf_%d.jpg' % self.time.total_seconds()
+            with open(filename, 'wb') as f:
                 f.write(self.best_img)
             self.active = False
         return channel
