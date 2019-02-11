@@ -199,7 +199,7 @@ if __name__ == "__main__":
 
     elif args.command == 'run':
         # support simultaneously multiple platforms
-        prefix = os.path.basename(args.config).split('.')[0] + '-'
+        prefix = os.path.basename(args.config[0]).split('.')[0] + '-'
         log = LogWriter(prefix=prefix, note=str(sys.argv))
         config = config_load(*args.config)
         log.write(0, bytes(str(config), 'ascii'))  # write configuration
