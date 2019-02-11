@@ -2,6 +2,7 @@
   SubT Challenge Version 1
 """
 import sys
+import os.path
 import math
 from datetime import timedelta
 from collections import defaultdict
