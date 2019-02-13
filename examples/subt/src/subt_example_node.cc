@@ -302,6 +302,7 @@ int main(int argc, char** argv)
 		  char buf[256];
 		  if(fscanf(fd, "%s %lf %lf %lf", buf, &x, &y, &z) == 4)
 		  {
+			  ROS_INFO_STREAM("MD artf" << buf);
 			  ROS_INFO_STREAM("MD x" << x);
 			  ROS_INFO_STREAM("MD y" << y);
 			  ROS_INFO_STREAM("MD z" << z);
@@ -309,15 +310,32 @@ int main(int argc, char** argv)
 			  pose.mutable_position()->set_x(x - 2);
 			  pose.mutable_position()->set_y(y - 4);
 			  pose.mutable_position()->set_z(z - 0.5);
-		  }
-		  bool ret = controller.ReportArtifact(3, pose);
-		  if(ret)
-		  {
-			  ROS_INFO("MD SUCCESS\n");
-			  break;
-		  }
-		  else
-			  ROS_INFO("MD FAILURE\n");
+
+        int type = -1;
+        if(strcmp(buf, "TYPE_BACKPACK") == 0)
+        {
+          type = 0;
+        }
+        if(strcmp(buf, "TYPE_EXTINGUISHER") == 0)
+        {
+          type = 3;
+        }
+        if(strcmp(buf, "TYPE_VALVE") == 0)
+        {
+          type = 7;
+        }
+
+ 			  ROS_INFO_STREAM("MD enum" << type);
+
+        bool ret = controller.ReportArtifact(type, pose);
+	  	  if(ret)
+		    {
+			    ROS_INFO("MD SUCCESS\n");
+			    break;
+  		  }
+	  	  else
+		  	  ROS_INFO("MD FAILURE\n");
+      }
 //		  controller.client->SendToBaseStation(artifact);
 	  }
 	  i++;
