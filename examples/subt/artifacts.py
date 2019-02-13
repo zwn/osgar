@@ -10,6 +10,7 @@ from osgar.node import Node
 
 EXTINGUISHER = 'TYPE_EXTINGUISHER'
 BACKPACK = 'TYPE_BACKPACK'
+VALVE = 'TYPE_VALVE'
 
 
 def old_count_red(img):
@@ -85,8 +86,10 @@ class ArtifactDetector(Node):
             print('Published', self.best)
             if h/w > 2.4:
                 self.publish('artf', EXTINGUISHER)
-            else:
+            elif h/w > 1.6:
                 self.publish('artf', BACKPACK)
+            else:
+                self.publish('artf', VALVE)
             filename = 'artf_%d.jpg' % self.time.total_seconds()
             with open(filename, 'wb') as f:
                 f.write(self.best_img)
