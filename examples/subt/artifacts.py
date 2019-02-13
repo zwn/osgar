@@ -100,6 +100,7 @@ class ArtifactDetector(Node):
 class ArtifactReporter(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
+        self.path = config.get('path', 'call_base.txt')
 
     def update(self):  # hack, this method should be called run instead!
         channel = super().update()  # define self.time
@@ -110,7 +111,7 @@ class ArtifactReporter(Node):
         artf_type, ix, iy, iz = self.artf_xyz
         # TODO call SubT API
 
-        with open('call_base.txt', 'w') as f:
+        with open(self.path, 'w') as f:
             f.write('%s %.2f %.2f %.2f\n' % (artf_type, ix/1000.0, iy/1000.0, iz/1000.0))
         print('report completed')
 

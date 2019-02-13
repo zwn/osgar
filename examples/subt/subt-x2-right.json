@@ -21,7 +21,9 @@
           "driver": "artifacts:ArtifactReporter",
           "in": ["artf_xyz"],
           "out": [],
-          "init": {}
+          "init": {
+            "path": "call_base_x2r.txt"
+          }
       },
       "ros": {
           "driver": "rosproxy",

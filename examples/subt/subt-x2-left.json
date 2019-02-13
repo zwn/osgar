@@ -15,7 +15,9 @@
           "driver": "artifacts:ArtifactDetector",
           "in": ["image"],
           "out": ["artf"],
-          "init": {}
+          "init": {
+            "path": "call_base_x2l.txt"
+          }
       },
       "reporter": {
           "driver": "artifacts:ArtifactReporter",
