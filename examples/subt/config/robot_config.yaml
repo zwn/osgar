@@ -26,6 +26,8 @@ robot_address_map:
   X2: X2
   X3: X3
   X4: X4
+  X2L: X2L
+  X2R: X2R
 
 select_led_service_suffixes:
   # X1
