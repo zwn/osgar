@@ -15,15 +15,15 @@
           "driver": "artifacts:ArtifactDetector",
           "in": ["image"],
           "out": ["artf"],
-          "init": {
-            "path": "call_base_x2l.txt"
-          }
+          "init": {}
       },
       "reporter": {
           "driver": "artifacts:ArtifactReporter",
           "in": ["artf_xyz"],
           "out": [],
-          "init": {}
+          "init": {
+            "path": "call_base_x2l.txt"
+          }
       },
       "ros": {
           "driver": "rosproxy",
