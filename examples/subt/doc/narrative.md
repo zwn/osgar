@@ -11,7 +11,7 @@ Czech Republic
 Martin Dlouhy
 
 # POC Email
-md@robotika.cz
+md-at-robotika.cz
 
 # POC Phone
 +420 604 377 599
@@ -21,16 +21,20 @@ https://robotika.cz/competitions/subtchallenge/
 
 # List of Team members and Organizations
 Martin Dlouhy, Robotika.cz
-Zbynek Winkler, Robotika.cz
-Pavel Skotak,
 Jiri Isa,
+Zbynek Winkler, Robotika.cz
 Pavel Jiroutek,
-Milan Kroulik, Czech University of Life Science Prague
 Jakub Lev, Czech University of Life Science Prague
+
+Pavel Skotak,
+Milan Kroulik, Czech University of Life Science Prague
 Stanislav Petrasek, Czech University of Life Science Prague
+Frantisek Brabec
 
 
 # Technical Approach
+
+## Version 0 (2018-12-21, one artifact)
 
 We have started with a single ground robot (X1) and the low end configuration
 (X1_SENSOR_CONFIG_1=1) to test the basic functionality. Laser (with 5m range)
@@ -59,7 +63,6 @@ the logs are primary source for further development.  Some reference logs are
 already available at [2]. OSGAR was used for real machines till now, so in
 particular timestamps may need adaptation to slow simulation.
 
-
 The next step is to identify other artifacts from already collected image data.
 Also missing down-drop detector is critical (see video [3]). We asked for
 combination of two LIDARs, which is still relatively low cost, when one is
@@ -83,4 +86,12 @@ will switch to English in case of interest).
 [2] http://osgar.robotika.cz/
 [3] https://youtu.be/jKeVcoSllNk?t=132
 [4] https://robotika.cz/competitions/subtchallenge/
+
+
+## Version 1 (2019-02-16, two artifacts)
+
+The version 1 is extension of version 0 for two X2 robots (named X2L and X2R).
+Both are navigating towards the first easy to recognize artifacts (red fire
+extinguisher and red backpack). X2L runs version 0 following the left wall and
+X2R the right wall. The artifacts are reported back at the Base Station area.
 
