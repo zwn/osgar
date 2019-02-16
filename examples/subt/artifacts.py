@@ -70,7 +70,7 @@ class ArtifactDetector(Node):
         if self.best_count > 0:
             self.best_count -= 1
         if self.best is None:
-            if count > 100:
+            if count > 1000:
                 self.best = count
                 self.best_count = 10
                 self.best_img = self.image
