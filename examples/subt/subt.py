@@ -160,7 +160,7 @@ class SubTChallenge:
         if self.artifact_xyz is not None:
             x, y, z = self.artifact_xyz
             self.bus.publish('artf_xyz', [self.artifact_data, round(x*1000), round(y*1000), round(z*1000)])
-        self.wait(timedelta(seconds=8))
+        self.wait(timedelta(seconds=68))
 
     def start(self):
         pass
