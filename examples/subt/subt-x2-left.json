@@ -13,7 +13,7 @@
       },
       "detector": {
           "driver": "artifacts:ArtifactDetector",
-          "in": ["image"],
+          "in": ["image", "scan"],
           "out": ["artf"],
           "init": {}
       },
@@ -129,6 +129,7 @@
               ["tcp_laser_data.raw", "ros.laser_data"],
               ["tcp_laser_data.raw", "rosmsg_laser.raw"],
               ["rosmsg_laser.scan", "app.scan"],
+              ["rosmsg_laser.scan", "detector.scan"],
 
               ["ros.image_data_addr", "tcp_image_data.addr"],
               ["ros.image_data", "tcp_image_data.raw"],

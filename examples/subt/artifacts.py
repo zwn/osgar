@@ -51,8 +51,7 @@ class ArtifactDetector(Node):
 
     def update(self):  # hack, this method should be called run instead!
         channel = super().update()  # define self.time
-        assert channel == "image", channel
-        if not self.active:
+        if not self.active or channel != "image":
             return channel
 
         # hack - test communication to BaseStation
@@ -85,12 +84,15 @@ class ArtifactDetector(Node):
             w, h = self.best_info
             print('Published', self.best)
             if h/w > 2.4:
-                self.publish('artf', EXTINGUISHER)
+                artf = EXTINGUISHER
             elif h/w > 1.6:
-                self.publish('artf', BACKPACK)
+                artf = BACKPACK
             else:
-                self.publish('artf', VALVE)
-            filename = 'artf_%d.jpg' % self.time.total_seconds()
+                artf = VALVE
+            dx_mm, dy_mm = 0, 0  # relative offset to current robot position
+            # TODO if VALVE -> find it in scan
+            self.publish('artf', artf)
+            filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
             with open(filename, 'wb') as f:
                 f.write(self.best_img)
             self.active = False
