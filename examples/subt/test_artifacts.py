@@ -21,5 +21,8 @@ class ArtifactDetectorTest(unittest.TestCase):
         img = cv2.imread('test_data/artf-valve-hd.jpg')
         self.assertEqual(count_red(img), (187, 21, 30))
 
+        img = cv2.imread('test_data/artf-valve2-hd.jpg')
+        self.assertEqual(count_red(img), (116, 1, 34))
+
 # vim: expandtab sw=4 ts=4
 
