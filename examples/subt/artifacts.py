@@ -83,12 +83,14 @@ class ArtifactDetector(Node):
         if self.best is not None and self.best_count == 0:
             w, h = self.best_info
             print('Published', self.best)
-            if h/w > 2.4:
+            if self.best < 1000:
+                artf = VALVE
+            elif h/w > 2.4:
                 artf = EXTINGUISHER
             elif h/w > 1.6:
                 artf = BACKPACK
             else:
-                artf = VALVE
+                artf = 'UNKNOWN'
             dx_mm, dy_mm = 0, 0  # relative offset to current robot position
             # TODO if VALVE -> find it in scan
             self.publish('artf', artf)
