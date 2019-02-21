@@ -88,6 +88,10 @@ class ArtifactDetector(Node):
             w, h, x_min, x_max = self.best_info
             print('Published', self.best)
             print('Best scan', self.best_scan)
+            print('Best scan size', len(self.best_scan))
+            deg30 = int(30*len(self.best_scan)/270)  # camera has 60 degrees
+            mid = len(self.best_scan)//2
+            print('Selection', self.best_scan[mid-deg30:mid+deg30])
             if self.best < 1000:
                 artf = VALVE
             elif h/w > 2.4:
