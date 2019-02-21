@@ -52,8 +52,10 @@ class ArtifactDetector(Node):
         self.best_count = 0
         self.best_img = None
         self.best_info = None
+        self.best_scan = None
         self.active = True
         self.verbose = False
+        self.scan = None  # should laster initialize super()
 
     def update(self):  # hack, this method should be called run instead!
         channel = super().update()  # define self.time
@@ -74,21 +76,18 @@ class ArtifactDetector(Node):
             print(self.time, img.shape, count)
         if self.best_count > 0:
             self.best_count -= 1
-        if self.best is None:
-            if count > 100:
+        if count > 100:
+            if self.best is None or count > self.best:
                 self.best = count
                 self.best_count = 10
                 self.best_img = self.image
-                self.best_info = w, h
-        elif count > self.best:
-            self.best = count
-            self.best_count = 10
-            self.best_img = self.image
-            self.best_info = w, h
+                self.best_info = w, h, x_min, x_max
+                self.best_scan = self.scan
 
         if self.best is not None and self.best_count == 0:
-            w, h = self.best_info
+            w, h, x_min, x_max = self.best_info
             print('Published', self.best)
+            print('Best scan', self.best_scan)
             if self.best < 1000:
                 artf = VALVE
             elif h/w > 2.4:
