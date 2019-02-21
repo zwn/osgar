@@ -31,12 +31,18 @@ def count_red(img):
     img[mask] = 0, 255, 0
     count = int(mask.sum())
     if count == 0:
-        return count, None, None
+        return count, None, None, None, None
+
+    cv2.imwrite('green.jpg', img)
+
+    # argmax for mask finds the first True value
+    x_min = (mask.argmax(axis=0) != 0).argmax()
+    x_max = mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
     w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
             - (mask.argmax(axis=0) != 0).argmax())
     h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax() - 1
             - (mask.argmax(axis=1) != 0).argmax())
-    return count, w, h
+    return count, w, h, x_min, x_max
 
 
 class ArtifactDetector(Node):
@@ -63,7 +69,7 @@ class ArtifactDetector(Node):
         # END OF HACK ....
 
         img = cv2.imdecode(np.fromstring(self.image, dtype=np.uint8), 1)
-        count, w, h = count_red(img)
+        count, w, h, x_min, x_max = count_red(img)
         if self.verbose and count > 0:
             print(self.time, img.shape, count)
         if self.best_count > 0:
