@@ -136,8 +136,10 @@ class SubTChallenge:
             elif channel == 'rot':
                 self.yaw, self.pitch, self.roll = [math.radians(x/100) for x in data]
             elif channel == 'artf':
-                self.artifact_xyz = self.xyz
-                self.artifact_data = data
+                self.artifact_data, deg_100th, dist_mm = data
+                x, y, z = self.xyz
+                angle, dist = self.yaw + math.radians(deg_100th/100.0), dist_mm/1000.0
+                self.artifact_xyz = x + math.cos(angle) * dist, y + math.sin(angle) * dist, z
                 self.artifact_detected = True
             return channel
 

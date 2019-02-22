@@ -123,7 +123,7 @@ class ArtifactDetector(Node):
                 artf = 'UNKNOWN'
             dx_mm, dy_mm = 0, 0  # relative offset to current robot position
             # TODO if VALVE -> find it in scan
-            self.publish('artf', artf)
+            self.publish('artf', [artf, deg_100th, dist_mm])
             filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
             with open(filename, 'wb') as f:
                 f.write(self.best_img)
