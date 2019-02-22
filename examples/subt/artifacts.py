@@ -45,6 +45,29 @@ def count_red(img):
     return count, w, h, x_min, x_max
 
 
+def artf_in_scan(scan, img_x_min, img_x_max, verbose=False):
+    """return precise artefact angle and distance for lidar & camera combination"""
+    # the scan is already in mm, so angle is modified to int deg*100, ready to send
+    x_min, x_max = img_x_min, img_x_max
+
+    angular_resolution = len(scan) / 270
+    mid_index = len(scan) // 2
+    camera_fov_deg = 60
+    deg_max = camera_fov_deg * (1280 / 2 - x_min) / 1280  # small value on the left corresponds to positive angle
+    deg_min = camera_fov_deg * (1280 / 2 - x_max) / 1280
+    tolerance = int(5 * angular_resolution)  # in paritular the valve is detected with offset
+    left_index = mid_index + int(deg_min * angular_resolution) - tolerance
+    right_index = mid_index + int(deg_max * angular_resolution) + tolerance
+    if verbose:
+        print('SubSelection', deg_min, deg_max, left_index, right_index, scan[left_index:right_index])
+
+    tmp = [x if x > 0 else 100000 for x in scan]
+    dist_mm = min(tmp[left_index:right_index])
+    index = left_index + scan[left_index:right_index].index(dist_mm)
+    deg_100th = int(((index / angular_resolution) - 135) * 100)
+    return deg_100th, dist_mm
+
+
 class ArtifactDetector(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -87,11 +110,9 @@ class ArtifactDetector(Node):
         if self.best is not None and self.best_count == 0:
             w, h, x_min, x_max = self.best_info
             print('Published', self.best)
-            print('Best scan', self.best_scan)
-            print('Best scan size', len(self.best_scan))
-            deg30 = int(30*len(self.best_scan)/270)  # camera has 60 degrees
-            mid = len(self.best_scan)//2
-            print('Selection', self.best_scan[mid-deg30:mid+deg30])
+            deg_100th, dist_mm = artf_in_scan(self.best_scan, x_min, x_max, verbose=True)
+            print('Relative position:', deg_100th, dist_mm)
+
             if self.best < 1000:
                 artf = VALVE
             elif h/w > 2.4:
