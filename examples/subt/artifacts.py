@@ -33,7 +33,7 @@ def count_red(img):
     if count == 0:
         return count, None, None, None, None
 
-    cv2.imwrite('green.jpg', img)
+#    cv2.imwrite('green.jpg', img)
 
     # argmax for mask finds the first True value
     x_min = (mask.argmax(axis=0) != 0).argmax()
