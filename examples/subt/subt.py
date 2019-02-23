@@ -11,6 +11,9 @@ from osgar.explore import follow_wall_angle
 from osgar.lib.mathex import normalizeAnglePIPI
 
 
+TRACE_STEP = 0.5  # meters in 3D
+
+
 def min_dist(laser_data):
     if len(laser_data) > 0:
         # remove ultra near reflections and unlimited values == 0
@@ -21,6 +24,35 @@ def min_dist(laser_data):
 
 def distance(pose1, pose2):
     return math.hypot(pose1[0] - pose2[0], pose1[1] - pose2[1])
+
+def distance3D(xyz1, xyz2):
+    return math.sqrt(sum([(a-b)**2 for a, b in zip(xyz1, xyz2)]))
+
+
+class Trace:
+    def __init__(self, step=TRACE_STEP):
+        self.trace = [(0, 0, 0)]  # traveled 3D positions
+        self.step = step
+
+    def update_trace(self, pos_xyz):
+        if distance3D(self.trace[-1], pos_xyz) >= self.step:
+            self.trace.append(pos_xyz)
+
+    def prune(self, radius=None):
+        # use short-cuts and remove all cycles
+        if radius is None:
+            radius = self.step
+
+        pruned = Trace(step=self.step)
+        open_end = 1
+        while open_end < len(self.trace):
+            best = open_end
+            for i, xyz in enumerate(self.trace[open_end:], start=open_end):
+                if distance3D(xyz, pruned.trace[-1]) < radius:
+                    best = i
+            pruned.update_trace(self.trace[best])
+            open_end = best + 1
+        self.trace = pruned.trace
 
 
 class SubTChallenge:
@@ -41,6 +73,7 @@ class SubTChallenge:
         self.artifact_xyz = None
         self.artifact_data = None
         self.artifact_detected = False
+        self.trace = Trace()
 
         self.use_right_wall = config.get('right_wall', True)
 
