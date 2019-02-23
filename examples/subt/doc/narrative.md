@@ -95,3 +95,15 @@ Both are navigating towards the first easy to recognize artifacts (red fire
 extinguisher and red backpack). X2L runs version 0 following the left wall and
 X2R the right wall. The artifacts are reported back at the Base Station area.
 
+
+## Version 2 (2019-02-23, two artifacts in shorter time)
+
+The version 2 is follow-up of previous version with two X2 robots. The main
+difference is precise artifact localization relative to the robot (critical for
+the valve recognized by X2R) by combination of camera image and LIDAR scan.
+Moreover a return path is optimized by pruning the trace and skipping
+unnecessary dead-ends or loops.
+
+More detailed info is available here:
+https://robotika.cz/competitions/subtchallenge/stix/cs#190223
+
