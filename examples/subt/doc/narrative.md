@@ -96,13 +96,17 @@ extinguisher and red backpack). X2L runs version 0 following the left wall and
 X2R the right wall. The artifacts are reported back at the Base Station area.
 
 
-## Version 2 (2019-02-23, two artifacts in shorter time)
+## Version 2 (2019-02-24, three artifacts)
 
 The version 2 is follow-up of previous version with two X2 robots. The main
 difference is precise artifact localization relative to the robot (critical for
 the valve recognized by X2R) by combination of camera image and LIDAR scan.
 Moreover a return path is optimized by pruning the trace and skipping
 unnecessary dead-ends or loops.
+
+The trial is no longer terminated with the first detection but by timeout.
+Duplicities caused by multiple observations of the same artifact by the same
+robot are filtered out.
 
 More detailed info is available here:
 https://robotika.cz/competitions/subtchallenge/stix/cs#190223
