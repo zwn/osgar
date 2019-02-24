@@ -55,6 +55,18 @@ class Trace:
         self.trace = pruned.trace
 
 
+    def where_to(self, xyz, max_target_distance):
+        # looking for a target point within max_target_distance nearest to the start
+        for _ in range(8):
+            for target in self.trace:
+                if distance3D(target, xyz) < max_target_distance:
+                    return target
+            # if the robot deviated too far from the trajectory, we need to look for more distant target points
+            max_target_distance *= 1.5
+        # robot is crazy far from the trajectory
+        assert(False)
+
+
 class SubTChallenge:
     def __init__(self, config, bus):
         self.bus = bus
@@ -134,6 +146,25 @@ class SubTChallenge:
                 break
         return self.traveled_dist - start_dist
 
+    def return_home(self):
+        HOME_THRESHOLD = 1.0
+        SHORTCUT_RADIUS = 2.3
+        MAX_TARGET_DISTANCE = 2.5
+        assert(MAX_TARGET_DISTANCE > SHORTCUT_RADIUS) # Because otherwise we could end up with a target point more distant from home than the robot.
+        self.trace.prune(SHORTCUT_RADIUS)
+        while distance3D(self.xyz, (0, 0, 0)) > HOME_THRESHOLD:
+            if self.update() == 'scan':
+                target_x, target_y = self.trace.where_to(self.xyz, MAX_TARGET_DISTANCE)[:2]
+                x, y = self.xyz[:2]
+                direction = math.atan2(target_y - y, target_x - x) - self.yaw
+                direction = (direction + math.pi) % (2 * math.pi) - math.pi  # normalize into [-math.pi, math.pi)
+                #print('tgt: %f %f -> %f %f = %f (%f)' % (x, y, target_x, target_y, math.degrees(direction), math.degrees(self.yaw)))
+                P = 2.0 # following the trace home pretty tightly
+                desired_angular_speed = P * direction
+                T = math.pi / 4
+                desired_speed = 2.0 * (0.8 - min(T, abs(desired_angular_speed)) / T)
+                self.send_speed_cmd(desired_speed, desired_angular_speed)
+
     def update(self):
         packet = self.bus.listen()
         if packet is not None:
@@ -164,6 +195,7 @@ class SubTChallenge:
                 self.bus.publish('pose2d', [round(x*1000), round(y*1000),
                                             round(math.degrees(self.yaw)*100)])
                 self.xyz = x, y, z
+                self.trace.update_trace(self.xyz)
             elif channel == 'scan':
                 self.scan = data
             elif channel == 'rot':
@@ -189,9 +221,7 @@ class SubTChallenge:
         dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf=True,
                                 timeout=timedelta(hours=3))
         print("Going HOME")
-        self.turn(math.radians(90), speed=-0.1)  # it is safer to turn and see the wall + slowly backup
-        self.turn(math.radians(90), speed=-0.1)
-        self.follow_wall(radius = 1.5, right_wall=not self.use_right_wall, timeout=timedelta(hours=3), dist_limit=dist+5)
+        self.return_home()
         if self.artifact_xyz is not None:
             x, y, z = self.artifact_xyz
             self.bus.publish('artf_xyz', [self.artifact_data, round(x*1000), round(y*1000), round(z*1000)])
