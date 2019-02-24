@@ -125,6 +125,13 @@ class ArtifactDetector(Node):
             filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
             with open(filename, 'wb') as f:
                 f.write(self.best_img)
+
+            # reset detector
+            self.best = None
+            self.best_count = 0
+            self.best_img = None
+            self.best_info = None
+            self.best_scan = None
         return channel
 
 
