@@ -90,6 +90,12 @@ class SubTChallenge:
     def send_speed_cmd(self, speed, angular_speed):
         return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def maybe_remember_artifact(self, artifact_data, artifact_xyz):
+        for _, (x, y, z) in self.artifacts:
+            if distance3D((x, y, z), artifact_xyz) < 4.0:
+                return
+        self.artifacts.append((artifact_data, artifact_xyz))
+
     def go_straight(self, how_far):
         print(self.time, "go_straight %.1f" % how_far, self.last_position)
         start_pose = self.last_position
@@ -202,7 +208,10 @@ class SubTChallenge:
                 artifact_data, deg_100th, dist_mm = data
                 x, y, z = self.xyz
                 angle, dist = self.yaw + math.radians(deg_100th/100.0), dist_mm/1000.0
-                self.artifacts.append((artifact_data, x + math.cos(angle) * dist, y + math.sin(angle) * dist, z))
+                ax = x + math.cos(angle) * dist
+                ay = y + math.sin(angle) * dist
+                az = z
+                self.maybe_remember_artifact(artifact_data, (ax, ay, az))
             return channel
 
     def wait(self, dt):  # TODO refactor to some common class
@@ -215,8 +224,8 @@ class SubTChallenge:
     def play(self):
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf_count=2,
-                                timeout=timedelta(hours=3))
+        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
+                                timeout=timedelta(minutes=31))
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
         print("Artifacts:", artifacts)
@@ -224,7 +233,7 @@ class SubTChallenge:
         print("Going HOME")
         self.return_home()
 
-        for artifact_data, x, y, z in artifacts:
+        for artifact_data, (x, y, z) in artifacts:
             self.bus.publish('artf_xyz', [artifact_data, round(x*1000), round(y*1000), round(z*1000)])
         self.send_speed_cmd(0, 0)
         self.wait(timedelta(seconds=30))
