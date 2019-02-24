@@ -82,9 +82,7 @@ class SubTChallenge:
         self.is_moving = None  # unknown
         self.scan = None  # I should use class Node instead
         self.stat = defaultdict(int)
-        self.artifact_xyz = None
-        self.artifact_data = None
-        self.artifact_detected = False
+        self.artifacts = []
         self.trace = Trace()
 
         self.use_right_wall = config.get('right_wall', True)
@@ -121,7 +119,7 @@ class SubTChallenge:
                     break
             print(self.time, 'stop at', self.time - start_time)
 
-    def follow_wall(self, radius, right_wall=False, timeout=timedelta(hours=3), dist_limit=None, stop_on_artf=False):
+    def follow_wall(self, radius, right_wall=False, timeout=timedelta(hours=3), dist_limit=None, stop_on_artf_count=None):
         start_dist = self.traveled_dist
         start_time = self.time
         desired_speed = 1.0
@@ -142,7 +140,7 @@ class SubTChallenge:
                 if dist_limit < self.traveled_dist - start_dist:
                     print('Distance limit reached! At', self.traveled_dist, self.traveled_dist - start_dist)
                     break
-            if stop_on_artf and self.artifact_detected:
+            if stop_on_artf_count is not None and stop_on_artf_count <= len(self.artifacts):
                 break
         return self.traveled_dist - start_dist
 
@@ -201,11 +199,10 @@ class SubTChallenge:
             elif channel == 'rot':
                 self.yaw, self.pitch, self.roll = [math.radians(x/100) for x in data]
             elif channel == 'artf':
-                self.artifact_data, deg_100th, dist_mm = data
+                artifact_data, deg_100th, dist_mm = data
                 x, y, z = self.xyz
                 angle, dist = self.yaw + math.radians(deg_100th/100.0), dist_mm/1000.0
-                self.artifact_xyz = x + math.cos(angle) * dist, y + math.sin(angle) * dist, z
-                self.artifact_detected = True
+                self.artifacts.append((artifact_data, x + math.cos(angle) * dist, y + math.sin(angle) * dist, z))
             return channel
 
     def wait(self, dt):  # TODO refactor to some common class
@@ -216,17 +213,21 @@ class SubTChallenge:
             self.update()
 
     def play(self):
-        print("SubT Challenge Ver1!")
+        print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf=True,
+        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf_count=1,
                                 timeout=timedelta(hours=3))
+
+        artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
+        print("Artifacts:", artifacts)
+
         print("Going HOME")
         self.return_home()
-        if self.artifact_xyz is not None:
-            x, y, z = self.artifact_xyz
-            self.bus.publish('artf_xyz', [self.artifact_data, round(x*1000), round(y*1000), round(z*1000)])
+
+        for artifact_data, x, y, z in artifacts:
+            self.bus.publish('artf_xyz', [artifact_data, round(x*1000), round(y*1000), round(z*1000)])
         self.send_speed_cmd(0, 0)
-        self.wait(timedelta(seconds=68))
+        self.wait(timedelta(seconds=30))
 
     def start(self):
         pass
