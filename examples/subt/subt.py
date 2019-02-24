@@ -215,7 +215,7 @@ class SubTChallenge:
     def play(self):
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf_count=1,
+        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall, stop_on_artf_count=2,
                                 timeout=timedelta(hours=3))
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home

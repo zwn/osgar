@@ -76,20 +76,18 @@ class ArtifactDetector(Node):
         self.best_img = None
         self.best_info = None
         self.best_scan = None
-        self.active = True
         self.verbose = False
         self.scan = None  # should laster initialize super()
 
     def update(self):  # hack, this method should be called run instead!
         channel = super().update()  # define self.time
-        if not self.active or channel != "image":
+        if channel != "image":
             return channel
 
         # hack - test communication to BaseStation
 #        if self.time > timedelta(minutes=4):
 #            print('Published', self.best)
 #            self.publish('artf', EXTINGUISHER)
-#            self.active = False
 #        return channel
         # END OF HACK ....
 
@@ -127,7 +125,6 @@ class ArtifactDetector(Node):
             filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
             with open(filename, 'wb') as f:
                 f.write(self.best_img)
-            self.active = False
         return channel
 
 
@@ -145,7 +142,7 @@ class ArtifactReporter(Node):
         artf_type, ix, iy, iz = self.artf_xyz
         # TODO call SubT API
 
-        with open(self.path, 'w') as f:
+        with open(self.path, 'a') as f:
             f.write('%s %.2f %.2f %.2f\n' % (artf_type, ix/1000.0, iy/1000.0, iz/1000.0))
         print('report completed')
 
