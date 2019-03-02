@@ -23,17 +23,11 @@ def old_count_red(img):
     return count
 
 
-def count_red(img):
-    b = img[:,:,0]
-    g = img[:,:,1]
-    r = img[:,:,2]
-    mask = np.logical_and(r > 100, np.logical_and(r/2 > g, r/2 > b))
-    img[mask] = 0, 255, 0
+def count_mask(mask):
+    """Count statistics and bounding box for given image mask"""
     count = int(mask.sum())
     if count == 0:
         return count, None, None, None, None
-
-#    cv2.imwrite('green.jpg', img)
 
     # argmax for mask finds the first True value
     x_min = (mask.argmax(axis=0) != 0).argmax()
@@ -43,6 +37,22 @@ def count_red(img):
     h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax() - 1
             - (mask.argmax(axis=1) != 0).argmax())
     return count, w, h, x_min, x_max
+
+
+def count_red(img):
+    b = img[:,:,0]
+    g = img[:,:,1]
+    r = img[:,:,2]
+    mask = np.logical_and(r > 100, np.logical_and(r/2 > g, r/2 > b))
+    return count_mask(mask)
+
+
+def count_white(img):
+    b = img[:,:,0]
+    g = img[:,:,1]
+    r = img[:,:,2]
+    mask = np.logical_and(r > 100, np.logical_and(g > 100, b > 100))
+    return count_mask(mask)
 
 
 def artf_in_scan(scan, img_x_min, img_x_max, verbose=False):
