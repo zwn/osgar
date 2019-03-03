@@ -176,7 +176,7 @@ def parse_odom(data):
     ax =  math.atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2))
     ay =  math.asin(2*(q0*q2-q3*q1))
     az =  math.atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3))
-    return (x, y, ax)
+    return timestamp_sec, (x, y, ax)
 
 
 def parse_points(data):
@@ -237,6 +237,7 @@ class ROSMsgParser(Thread):
         self._buf = b''
 
         self.topic_type = config.get('topic_type')
+        self.timestamp_sec = None
 
     def get_packet(self):
         data = self._buf
@@ -267,10 +268,13 @@ class ROSMsgParser(Thread):
                     elif self.topic_type == 'sensor_msgs/LaserScan':
                         self.bus.publish('scan', parse_laser(packet))
                     elif self.topic_type == 'nav_msgs/Odometry':
-                        x, y, heading = parse_odom(packet)
+                        prev = self.timestamp_sec
+                        self.timestamp_sec, (x, y, heading) = parse_odom(packet)
                         self.bus.publish('pose2d', [round(x*1000),
                                     round(y*1000),
                                     round(math.degrees(heading)*100)])
+                        if prev != self.timestamp_sec:
+                            self.bus.publish('sim_time_sec', self.timestamp_sec)
                     elif self.topic_type == 'std_msgs/Imu':
                         self.bus.publish('rot', [round(math.degrees(angle)*100) 
                                                  for angle in parse_imu(packet)])
