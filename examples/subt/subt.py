@@ -67,6 +67,10 @@ class Trace:
         assert(False)
 
 
+class Collision(Exception):
+    pass
+
+
 class SubTChallenge:
     def __init__(self, config, bus):
         self.bus = bus
@@ -204,6 +208,12 @@ class SubTChallenge:
                 self.scan = data
             elif channel == 'rot':
                 self.yaw, self.pitch, self.roll = [math.radians(x/100) for x in data]
+            elif channel == 'acc':
+                acc = [x/1000.0 for x in data]
+                sum_acc2 = sum([x*x for x in acc])
+                if sum_acc2 > 1000:
+                    print(self.time, 'Collision!')
+                    raise Collision()
             elif channel == 'artf':
                 artifact_data, deg_100th, dist_mm = data
                 x, y, z = self.xyz
@@ -224,8 +234,11 @@ class SubTChallenge:
     def play(self):
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        dist = self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
+        try:
+            self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
                                 timeout=timedelta(minutes=31))
+        except Collision:
+            self.go_straight(-0.5)
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
         print("Artifacts:", artifacts)
