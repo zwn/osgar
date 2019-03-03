@@ -88,6 +88,7 @@ class SubTChallenge:
         self.stat = defaultdict(int)
         self.artifacts = []
         self.trace = Trace()
+        self.collision_detector_enabled = False
 
         self.use_right_wall = config.get('right_wall', True)
 
@@ -211,9 +212,11 @@ class SubTChallenge:
             elif channel == 'acc':
                 acc = [x/1000.0 for x in data]
                 sum_acc2 = sum([x*x for x in acc])
-                if sum_acc2 > 1000:
-                    print(self.time, 'Collision!')
-                    raise Collision()
+                if sum_acc2 > 6000:
+                    print(self.time, 'Collision!', sum_acc2, 'reported:', self.collision_detector_enabled)
+                    if self.collision_detector_enabled:
+                        self.collision_detector_enabled = False
+                        raise Collision()
             elif channel == 'artf':
                 artifact_data, deg_100th, dist_mm = data
                 x, y, z = self.xyz
@@ -235,9 +238,12 @@ class SubTChallenge:
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
         try:
+            self.collision_detector_enabled = True
             self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
                                 timeout=timedelta(minutes=31))
+            self.collision_detector_enabled = False
         except Collision:
+            assert not self.collision_detector_enabled  # collision disables further notification
             self.go_straight(-0.5)
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
