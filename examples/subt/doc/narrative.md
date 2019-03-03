@@ -109,5 +109,16 @@ Duplicities caused by multiple observations of the same artifact by the same
 robot are filtered out.
 
 More detailed info is available here:
-https://robotika.cz/competitions/subtchallenge/stix/cs#190223
+https://robotika.cz/competitions/subtchallenge/stix/en#190223
+
+
+## Version 3 (2019-03-03, four artifacts)
+
+The searching time is set now to 10 minutes of simulation time, then the robots
+return to base station. Newly electrical box is recognized and reported.
+Because the box is invisible to LIDAR collision detector can terminate the
+search.
+
+Some screenshots from development are available here:
+https://robotika.cz/competitions/subtchallenge/stix/en#190303
 
