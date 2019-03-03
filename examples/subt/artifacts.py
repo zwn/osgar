@@ -11,6 +11,10 @@ from osgar.node import Node
 EXTINGUISHER = 'TYPE_EXTINGUISHER'
 BACKPACK = 'TYPE_BACKPACK'
 VALVE = 'TYPE_VALVE'
+ELECTRICAL_BOX = "TYPE_ELECTRICAL_BOX"
+
+RED_THRESHOLD = 100
+WHITE_THRESHOLD = 500000
 
 
 def old_count_red(img):
@@ -102,33 +106,49 @@ class ArtifactDetector(Node):
         # END OF HACK ....
 
         img = cv2.imdecode(np.fromstring(self.image, dtype=np.uint8), 1)
-        count, w, h, x_min, x_max = count_red(img)
+        rcount, w, h, x_min, x_max = count_red(img)
+        if rcount == 0:
+            wcount, w, h, x_min, x_max = count_white(img)
+            if wcount > WHITE_THRESHOLD:
+                count = wcount
+            else:
+                count = 0
+        else:
+            count = rcount
+
         if self.verbose and count > 0:
             print(self.time, img.shape, count)
         if self.best_count > 0:
             self.best_count -= 1
-        if count > 100:
+        if count > RED_THRESHOLD:
             if self.best is None or count > self.best:
                 self.best = count
                 self.best_count = 10
                 self.best_img = self.image
-                self.best_info = w, h, x_min, x_max
+                self.best_info = w, h, x_min, x_max, (count == rcount)  # RED used
                 self.best_scan = self.scan
 
         if self.best is not None and self.best_count == 0:
-            w, h, x_min, x_max = self.best_info
+            w, h, x_min, x_max, red_used = self.best_info
             print('Published', self.best)
-            deg_100th, dist_mm = artf_in_scan(self.best_scan, x_min, x_max, verbose=True)
+            if red_used:
+                deg_100th, dist_mm = artf_in_scan(self.best_scan, x_min, x_max, verbose=True)
+            else:
+                deg_100th, dist_mm = 0, 500  # in front of the robot
             print('Relative position:', deg_100th, dist_mm)
 
-            if self.best < 1000:
-                artf = VALVE
-            elif h/w > 2.4:
-                artf = EXTINGUISHER
-            elif h/w > 1.6:
-                artf = BACKPACK
+            if red_used:
+                if self.best < 1000:
+                    artf = VALVE
+                elif h/w > 2.4:
+                    artf = EXTINGUISHER
+                elif h/w > 1.6:
+                    artf = BACKPACK
+                else:
+                    artf = 'UNKNOWN'
             else:
-                artf = 'UNKNOWN'
+                artf = ELECTRICAL_BOX
+
             dx_mm, dy_mm = 0, 0  # relative offset to current robot position
             # TODO if VALVE -> find it in scan
             self.publish('artf', [artf, deg_100th, dist_mm])
