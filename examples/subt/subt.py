@@ -89,6 +89,7 @@ class SubTChallenge:
         self.artifacts = []
         self.trace = Trace()
         self.collision_detector_enabled = False
+        self.sim_time_sec = 0
 
         self.use_right_wall = config.get('right_wall', True)
 
@@ -132,9 +133,9 @@ class SubTChallenge:
 
     def follow_wall(self, radius, right_wall=False, timeout=timedelta(hours=3), dist_limit=None, stop_on_artf_count=None):
         start_dist = self.traveled_dist
-        start_time = self.time
+        start_time = self.sim_time_sec
         desired_speed = 1.0
-        while self.time - start_time < timeout:
+        while self.sim_time_sec - start_time < timeout.total_seconds():
             if self.update() == 'scan':
                 size = len(self.scan)
                 dist = min_dist(self.scan[size//3:2*size//3])
@@ -209,6 +210,8 @@ class SubTChallenge:
                 self.scan = data
             elif channel == 'rot':
                 self.yaw, self.pitch, self.roll = [math.radians(x/100) for x in data]
+            elif channel == 'sim_time_sec':
+                self.sim_time_sec = data
             elif channel == 'acc':
                 acc = [x/1000.0 for x in data]
                 sum_acc2 = sum([x*x for x in acc])
@@ -240,7 +243,7 @@ class SubTChallenge:
         try:
             self.collision_detector_enabled = True
             self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
-                                timeout=timedelta(minutes=31))
+                                timeout=timedelta(minutes=10))
             self.collision_detector_enabled = False
         except Collision:
             assert not self.collision_detector_enabled  # collision disables further notification
