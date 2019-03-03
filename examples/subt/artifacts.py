@@ -14,7 +14,7 @@ VALVE = 'TYPE_VALVE'
 ELECTRICAL_BOX = "TYPE_ELECTRICAL_BOX"
 
 RED_THRESHOLD = 100
-WHITE_THRESHOLD = 500000
+WHITE_THRESHOLD = 20000
 
 
 def old_count_red(img):
@@ -55,7 +55,7 @@ def count_white(img):
     b = img[:,:,0]
     g = img[:,:,1]
     r = img[:,:,2]
-    mask = np.logical_and(r > 100, np.logical_and(g > 100, b > 100))
+    mask = np.logical_and(r >= 250, np.logical_and(g >= 250, b >= 250))
     return count_mask(mask)
 
 
@@ -109,7 +109,7 @@ class ArtifactDetector(Node):
         rcount, w, h, x_min, x_max = count_red(img)
         if rcount == 0:
             wcount, w, h, x_min, x_max = count_white(img)
-            if wcount > WHITE_THRESHOLD:
+            if wcount > WHITE_THRESHOLD and 1.8 < w/h < 1.9 and wcount/(w*h) > 0.6:
                 count = wcount
             else:
                 count = 0
@@ -117,7 +117,7 @@ class ArtifactDetector(Node):
             count = rcount
 
         if self.verbose and count > 0:
-            print(self.time, img.shape, count)
+            print(self.time, img.shape, count, w, h, x_min, x_max, w/h, count/(w*h))
         if self.best_count > 0:
             self.best_count -= 1
         if count > RED_THRESHOLD:
