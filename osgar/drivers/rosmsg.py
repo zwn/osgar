@@ -51,7 +51,7 @@ def parse_imu( data ):
     z =  math.atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3))
 #    print('%d\t%f' % (stamp, math.degrees(y)))
 
-    return x, y, z  # maybe later use orientation
+    return linearAcceleration, (x, y, z)  # maybe later use orientation
 
 
 def Xparse_image( data ):
@@ -276,8 +276,10 @@ class ROSMsgParser(Thread):
                         if prev != self.timestamp_sec:
                             self.bus.publish('sim_time_sec', self.timestamp_sec)
                     elif self.topic_type == 'std_msgs/Imu':
+                        acc, rot = parse_imu(packet)
                         self.bus.publish('rot', [round(math.degrees(angle)*100) 
-                                                 for angle in parse_imu(packet)])
+                                                 for angle in rot])
+                        self.bus.publish('acc', [round(x * 1000) for x in acc])
         except BusShutdownException:
             pass
 
