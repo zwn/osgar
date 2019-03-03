@@ -4,7 +4,7 @@
     "modules": {
       "app": {
           "driver": "application",
-          "in": ["emergency_stop", "pose2d", "scan", "rot", "artf"],
+          "in": ["emergency_stop", "pose2d", "scan", "rot", "artf", "sim_time_sec"],
           "out": ["desired_speed", "pose2d", "artf_xyz"],
           "init": {
             "max_speed": 0.5,
@@ -110,7 +110,7 @@
       "rosmsg_odom": {
           "driver": "rosmsg",
           "in": ["raw"],
-          "out": ["pose2d"],
+          "out": ["pose2d", "sim_time_sec"],
           "init": {"topic_type": "nav_msgs/Odometry"}
       }
     },
@@ -142,6 +142,7 @@
               ["tcp_odom_data.raw", "ros.odom_data"],
               ["tcp_odom_data.raw", "rosmsg_odom.raw"],
               ["rosmsg_odom.pose2d", "app.pose2d"],
+              ["rosmsg_odom.sim_time_sec", "app.sim_time_sec"],
 
               ["detector.artf", "app.artf"],
               ["app.artf_xyz", "reporter.artf_xyz"],
