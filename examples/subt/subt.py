@@ -7,6 +7,8 @@ import math
 from datetime import timedelta
 from collections import defaultdict
 
+import numpy as np
+
 from osgar.explore import follow_wall_angle
 from osgar.lib.mathex import normalizeAnglePIPI
 
@@ -157,7 +159,7 @@ class SubTChallenge:
         return self.traveled_dist - start_dist
 
     def return_home(self):
-        HOME_THRESHOLD = 1.0
+        HOME_THRESHOLD = 2.0
         SHORTCUT_RADIUS = 2.3
         MAX_TARGET_DISTANCE = 2.5
         assert(MAX_TARGET_DISTANCE > SHORTCUT_RADIUS) # Because otherwise we could end up with a target point more distant from home than the robot.
@@ -214,9 +216,19 @@ class SubTChallenge:
                 self.sim_time_sec = data
             elif channel == 'acc':
                 acc = [x/1000.0 for x in data]
-                sum_acc2 = sum([x*x for x in acc])
-                if sum_acc2 > 6000:
-                    print(self.time, 'Collision!', sum_acc2, 'reported:', self.collision_detector_enabled)
+                gacc = np.matrix([[0., 0., 9.80]])  # Gravitational acceleration.
+                cos_pitch = math.cos(self.pitch)
+                sin_pitch = math.sin(self.pitch)
+                # TODO: Once roll is correct, incorporate it here too.
+                egacc = np.matrix([  # Expected gravitational acceleration given known pitch.
+                    [ cos_pitch, 0., sin_pitch],
+                    [        0., 1., 0.],
+                    [-sin_pitch, 0., cos_pitch]
+                ]) * gacc.T
+                cacc = np.asarray(acc) - egacc.T  # Corrected acceleration (without gravitational acceleration).
+                magnitude = math.hypot(cacc[0, 0], cacc[0, 1])
+                if magnitude > 10.0:
+                    print(self.time, 'Collision!', acc, 'reported:', self.collision_detector_enabled)
                     if self.collision_detector_enabled:
                         self.collision_detector_enabled = False
                         raise Collision()
@@ -243,11 +255,11 @@ class SubTChallenge:
         try:
             self.collision_detector_enabled = True
             self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
-                                timeout=timedelta(minutes=10))
+                                timeout=timedelta(minutes=7, seconds=3))
             self.collision_detector_enabled = False
         except Collision:
             assert not self.collision_detector_enabled  # collision disables further notification
-            self.go_straight(-0.5)
+            self.go_straight(-1)
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
         print("Artifacts:", artifacts)
