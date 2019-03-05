@@ -272,10 +272,11 @@ class SubTChallenge:
             self.collision_detector_enabled = False
         except Collision:
             assert not self.collision_detector_enabled  # collision disables further notification
-            before_stop = self.last_position
+            before_stop = self.xyz
             self.stop()
-            after_stop = self.last_position
+            after_stop = self.xyz
             print("Pose Jump:", before_stop, after_stop)
+            self.xyz = before_stop
             self.go_straight(-1)
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
