@@ -194,6 +194,10 @@ class SubTChallenge:
                 if self.last_position is not None:
                     self.is_moving = (self.last_position != pose)
                     dist = math.hypot(pose[0] - self.last_position[0], pose[1] - self.last_position[1])
+                    direction = ((pose[0] - self.last_position[0]) * math.cos(self.last_position[2]) +
+                                 (pose[1] - self.last_position[1]) * math.sin(self.last_position[2]))
+                    if direction < 0:
+                        dist = -dist
                 else:
                     dist = 0.0
                 self.last_position = pose
