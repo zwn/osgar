@@ -133,6 +133,15 @@ class SubTChallenge:
                     break
             print(self.time, 'stop at', self.time - start_time)
 
+    def stop(self):
+        self.send_speed_cmd(0.0, 0.0)
+        start_time = self.time
+        while self.time - start_time < timedelta(seconds=20):
+            self.update()
+            if not self.is_moving:
+                break
+        print(self.time, 'stop at', self.time - start_time, self.is_moving)
+
     def follow_wall(self, radius, right_wall=False, timeout=timedelta(hours=3), dist_limit=None, stop_on_artf_count=None):
         start_dist = self.traveled_dist
         start_time = self.sim_time_sec
@@ -263,6 +272,10 @@ class SubTChallenge:
             self.collision_detector_enabled = False
         except Collision:
             assert not self.collision_detector_enabled  # collision disables further notification
+            before_stop = self.last_position
+            self.stop()
+            after_stop = self.last_position
+            print("Pose Jump:", before_stop, after_stop)
             self.go_straight(-1)
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
