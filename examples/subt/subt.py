@@ -147,30 +147,51 @@ class SubTChallenge:
         start_time = self.sim_time_sec
         desired_speed = 1.0
         while self.sim_time_sec - start_time < timeout.total_seconds():
-            if self.update() == 'scan':
-                size = len(self.scan)
-                dist = min_dist(self.scan[size//3:2*size//3])
-                if dist < 2.0:
-                    desired_speed = 1.0 * (dist - 0.4) / 1.6
-                else:
-                    desired_speed = 2.0
-                desired_angular_speed = 0.7 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
-#                print(self.time, 'desired_angular_speed\t%.1f\t%.3f' % (math.degrees(desired_angular_speed), dist))
-                if desired_angular_speed is None:
-                    desired_angular_speed = 0.0
-                self.send_speed_cmd(desired_speed, desired_angular_speed)
-            if dist_limit is not None:
-                if dist_limit < self.traveled_dist - start_dist:
-                    print('Distance limit reached! At', self.traveled_dist, self.traveled_dist - start_dist)
+            try:
+                if self.update() == 'scan':
+                    size = len(self.scan)
+                    dist = min_dist(self.scan[size//3:2*size//3])
+                    if dist < 2.0:
+                        desired_speed = 1.0 * (dist - 0.4) / 1.6
+                    else:
+                        desired_speed = 2.0
+                    desired_angular_speed = 0.7 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
+#                    print(self.time, 'desired_angular_speed\t%.1f\t%.3f' % (math.degrees(desired_angular_speed), dist))
+                    if desired_angular_speed is None:
+                        desired_angular_speed = 0.0
+                    self.send_speed_cmd(desired_speed, desired_angular_speed)
+                if dist_limit is not None:
+                    if dist_limit < self.traveled_dist - start_dist:
+                        print('Distance limit reached! At', self.traveled_dist, self.traveled_dist - start_dist)
+                        break
+                if stop_on_artf_count is not None and stop_on_artf_count <= len(self.artifacts):
                     break
-            if stop_on_artf_count is not None and stop_on_artf_count <= len(self.artifacts):
-                break
+            except Collision:
+                assert not self.collision_detector_enabled  # collision disables further notification
+                before_stop = self.xyz
+                self.stop()
+                after_stop = self.xyz
+                print("Pose Jump:", before_stop, after_stop)
+                self.xyz = before_stop
+                self.go_straight(-1)
+                self.stop()
+                if right_wall:
+                    turn_angle = math.pi / 2
+                else:
+                    turn_angle = -math.pi / 2
+                self.turn(turn_angle, with_stop=True)
+                self.go_straight(1.0)
+                self.stop()
+                self.turn(-turn_angle, with_stop=True)
+                self.go_straight(1.5)
+                self.stop()
+                self.collision_detector_enabled = True
         return self.traveled_dist - start_dist
 
     def return_home(self):
         HOME_THRESHOLD = 2.0
         SHORTCUT_RADIUS = 2.3
-        MAX_TARGET_DISTANCE = 2.5
+        MAX_TARGET_DISTANCE = 2.7
         assert(MAX_TARGET_DISTANCE > SHORTCUT_RADIUS) # Because otherwise we could end up with a target point more distant from home than the robot.
         self.trace.prune(SHORTCUT_RADIUS)
         while distance3D(self.xyz, (0, 0, 0)) > HOME_THRESHOLD:
@@ -265,19 +286,10 @@ class SubTChallenge:
     def play(self):
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
-        try:
-            self.collision_detector_enabled = True
-            self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
-                                timeout=timedelta(minutes=7, seconds=3))
-            self.collision_detector_enabled = False
-        except Collision:
-            assert not self.collision_detector_enabled  # collision disables further notification
-            before_stop = self.xyz
-            self.stop()
-            after_stop = self.xyz
-            print("Pose Jump:", before_stop, after_stop)
-            self.xyz = before_stop
-            self.go_straight(-1)
+        self.collision_detector_enabled = True
+        self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
+                            timeout=timedelta(minutes=12, seconds=0))
+        self.collision_detector_enabled = False
 
         artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
         print("Artifacts:", artifacts)
