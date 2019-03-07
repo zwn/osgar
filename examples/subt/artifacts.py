@@ -11,7 +11,11 @@ from osgar.node import Node
 EXTINGUISHER = 'TYPE_EXTINGUISHER'
 BACKPACK = 'TYPE_BACKPACK'
 VALVE = 'TYPE_VALVE'
-ELECTRICAL_BOX = "TYPE_ELECTRICAL_BOX"
+ELECTRICAL_BOX = 'TYPE_ELECTRICAL_BOX'
+PHONE = 'TYPE_PHONE'
+RADIO = 'TYPE_RADIO'
+TOOLBOX = 'TYPE_TOOLBOX'
+DUCT = 'TYPE_DUCT'
 
 RED_THRESHOLD = 100
 WHITE_THRESHOLD = 20000
@@ -145,7 +149,7 @@ class ArtifactDetector(Node):
                 elif h/w > 1.6:
                     artf = BACKPACK
                 else:
-                    artf = 'UNKNOWN'
+                    artf = TOOLBOX
             else:
                 artf = ELECTRICAL_BOX
 
