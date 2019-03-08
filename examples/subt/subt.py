@@ -12,6 +12,8 @@ import numpy as np
 from osgar.explore import follow_wall_angle
 from osgar.lib.mathex import normalizeAnglePIPI
 
+from local_planner import LocalPlanner
+
 
 TRACE_STEP = 0.5  # meters in 3D
 
@@ -27,8 +29,8 @@ def min_dist(laser_data):
 def distance(pose1, pose2):
     return math.hypot(pose1[0] - pose2[0], pose1[1] - pose2[1])
 
-def distance3D(xyz1, xyz2):
-    return math.sqrt(sum([(a-b)**2 for a, b in zip(xyz1, xyz2)]))
+def distance3D(xyz1, xyz2, weights=[1.0, 1.0, 1.0]):
+    return math.sqrt(sum([w * (a-b)**2 for a, b, w in zip(xyz1, xyz2, weights)]))
 
 
 class Trace:
@@ -61,7 +63,7 @@ class Trace:
         # looking for a target point within max_target_distance nearest to the start
         for _ in range(8):
             for target in self.trace:
-                if distance3D(target, xyz) < max_target_distance:
+                if distance3D(target, xyz, [1.0, 1.0, 0.2]) < max_target_distance:
                     return target
             # if the robot deviated too far from the trajectory, we need to look for more distant target points
             max_target_distance *= 1.5
@@ -94,6 +96,8 @@ class SubTChallenge:
         self.sim_time_sec = 0
 
         self.use_right_wall = config.get('right_wall', True)
+
+        self.local_planner = LocalPlanner()
 
     def send_speed_cmd(self, speed, angular_speed):
         return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
@@ -149,16 +153,15 @@ class SubTChallenge:
         while self.sim_time_sec - start_time < timeout.total_seconds():
             try:
                 if self.update() == 'scan':
+                    desired_direction = follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
+                    safety, safe_direction = self.local_planner.recommend(desired_direction)
+                    desired_angular_speed = 1.2 * safe_direction
                     size = len(self.scan)
                     dist = min_dist(self.scan[size//3:2*size//3])
                     if dist < 2.0:
                         desired_speed = 1.0 * (dist - 0.4) / 1.6
                     else:
                         desired_speed = 2.0
-                    desired_angular_speed = 0.7 * follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
-#                    print(self.time, 'desired_angular_speed\t%.1f\t%.3f' % (math.degrees(desired_angular_speed), dist))
-                    if desired_angular_speed is None:
-                        desired_angular_speed = 0.0
                     self.send_speed_cmd(desired_speed, desired_angular_speed)
                 if dist_limit is not None:
                     if dist_limit < self.traveled_dist - start_dist:
@@ -180,7 +183,7 @@ class SubTChallenge:
                 else:
                     turn_angle = -math.pi / 2
                 self.turn(turn_angle, with_stop=True)
-                self.go_straight(1.0)
+                self.go_straight(1.5)
                 self.stop()
                 self.turn(-turn_angle, with_stop=True)
                 self.go_straight(1.5)
@@ -189,21 +192,21 @@ class SubTChallenge:
         return self.traveled_dist - start_dist
 
     def return_home(self):
-        HOME_THRESHOLD = 2.0
+        HOME_THRESHOLD = 5.0
         SHORTCUT_RADIUS = 2.3
-        MAX_TARGET_DISTANCE = 2.7
+        MAX_TARGET_DISTANCE = 5.0
         assert(MAX_TARGET_DISTANCE > SHORTCUT_RADIUS) # Because otherwise we could end up with a target point more distant from home than the robot.
         self.trace.prune(SHORTCUT_RADIUS)
         while distance3D(self.xyz, (0, 0, 0)) > HOME_THRESHOLD:
             if self.update() == 'scan':
                 target_x, target_y = self.trace.where_to(self.xyz, MAX_TARGET_DISTANCE)[:2]
                 x, y = self.xyz[:2]
-                direction = math.atan2(target_y - y, target_x - x) - self.yaw
-                direction = (direction + math.pi) % (2 * math.pi) - math.pi  # normalize into [-math.pi, math.pi)
-                #print('tgt: %f %f -> %f %f = %f (%f)' % (x, y, target_x, target_y, math.degrees(direction), math.degrees(self.yaw)))
-                P = 2.0 # following the trace home pretty tightly
-                desired_angular_speed = P * direction
-                T = math.pi / 4
+                desired_direction = math.atan2(target_y - y, target_x - x) - self.yaw
+                desired_direction = (desired_direction + math.pi) % (2 * math.pi) - math.pi  # normalize into [-math.pi, math.pi)
+                #print('tgt: %f %f -> %f %f = %f (%f)' % (x, y, target_x, target_y, math.degrees(desired_direction), math.degrees(self.yaw)))
+                safety, safe_direction = self.local_planner.recommend(desired_direction)
+                desired_angular_speed = 1.2 * safe_direction
+                T = math.pi / 2
                 desired_speed = 2.0 * (0.8 - min(T, abs(desired_angular_speed)) / T)
                 self.send_speed_cmd(desired_speed, desired_angular_speed)
 
@@ -244,6 +247,7 @@ class SubTChallenge:
                 self.trace.update_trace(self.xyz)
             elif channel == 'scan':
                 self.scan = data
+                self.local_planner.update(data)
             elif channel == 'rot':
                 self.yaw, self.pitch, self.roll = [math.radians(x/100) for x in data]
             elif channel == 'sim_time_sec':
@@ -261,7 +265,7 @@ class SubTChallenge:
                 ]) * gacc.T
                 cacc = np.asarray(acc) - egacc.T  # Corrected acceleration (without gravitational acceleration).
                 magnitude = math.hypot(cacc[0, 0], cacc[0, 1])
-                if magnitude > 10.0:
+                if magnitude > 12.0:
                     print(self.time, 'Collision!', acc, 'reported:', self.collision_detector_enabled)
                     if self.collision_detector_enabled:
                         self.collision_detector_enabled = False
@@ -287,7 +291,7 @@ class SubTChallenge:
         print("SubT Challenge Ver2!")
         self.go_straight(9.0)  # go to the tunnel entrance
         self.collision_detector_enabled = True
-        self.follow_wall(radius = 1.5, right_wall=self.use_right_wall,
+        self.follow_wall(radius = 0.5, right_wall=self.use_right_wall,
                             timeout=timedelta(minutes=12, seconds=0))
         self.collision_detector_enabled = False
 
