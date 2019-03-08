@@ -122,3 +122,9 @@ search.
 Some screenshots from development are available here:
 https://robotika.cz/competitions/subtchallenge/stix/en#190303
 
+
+## Version 4 (2019-03-08, five artifacts)
+
+Increased the simulation time to whole 20 minutes, detection of red
+toolbox and object avoidance for white electrical box visible only
+on camera.
