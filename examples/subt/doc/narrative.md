@@ -128,3 +128,8 @@ https://robotika.cz/competitions/subtchallenge/stix/en#190303
 Increased the simulation time to whole 20 minutes, detection of red
 toolbox and object avoidance for white electrical box visible only
 on camera.
+
+
+## Version 5 (2019-03-09, seven artifacts)
+After adding a fuzzy local path planner, robots can get through narrow passages
+and explore new parts of the tunnel system.
