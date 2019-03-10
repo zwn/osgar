@@ -18,6 +18,7 @@ TOOLBOX = 'TYPE_TOOLBOX'
 DUCT = 'TYPE_DUCT'
 
 RED_THRESHOLD = 100
+YELLOW_THRESHOLD = 100
 WHITE_THRESHOLD = 20000
 
 
@@ -60,6 +61,14 @@ def count_white(img):
     g = img[:,:,1]
     r = img[:,:,2]
     mask = np.logical_and(r >= 250, np.logical_and(g >= 250, b >= 250))
+    return count_mask(mask)
+
+
+def count_yellow(img):
+    b = img[:,:,0]
+    g = img[:,:,1]
+    r = img[:,:,2]
+    mask = np.logical_and(r >= 240, np.logical_and(g >= 240, b < 180))
     return count_mask(mask)
 
 
@@ -111,12 +120,18 @@ class ArtifactDetector(Node):
 
         img = cv2.imdecode(np.fromstring(self.image, dtype=np.uint8), 1)
         rcount, w, h, x_min, x_max = count_red(img)
+        yellow_used = False
         if rcount == 0:
             wcount, w, h, x_min, x_max = count_white(img)
             if wcount > WHITE_THRESHOLD and 1.8 < w/h < 1.9 and wcount/(w*h) > 0.6:
                 count = wcount
             else:
-                count = 0
+                ycount, w, h, x_min, x_max = count_yellow(img)
+                if ycount > YELLOW_THRESHOLD:
+                    yellow_used = True
+                    count = ycount
+                else:
+                    count = 0
         else:
             count = rcount
 
@@ -129,11 +144,11 @@ class ArtifactDetector(Node):
                 self.best = count
                 self.best_count = 10
                 self.best_img = self.image
-                self.best_info = w, h, x_min, x_max, (count == rcount)  # RED used
+                self.best_info = w, h, x_min, x_max, (count == rcount), yellow_used  # RED used
                 self.best_scan = self.scan
 
         if self.best is not None and self.best_count == 0:
-            w, h, x_min, x_max, red_used = self.best_info
+            w, h, x_min, x_max, red_used, yellow_used = self.best_info
             print('Published', self.best)
             if red_used:
                 deg_100th, dist_mm = artf_in_scan(self.best_scan, x_min, x_max, verbose=True)
@@ -150,6 +165,8 @@ class ArtifactDetector(Node):
                     artf = BACKPACK
                 else:
                     artf = TOOLBOX
+            elif yellow_used:
+                artf = RADIO
             else:
                 artf = ELECTRICAL_BOX
 
