@@ -403,7 +403,7 @@ int main(int argc, char** argv)
 //  controller.client->SendToBaseStation(artifact);
 
 //  ros::spin();
-  ros::Rate r(1);
+//  ros::Rate r(1);
   int i;
   while (ros::ok())
   {
