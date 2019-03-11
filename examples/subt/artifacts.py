@@ -204,5 +204,34 @@ class ArtifactReporter(Node):
             f.write('%s %.2f %.2f %.2f\n' % (artf_type, ix/1000.0, iy/1000.0, iz/1000.0))
         print('report completed')
 
-# vim: expandtab sw=4 ts=4
 
+if __name__ == '__main__':
+    from unittest.mock import MagicMock
+    from queue import Queue
+    import argparse
+    from osgar.bus import BusHandler
+
+    parser = argparse.ArgumentParser(description='Run artifact detection and classification for given JPEG image')
+    parser.add_argument('filename', help='JPEG filename')
+    args = parser.parse_args()
+
+    with open(args.filename, 'rb') as f:
+        jpeg_data = f.read()
+
+    config = {}
+    logger = MagicMock()
+    logger.register = MagicMock(return_value=1)
+    output = Queue()
+    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
+    detector = ArtifactDetector(config, bus)
+    detector.start()
+    for i in range(10 + 1):  # workaround for local minima
+        bus.queue.put((timedelta(0), 'image', jpeg_data))
+    detector.request_stop()
+    detector.join()
+    if output.empty():
+        print("NO OUTPUT")
+    else:
+        print(output.get()[2])  # print only output data
+
+# vim: expandtab sw=4 ts=4
