@@ -225,6 +225,7 @@ if __name__ == '__main__':
     bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
     detector = ArtifactDetector(config, bus)
     detector.start()
+    bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
     for i in range(10 + 1):  # workaround for local minima
         bus.queue.put((timedelta(0), 'image', jpeg_data))
     detector.request_stop()
