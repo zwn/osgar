@@ -1,5 +1,8 @@
 import math
 
+def normalize_angle(angle):
+    return (angle + math.pi) % (2 * math.pi) - math.pi
+
 class LocalPlanner:
     def __init__(self, scan_right=math.radians(-135), scan_left=math.radians(135), direction_adherence=math.radians(90), max_obstacle_distance=1.5, obstacle_influence=1.2):
         self.last_scan = None
@@ -31,11 +34,12 @@ class LocalPlanner:
             obstacles.append(obstacle_xy)
 
         if not obstacles:
-            return 1.0, desired_dir
+            return 1.0, normalize_angle(desired_dir)
 
         # Best direction points roughly in desired_dir and does not come too close to any obstacle.
         def is_desired(direction):
-            return math.exp(-((direction - desired_dir) / self.direction_adherence)**2)  # Fuzzy equality
+            direction_delta = normalize_angle(direction - desired_dir)
+            return math.exp(-(direction_delta / self.direction_adherence)**2)  # Fuzzy equality
 
         def is_risky(direction):
             direction_vector = math.cos(direction), math.sin(direction)

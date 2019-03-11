@@ -119,6 +119,22 @@ class SubTChallenge:
             self.update()
         self.send_speed_cmd(0.0, 0.0)
 
+    def go_safely(self, desired_direction):
+        safety, safe_direction = self.local_planner.recommend(desired_direction)
+        desired_angular_speed = 1.2 * safe_direction
+        size = len(self.scan)
+        dist = min_dist(self.scan[size//3:2*size//3])
+        if dist < 2.0:
+            desired_speed = 1.4 * (dist - 0.4) / 1.6
+        else:
+            desired_speed = 2.0
+        '''
+        desired_angular_speed = 0.7 * safe_direction
+        T = math.pi / 2
+        desired_speed = 2.0 * (0.8 - min(T, abs(desired_angular_speed)) / T)
+        '''
+        self.send_speed_cmd(desired_speed, desired_angular_speed)
+
     def turn(self, angle, with_stop=True, speed=0.0):
         print(self.time, "turn %.1f" % math.degrees(angle))
         start_pose = self.last_position
@@ -154,15 +170,7 @@ class SubTChallenge:
             try:
                 if self.update() == 'scan':
                     desired_direction = follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
-                    safety, safe_direction = self.local_planner.recommend(desired_direction)
-                    desired_angular_speed = 1.2 * safe_direction
-                    size = len(self.scan)
-                    dist = min_dist(self.scan[size//3:2*size//3])
-                    if dist < 2.0:
-                        desired_speed = 1.0 * (dist - 0.4) / 1.6
-                    else:
-                        desired_speed = 2.0
-                    self.send_speed_cmd(desired_speed, desired_angular_speed)
+                    self.go_safely(desired_direction)
                 if dist_limit is not None:
                     if dist_limit < self.traveled_dist - start_dist:
                         print('Distance limit reached! At', self.traveled_dist, self.traveled_dist - start_dist)
@@ -202,13 +210,7 @@ class SubTChallenge:
                 target_x, target_y = self.trace.where_to(self.xyz, MAX_TARGET_DISTANCE)[:2]
                 x, y = self.xyz[:2]
                 desired_direction = math.atan2(target_y - y, target_x - x) - self.yaw
-                desired_direction = (desired_direction + math.pi) % (2 * math.pi) - math.pi  # normalize into [-math.pi, math.pi)
-                #print('tgt: %f %f -> %f %f = %f (%f)' % (x, y, target_x, target_y, math.degrees(desired_direction), math.degrees(self.yaw)))
-                safety, safe_direction = self.local_planner.recommend(desired_direction)
-                desired_angular_speed = 1.2 * safe_direction
-                T = math.pi / 2
-                desired_speed = 2.0 * (0.8 - min(T, abs(desired_angular_speed)) / T)
-                self.send_speed_cmd(desired_speed, desired_angular_speed)
+                self.go_safely(desired_direction)
 
     def update(self):
         packet = self.bus.listen()
