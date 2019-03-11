@@ -213,6 +213,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run artifact detection and classification for given JPEG image')
     parser.add_argument('filename', help='JPEG filename')
+    parser.add_argument('-v', '--verbose', help='verbose mode', action='store_true')
     args = parser.parse_args()
 
     with open(args.filename, 'rb') as f:
@@ -224,6 +225,7 @@ if __name__ == '__main__':
     output = Queue()
     bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
     detector = ArtifactDetector(config, bus)
+    detector.verbose = args.verbose
     detector.start()
     bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
     for i in range(10 + 1):  # workaround for local minima
