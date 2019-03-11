@@ -157,11 +157,12 @@ class ArtifactDetector(Node):
             print('Relative position:', deg_100th, dist_mm)
 
             if red_used:
+                print('h/w', h/w)
                 if self.best < 1000:
                     artf = VALVE
                 elif h/w > 2.4:
                     artf = EXTINGUISHER
-                elif h/w > 1.6:
+                elif h/w > 1.0:
                     artf = BACKPACK
                 else:
                     artf = TOOLBOX
