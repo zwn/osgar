@@ -150,7 +150,7 @@ class ArtifactDetector(Node):
         if self.best is not None and self.best_count == 0:
             w, h, x_min, x_max, red_used, yellow_used = self.best_info
             print('Published', self.best)
-            if red_used:
+            if red_used or yellow_used:
                 deg_100th, dist_mm = artf_in_scan(self.best_scan, x_min, x_max, verbose=True)
             else:
                 deg_100th, dist_mm = 0, 500  # in front of the robot
