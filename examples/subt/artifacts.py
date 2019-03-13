@@ -18,7 +18,7 @@ TOOLBOX = 'TYPE_TOOLBOX'
 DUCT = 'TYPE_DUCT'
 
 RED_THRESHOLD = 100
-YELLOW_THRESHOLD = 100
+YELLOW_THRESHOLD = 40
 WHITE_THRESHOLD = 20000
 
 
@@ -41,9 +41,9 @@ def count_mask(mask):
     # argmax for mask finds the first True value
     x_min = (mask.argmax(axis=0) != 0).argmax()
     x_max = mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
-    w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
+    w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax()
             - (mask.argmax(axis=0) != 0).argmax())
-    h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax() - 1
+    h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax()
             - (mask.argmax(axis=1) != 0).argmax())
     return count, w, h, x_min, x_max
 
