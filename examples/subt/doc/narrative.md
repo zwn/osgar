@@ -131,5 +131,12 @@ on camera.
 
 
 ## Version 5 (2019-03-09, seven artifacts)
+
 After adding a fuzzy local path planner, robots can get through narrow passages
 and explore new parts of the tunnel system.
+
+
+## Version 6 (2019-03-13, eight artifacts)
+
+Added detection of radio artifact.
+
