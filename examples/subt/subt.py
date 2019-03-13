@@ -125,7 +125,7 @@ class SubTChallenge:
         size = len(self.scan)
         dist = min_dist(self.scan[size//3:2*size//3])
         if dist < 2.0:
-            desired_speed = 1.4 * (dist - 0.4) / 1.6
+            desired_speed = 1.2 * (dist - 0.4) / 1.6
         else:
             desired_speed = 2.0
         '''
@@ -297,13 +297,12 @@ class SubTChallenge:
                             timeout=timedelta(minutes=12, seconds=0))
         self.collision_detector_enabled = False
 
-        artifacts, self.artifacts = self.artifacts, []  # make sure that artifacts are not collected twice on the way home
-        print("Artifacts:", artifacts)
+        print("Artifacts:", self.artifacts)
 
         print("Going HOME")
         self.return_home()
 
-        for artifact_data, (x, y, z) in artifacts:
+        for artifact_data, (x, y, z) in self.artifacts:
             self.bus.publish('artf_xyz', [artifact_data, round(x*1000), round(y*1000), round(z*1000)])
         self.send_speed_cmd(0, 0)
         self.wait(timedelta(seconds=30))
