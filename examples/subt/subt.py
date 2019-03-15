@@ -302,9 +302,12 @@ class SubTChallenge:
         print("Going HOME")
         self.return_home()
 
-        for artifact_data, (x, y, z) in self.artifacts:
-            self.bus.publish('artf_xyz', [artifact_data, round(x*1000), round(y*1000), round(z*1000)])
         self.send_speed_cmd(0, 0)
+
+        if self.artifacts:
+            self.bus.publish('artf_xyz', [[artifact_data, round(x*1000), round(y*1000), round(z*1000)] 
+                                          for artifact_data, (x, y, z) in self.artifacts])
+
         self.wait(timedelta(seconds=30))
 
     def start(self):

@@ -2,6 +2,8 @@
   Detect SubT Artifact in Camera Image
 """
 from datetime import timedelta
+import os
+import tempfile
 
 import cv2
 import numpy as np
@@ -198,11 +200,15 @@ class ArtifactReporter(Node):
 
         print("DETECTED", self.artf_xyz)
 
-        artf_type, ix, iy, iz = self.artf_xyz
         # TODO call SubT API
+        # Make all reported information available atomically to avoid race
+        # conditions between writing to and reading from the same file.
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+            for artf_type, ix, iy, iz in self.artf_xyz:
+                f.write('%s %.2f %.2f %.2f\n' % (artf_type, ix/1000.0, iy/1000.0, iz/1000.0))
+            f.close()
+            os.rename(f.name, self.path)
 
-        with open(self.path, 'a') as f:
-            f.write('%s %.2f %.2f %.2f\n' % (artf_type, ix/1000.0, iy/1000.0, iz/1000.0))
         print('report completed')
 
 
