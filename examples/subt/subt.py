@@ -1,6 +1,7 @@
 """
   SubT Challenge Version 1
 """
+import gc
 import sys
 import os.path
 import math
@@ -100,7 +101,10 @@ class SubTChallenge:
         self.local_planner = LocalPlanner()
 
     def send_speed_cmd(self, speed, angular_speed):
-        return self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
+        success = self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
+        # Corresponds to gc.disable() in __main__. See a comment there for more details.
+        gc.collect()
+        return success
 
     def maybe_remember_artifact(self, artifact_data, artifact_xyz):
         for _, (x, y, z) in self.artifacts:
@@ -346,6 +350,11 @@ if __name__ == "__main__":
         game.play()
 
     elif args.command == 'run':
+        # To reduce latency spikes as described in https://morepypy.blogspot.com/2019/01/pypy-for-low-latency-systems.html.
+        # Increased latency leads to uncontrolled behavior and robot either missing turns or hitting walls.
+        # Disabled garbage collection needs to be paired with gc.collect() at place(s) that are not time sensitive.
+        gc.disable()
+
         # support simultaneously multiple platforms
         prefix = os.path.basename(args.config[0]).split('.')[0] + '-'
         log = LogWriter(prefix=prefix, note=str(sys.argv))
