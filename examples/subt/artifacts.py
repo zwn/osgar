@@ -223,29 +223,30 @@ if __name__ == '__main__':
     from osgar.bus import BusHandler
 
     parser = argparse.ArgumentParser(description='Run artifact detection and classification for given JPEG image')
-    parser.add_argument('filename', help='JPEG filename')
+    parser.add_argument('filename', help='JPEG filename', nargs='+')
     parser.add_argument('-v', '--verbose', help='verbose mode', action='store_true')
     args = parser.parse_args()
 
-    with open(args.filename, 'rb') as f:
-        jpeg_data = f.read()
+    for filename in args.filename:
+        with open(filename, 'rb') as f:
+            jpeg_data = f.read()
 
-    config = {}
-    logger = MagicMock()
-    logger.register = MagicMock(return_value=1)
-    output = Queue()
-    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
-    detector = ArtifactDetector(config, bus)
-    detector.verbose = args.verbose
-    detector.start()
-    bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
-    for i in range(10 + 1):  # workaround for local minima
-        bus.queue.put((timedelta(0), 'image', jpeg_data))
-    detector.request_stop()
-    detector.join()
-    if output.empty():
-        print("NO OUTPUT")
-    else:
-        print(output.get()[2])  # print only output data
+        config = {}
+        logger = MagicMock()
+        logger.register = MagicMock(return_value=1)
+        output = Queue()
+        bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
+        detector = ArtifactDetector(config, bus)
+        detector.verbose = args.verbose
+        detector.start()
+        bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
+        for i in range(10 + 1):  # workaround for local minima
+            bus.queue.put((timedelta(0), 'image', jpeg_data))
+        detector.request_stop()
+        detector.join()
+        if output.empty():
+            print("NO OUTPUT")
+        else:
+            print(output.get()[2])  # print only output data
 
 # vim: expandtab sw=4 ts=4
