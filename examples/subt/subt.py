@@ -13,7 +13,7 @@ import numpy as np
 from osgar.explore import follow_wall_angle
 from osgar.lib.mathex import normalizeAnglePIPI
 
-from local_planner import LocalPlanner
+import local_planner_numba as local_planner
 
 
 TRACE_STEP = 0.5  # meters in 3D
@@ -89,7 +89,7 @@ class SubTChallenge:
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.yaw, self.pitch, self.roll = 0, 0, 0
         self.is_moving = None  # unknown
-        self.scan = None  # I should use class Node instead
+        self.scan = []  # I should use class Node instead
         self.stat = defaultdict(int)
         self.artifacts = []
         self.trace = Trace()
@@ -97,8 +97,6 @@ class SubTChallenge:
         self.sim_time_sec = 0
 
         self.use_right_wall = config.get('right_wall', True)
-
-        self.local_planner = LocalPlanner()
 
     def send_speed_cmd(self, speed, angular_speed):
         success = self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
@@ -124,7 +122,10 @@ class SubTChallenge:
         self.send_speed_cmd(0.0, 0.0)
 
     def go_safely(self, desired_direction):
-        safety, safe_direction = self.local_planner.recommend(desired_direction)
+        #safety, safe_direction = self.local_planner.recommend(desired_direction)
+        safety, safe_direction = local_planner_numba.recommend(np.array(self.scan, dtype='f8'), desired_direction)
+        #assert abs(safety - safety_jit) < 0.000001, (safety, safety_jit)
+        #assert safe_direction == safe_direction
         desired_angular_speed = 1.2 * safe_direction
         size = len(self.scan)
         dist = min_dist(self.scan[size//3:2*size//3])
