@@ -16,6 +16,7 @@ class LocalPlanner:
         self.last_scan = scan
 
     def recommend(self, desired_dir):
+        desired_dir = normalize_angle(desired_dir)
         if self.last_scan is None:
             return 1.0, desired_dir
 
@@ -34,7 +35,7 @@ class LocalPlanner:
             obstacles.append(obstacle_xy)
 
         if not obstacles:
-            return 1.0, normalize_angle(desired_dir)
+            return 1.0, desired_dir
 
         # Best direction points roughly in desired_dir and does not come too close to any obstacle.
         def is_desired(direction):
@@ -68,4 +69,13 @@ class LocalPlanner:
             return min(is_safe(direction), is_desired(direction))  # Fuzzy AND.
 
         return max((is_good(math.radians(direction)), math.radians(direction)) for direction in range(-180, 180, 3))
+
+
+if __name__ == "__main__":
+    planner = LocalPlanner()
+    planner.update([1000 for i in range(100)])
+    for _ in range(1000):
+        for direction in range(-30, 30, 3):
+            s, d = planner.recommend(math.radians(direction))
+            print(s, d)
 
