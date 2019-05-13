@@ -4,7 +4,7 @@ cp osgar/examples/subt/src/subt_example_node.cc src/subt/subt_example/src/subt_e
 cp osgar/examples/subt/src/CMakeLists.txt src/subt/subt_example/CMakeLists.txt
 cp osgar/examples/subt/launch/x2lr_team.launch src/subt/subt_example/launch/x2lr_team.launch
 cp osgar/examples/subt/config/robot_config.yaml src/subt/subt_example/config/robot_config.yaml
-sed -i 's/name="gui" value="true"/name="gui" value="false"/' src/subt/subt_gazebo/launch/competition.launch
+# sed -i 's/name="gui" value="true"/name="gui" value="false"/' src/subt/subt_gazebo/launch/competition.launch
 
 patch -d src/subt --strip 1 --forward <<END
 diff -r 27079e732f94 subt_gazebo/src/GameLogicPlugin.cc
