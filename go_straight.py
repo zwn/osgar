@@ -26,13 +26,13 @@ class Go_straight(Node):
         print(self.time, '=== ver0 ===')
         #self.publish('can', CAN_packet(0x0, [1, 0]))
         game_start = self.time
-        while self.time - game_start < timedelta(seconds=600):
-            time.sleep(0.1)
-            #self.publish('can', CAN_packet(0x210, [1, 58, 85, 5]))
+        while self.time - game_start < timedelta(seconds=10):
+            self.sleep(0.1)
+            self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
             print([hex(b) for b in self.can])
             self.update()
         #self.publish('can', CAN_packet(0x0, [128, 0]))
-        time.sleep(1)
+        self.sleep(1)
 
 
 if __name__ == "__main__":
