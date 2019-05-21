@@ -29,6 +29,7 @@ class Go_straight(Node):
         while self.time - game_start < timedelta(seconds=10):
             self.sleep(0.1)
             self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
+            self.publish('can', CAN_packet(0x12, [0, 0, 8, 108]))  # left front
             print([hex(b) for b in self.can])
             self.update()
         #self.publish('can', CAN_packet(0x0, [128, 0]))
