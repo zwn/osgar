@@ -8,6 +8,7 @@ import struct
 import math
 from datetime import timedelta
 
+from .canserial import CAN_packet
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 
