@@ -13,8 +13,8 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 
 CAN_ID_BUTTONS = 0x1
-CAN_ID_VESC_FL = 0x91
-CAN_ID_VESC_FR = 0x92
+CAN_ID_VESC_FR = 0x91
+CAN_ID_VESC_FL = 0x92
 CAN_ID_SYNC = CAN_ID_VESC_FL
 
 
