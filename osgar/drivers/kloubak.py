@@ -12,6 +12,10 @@ from .canserial import CAN_packet
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 
+CAN_ID_BUTTONS = 0x1
+CAN_ID_VESC_FL = 0x91
+CAN_ID_VESC_FR = 0x92
+
 
 class RobotKloubak(Node):
     def __init__(self, config, bus):
@@ -24,7 +28,7 @@ class RobotKloubak(Node):
         # status
         self.emergency_stop = None  # uknown state
         self.pose = (0.0, 0.0, 0.0)  # x, y in meters, heading in radians (not corrected to 2PI)
-        self.flags = None
+        self.buttons = None
         self.last_encoders = None
 
     def send_pose(self):
@@ -32,12 +36,32 @@ class RobotKloubak(Node):
         self.publish('pose2d', [round(x*1000), round(y*1000),
                                 round(math.degrees(heading)*100)])
 
+    def update_buttons(self, data):
+        assert len(data) == 1, len(data)
+        val = data[0]
+        if self.buttons is None or val != self.buttons:
+            self.buttons = val
+            stop_status = self.buttons & 0x01 == 0x01
+            if self.emergency_stop != stop_status:
+                self.emergency_stop = stop_status
+                self.bus.publish('emergency_stop', self.emergency_stop)
+                print('Emergency STOP:', self.emergency_stop)
+
+    def process_packet(self, packet, verbose=False):
+        if len(packet) >= 2:
+            msg_id = ((packet[0]) << 3) | (((packet[1]) >> 5) & 0x1f)
+#            print(hex(msg_id), packet[2:])
+            if msg_id == CAN_ID_BUTTONS:
+                self.update_buttons(packet[2:])
+
+
     def run(self):
         try:
             while True:
                 dt, channel, data = self.listen()
                 self.time = dt
                 if channel == 'can':
+                    self.process_packet(data)
                     if self.desired_speed > 0:
                         self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
                         self.publish('can', CAN_packet(0x12, [0, 0, 8, 108]))  # left front
