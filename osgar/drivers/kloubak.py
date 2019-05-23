@@ -12,6 +12,9 @@ from .canserial import CAN_packet
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 
+WHEEL_DISTANCE = 0.5  # m - TODO measure
+ENC_SCALE = 0.97/854.481  # TODO calibrate
+
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FR = 0x91
 CAN_ID_VESC_FL = 0x92
@@ -32,6 +35,7 @@ class RobotKloubak(Node):
         self.buttons = None
         self.last_encoders_front_left = None
         self.last_encoders_front_right = None
+        self.last_encoders_time = None
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -57,6 +61,30 @@ class RobotKloubak(Node):
         elif msg_id == CAN_ID_VESC_FR:
             self.last_encoders_front_right = rpm3
 
+    def update_pose(self, dt):
+        """Update internal pose with 'dt' step"""
+        x, y, heading = self.pose
+
+        metricL = dt * ENC_SCALE * self.last_encoders_front_left
+        metricR = dt * ENC_SCALE * self.last_encoders_front_right
+
+        dist = (metricL + metricR)/2.0
+        angle = (metricR - metricL)/WHEEL_DISTANCE
+
+        # advance robot by given distance and angle
+        if abs(angle) < 0.0000001:  # EPS
+            # Straight movement - a special case
+            x += dist * math.cos(heading)
+            y += dist * math.sin(heading)
+            #Not needed: heading += angle
+        else:
+            # Arc
+            r = dist / angle
+            x += -r * math.sin(heading) + r * math.sin(heading + angle)
+            y += +r * math.cos(heading) - r * math.cos(heading + angle)
+            heading += angle # not normalized
+        self.pose = (x, y, heading)
+
     def process_packet(self, packet, verbose=False):
         if len(packet) >= 2:
             msg_id = ((packet[0]) << 3) | (((packet[1]) >> 5) & 0x1f)
@@ -69,6 +97,11 @@ class RobotKloubak(Node):
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
                         [self.last_encoders_front_left, self.last_encoders_front_right])
+                if self.last_encoders_time is not None:
+                    dt = (self.time - self.last_encoders_time).total_seconds()
+                    self.update_pose(dt)
+                    self.send_pose()
+                self.last_encoders_time = self.time
 
     def run(self):
         try:
