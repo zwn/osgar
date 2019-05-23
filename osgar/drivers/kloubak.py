@@ -15,6 +15,7 @@ from osgar.bus import BusShutdownException
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FL = 0x91
 CAN_ID_VESC_FR = 0x92
+CAN_ID_SYNC = CAN_ID_VESC_FL
 
 
 class RobotKloubak(Node):
@@ -29,7 +30,8 @@ class RobotKloubak(Node):
         self.emergency_stop = None  # uknown state
         self.pose = (0.0, 0.0, 0.0)  # x, y in meters, heading in radians (not corrected to 2PI)
         self.buttons = None
-        self.last_encoders = None
+        self.last_encoders_front_left = None
+        self.last_encoders_front_right = None
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -47,13 +49,26 @@ class RobotKloubak(Node):
                 self.bus.publish('emergency_stop', self.emergency_stop)
                 print('Emergency STOP:', self.emergency_stop)
 
+    def update_encoders(self, msg_id, data):
+        assert len(data) == 8, data
+        rpm3, current, duty_cycle = struct.unpack('>ihh', data)
+        if msg_id == CAN_ID_VESC_FL:
+            self.last_encoders_front_left = rpm3
+        elif msg_id == CAN_ID_VESC_FR:
+            self.last_encoders_front_right = rpm3
+
     def process_packet(self, packet, verbose=False):
         if len(packet) >= 2:
             msg_id = ((packet[0]) << 3) | (((packet[1]) >> 5) & 0x1f)
 #            print(hex(msg_id), packet[2:])
             if msg_id == CAN_ID_BUTTONS:
                 self.update_buttons(packet[2:])
+            elif msg_id in [CAN_ID_VESC_FL, CAN_ID_VESC_FR]:
+                self.update_encoders(msg_id, packet[2:])
 
+            if msg_id == CAN_ID_SYNC:
+                self.publish('encoders', 
+                        [self.last_encoders_front_left, self.last_encoders_front_right])
 
     def run(self):
         try:
