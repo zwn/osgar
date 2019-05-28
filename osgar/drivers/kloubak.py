@@ -62,7 +62,7 @@ class RobotKloubak(Node):
         elif msg_id == CAN_ID_VESC_FR:
             self.last_encoders_front_right = rpm3
 
-    def update_pose(self, dt):
+    def update_pose(self):
         """Update internal pose with 'dt' step"""
         x, y, heading = self.pose
 
@@ -98,11 +98,8 @@ class RobotKloubak(Node):
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
                         [self.last_encoders_front_left, self.last_encoders_front_right])
-                if self.last_encoders_time is not None:
-                    dt = (self.time - self.last_encoders_time).total_seconds()
-                    self.update_pose(dt)
-                    self.send_pose()
-                self.last_encoders_time = self.time
+                self.update_pose()
+                self.send_pose()
                 return True
         return False
 
