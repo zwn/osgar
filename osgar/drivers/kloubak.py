@@ -103,23 +103,31 @@ class RobotKloubak(Node):
                     self.update_pose(dt)
                     self.send_pose()
                 self.last_encoders_time = self.time
+                return True
+        return False
+
+    def slot_can(self, data):
+        if self.process_packet(data):
+            if self.desired_speed > 0:
+                self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
+                self.publish('can', CAN_packet(0x12, [0, 0, 8, 108]))  # left front
+            else:
+                self.publish('can', CAN_packet(0x11, [0, 0, 0, 0]))  # right front
+                self.publish('can', CAN_packet(0x12, [0, 0, 0, 0]))  # left front
+
+    def slot_desired_speed(self, data):
+        self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def run(self):
         try:
             while True:
-                dt, channel, data = self.listen()
-                self.time = dt
+                self.time, channel, data = self.listen()
                 if channel == 'can':
-                    self.process_packet(data)
-                    if self.desired_speed > 0:
-                        self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
-                        self.publish('can', CAN_packet(0x12, [0, 0, 8, 108]))  # left front
-                    else:
-                        self.publish('can', CAN_packet(0x11, [0, 0, 0, 0]))  # right front
-                        self.publish('can', CAN_packet(0x12, [0, 0, 0, 0]))  # left front
-
-                if channel == 'desired_speed':
-                    self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)                    
+                    self.slot_can(data)
+                elif channel == 'desired_speed':
+                    self.slot_desired_speed(data)
+                else:
+                    assert False, channel  # unsupported channel
         except BusShutdownException:
             pass
 
