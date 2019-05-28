@@ -12,8 +12,9 @@ from .canserial import CAN_packet
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 
-WHEEL_DISTANCE = 0.5  # m - TODO measure
-ENC_SCALE = 0.97/854.481  # TODO calibrate
+WHEEL_DISTANCE = 0.475  # m
+VESC_REPORT_FREQ = 20  # Hz
+ENC_SCALE = 0.25 * math.pi / (3 * 60 * VESC_REPORT_FREQ) # was: 0.97/854.481
 
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FR = 0x91
@@ -65,8 +66,8 @@ class RobotKloubak(Node):
         """Update internal pose with 'dt' step"""
         x, y, heading = self.pose
 
-        metricL = dt * ENC_SCALE * self.last_encoders_front_left
-        metricR = dt * ENC_SCALE * self.last_encoders_front_right
+        metricL = ENC_SCALE * self.last_encoders_front_left  # dt is already part of ENC_SCALE
+        metricR = ENC_SCALE * self.last_encoders_front_right
 
         dist = (metricL + metricR)/2.0
         angle = (metricR - metricL)/WHEEL_DISTANCE
