@@ -109,11 +109,11 @@ class RobotKloubak(Node):
     def slot_can(self, data):
         if self.process_packet(data):
             if self.desired_speed > 0:
-                self.publish('can', CAN_packet(0x11, [0, 0, 8, 108]))  # right front
-                self.publish('can', CAN_packet(0x12, [0, 0, 8, 108]))  # left front
+                self.publish('can', CAN_packet(0x31, [0, 0, 8, 108]))  # right front
+                self.publish('can', CAN_packet(0x32, [0, 0, 8, 108]))  # left front
             else:
-                self.publish('can', CAN_packet(0x11, [0, 0, 0, 0]))  # right front
-                self.publish('can', CAN_packet(0x12, [0, 0, 0, 0]))  # left front
+                self.publish('can', CAN_packet(0x21, [0, 0, 0, 0]))  # right front
+                self.publish('can', CAN_packet(0x22, [0, 0, 0, 0]))  # left front
 
     def slot_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
