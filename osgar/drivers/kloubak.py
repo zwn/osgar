@@ -13,7 +13,7 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 
 WHEEL_DISTANCE = 0.475  # m
-VESC_REPORT_FREQ = 20  # Hz
+VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (3 * 60 * VESC_REPORT_FREQ) # was: 0.97/854.481
 
 CAN_ID_BUTTONS = 0x1
