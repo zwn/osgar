@@ -64,6 +64,8 @@ class RobotKloubak(Node):
 
     def update_pose(self):
         """Update internal pose with 'dt' step"""
+        if self.last_encoders_front_left is None or self.last_encoders_front_right is None:
+            return False
         x, y, heading = self.pose
 
         metricL = ENC_SCALE * self.last_encoders_front_left  # dt is already part of ENC_SCALE
@@ -85,6 +87,7 @@ class RobotKloubak(Node):
             y += +r * math.cos(heading) - r * math.cos(heading + angle)
             heading += angle # not normalized
         self.pose = (x, y, heading)
+        return True
 
     def process_packet(self, packet, verbose=False):
         if len(packet) >= 2:
@@ -98,16 +101,16 @@ class RobotKloubak(Node):
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
                         [self.last_encoders_front_left, self.last_encoders_front_right])
-                self.update_pose()
-                self.send_pose()
+                if self.update_pose():
+                    self.send_pose()
                 return True
         return False
 
     def slot_can(self, data):
         if self.process_packet(data):
             if self.desired_speed > 0:
-                self.publish('can', CAN_packet(0x31, [0, 0, 8, 108]))  # right front
-                self.publish('can', CAN_packet(0x32, [0, 0, 8, 108]))  # left front
+                self.publish('can', CAN_packet(0x31, [0, 0, 4, 108]))  # right front
+                self.publish('can', CAN_packet(0x32, [0, 0, 4, 108]))  # left front
             else:
                 self.publish('can', CAN_packet(0x21, [0, 0, 0, 0]))  # right front
                 self.publish('can', CAN_packet(0x22, [0, 0, 0, 0]))  # left front
