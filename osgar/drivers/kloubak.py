@@ -17,9 +17,11 @@ VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
 CAN_ID_BUTTONS = 0x1
-CAN_ID_VESC_FR = 0x91
-CAN_ID_VESC_FL = 0x92
-CAN_ID_SYNC = CAN_ID_VESC_FL
+CAN_ID_VESC_FRONT_R = 0x91
+CAN_ID_VESC_FRONT_L = 0x92
+CAN_ID_VESC_REAR_R = 0x93
+CAN_ID_VESC_REAR_L = 0x94
+CAN_ID_SYNC = CAN_ID_VESC_FRONT_L
 
 
 class RobotKloubak(Node):
@@ -36,6 +38,8 @@ class RobotKloubak(Node):
         self.buttons = None
         self.last_encoders_front_left = None
         self.last_encoders_front_right = None
+        self.last_encoders_rear_left = None
+        self.last_encoders_rear_right = None
         self.last_encoders_time = None
 
     def send_pose(self):
@@ -57,10 +61,14 @@ class RobotKloubak(Node):
     def update_encoders(self, msg_id, data):
         assert len(data) == 8, data
         rpm3, current, duty_cycle = struct.unpack('>ihh', data)
-        if msg_id == CAN_ID_VESC_FL:
+        if msg_id == CAN_ID_VESC_FRONT_L:
             self.last_encoders_front_left = rpm3
-        elif msg_id == CAN_ID_VESC_FR:
+        elif msg_id == CAN_ID_VESC_FRONT_R:
             self.last_encoders_front_right = rpm3
+        if msg_id == CAN_ID_VESC_REAR_L:
+            self.last_encoders_rear_left = rpm3
+        elif msg_id == CAN_ID_VESC_REAR_R:
+            self.last_encoders_rear_right = rpm3
 
     def update_pose(self):
         """Update internal pose with 'dt' step"""
@@ -95,14 +103,20 @@ class RobotKloubak(Node):
 #            print(hex(msg_id), packet[2:])
             if msg_id == CAN_ID_BUTTONS:
                 self.update_buttons(packet[2:])
-            elif msg_id in [CAN_ID_VESC_FL, CAN_ID_VESC_FR]:
+            elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
                 self.update_encoders(msg_id, packet[2:])
 
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
-                        [self.last_encoders_front_left, self.last_encoders_front_right])
+                        [self.last_encoders_front_left, self.last_encoders_front_right,
+                         self.last_encoders_rear_left, self.last_encoders_rear_right])
                 if self.update_pose():
                     self.send_pose()
+                # reset all encoder values to be sure that new reading were received
+                self.last_encoders_front_left = None
+                self.last_encoders_front_right = None
+                self.last_encoders_rear_left = None
+                self.last_encoders_rear_right = None
                 return True
         return False
 
@@ -111,9 +125,13 @@ class RobotKloubak(Node):
             if self.desired_speed > 0:
                 self.publish('can', CAN_packet(0x31, [0, 0, 4, 108]))  # right front
                 self.publish('can', CAN_packet(0x32, [0, 0, 4, 108]))  # left front
+                self.publish('can', CAN_packet(0x33, [0, 0, 4, 108]))  # right rear
+                self.publish('can', CAN_packet(0x34, [0, 0, 4, 108]))  # left rear
             else:
                 self.publish('can', CAN_packet(0x21, [0, 0, 0, 0]))  # right front
                 self.publish('can', CAN_packet(0x22, [0, 0, 0, 0]))  # left front
+                self.publish('can', CAN_packet(0x23, [0, 0, 0, 0]))  # right rear
+                self.publish('can', CAN_packet(0x24, [0, 0, 0, 0]))  # left rear
 
     def slot_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
