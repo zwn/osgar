@@ -304,8 +304,10 @@ if __name__ == "__main__":
         dbc = {
             0x101: '>i',     # cmd1
             0x102: '>i',     # cmd2
-            0x181: '>ihh',    # encoders L
-            0x182: '>ihh',    # encoders R
+            0x91: '>ihh',  # encoders
+            0x92: '>ihh',
+            0x93: '>ihh',
+            0x94: '>ihh',
         }
 
     stream_id = lookup_stream_id(args.logfile, args.stream)
