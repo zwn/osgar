@@ -14,7 +14,7 @@ from osgar.bus import BusShutdownException
 
 WHEEL_DISTANCE = 0.475  # m
 VESC_REPORT_FREQ = 100  # Hz
-ENC_SCALE = 0.25 * math.pi / (3 * 60 * VESC_REPORT_FREQ) # was: 0.97/854.481
+ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FR = 0x91
