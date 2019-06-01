@@ -113,10 +113,10 @@ class RobotKloubak(Node):
                 if self.update_pose():
                     self.send_pose()
                 # reset all encoder values to be sure that new reading were received
-                self.last_encoders_front_left = None
-                self.last_encoders_front_right = None
-                self.last_encoders_rear_left = None
-                self.last_encoders_rear_right = None
+#                self.last_encoders_front_left = None
+#                self.last_encoders_front_right = None
+#                self.last_encoders_rear_left = None
+#                self.last_encoders_rear_right = None
                 return True
         return False
 
@@ -124,6 +124,7 @@ class RobotKloubak(Node):
         use_current = True
         limit = 1000
         if self.process_packet(data):
+#            print(self.last_encoders_front_left, self.last_encoders_front_right)
             if self.desired_speed > 0:
                 if use_current:
                     cmd = [0, 0, 4, 0]  # 1Amp
