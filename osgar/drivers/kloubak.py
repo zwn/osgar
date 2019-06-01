@@ -121,12 +121,12 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, data):
-        limit_r = 1000
-        limit_l = 900
+        limit_r = 400
+        limit_l = 200
         if self.process_packet(data):
 #            print(self.last_encoders_front_left, self.last_encoders_front_right)
-            fwd = [0, 0, 16, 0]  # 4Amp
-            bwd = [255, 255, 255-16, 255]  # 4Amp
+            fwd = [0, 0, 24, 0]  # 6Amp
+            bwd = [255, 255, 255-24, 255]  # 4Amp
             stop = [0, 0, 0, 0]
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
