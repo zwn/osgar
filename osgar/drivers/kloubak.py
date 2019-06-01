@@ -128,8 +128,8 @@ class RobotKloubak(Node):
                     cmd = [0, 0, 4, 0]  # 1Amp
                     self.publish('can', CAN_packet(0x11, cmd))  # right front
                     self.publish('can', CAN_packet(0x12, cmd))  # left front
-                    self.publish('can', CAN_packet(0x13, cmd))  # right rear
-                    self.publish('can', CAN_packet(0x14, cmd))  # left rear
+#                    self.publish('can', CAN_packet(0x13, cmd))  # right rear
+#                    self.publish('can', CAN_packet(0x14, cmd))  # left rear
                 else:
                     cmd = [0, 0, 0, 60]
                     self.publish('can', CAN_packet(0x31, cmd))  # right front
