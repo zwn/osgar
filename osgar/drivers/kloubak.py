@@ -121,8 +121,17 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, data):
-        limit_r = 400
-        limit_l = 200
+        if abs(self.desired_angular_speed) < math.radians(5):
+            limit_r = 400
+            limit_l = 400
+        elif self.desired_angular_speed) > 0:  # TODO handle backup
+            # turn left
+            limit_r = 400
+            limit_l = 200
+        else:
+            # turn right
+            limit_r = 200
+            limit_l = 400
         if self.process_packet(data):
 #            print(self.last_encoders_front_left, self.last_encoders_front_right)
             fwd = [0, 0, 24, 0]  # 6Amp
