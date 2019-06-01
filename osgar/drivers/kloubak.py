@@ -121,18 +121,33 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, data):
+        use_current = True
         if self.process_packet(data):
             if self.desired_speed > 0:
-                cmd = [0, 0, 0, 60]
-                self.publish('can', CAN_packet(0x31, cmd))  # right front
-                self.publish('can', CAN_packet(0x32, cmd))  # left front
-                self.publish('can', CAN_packet(0x33, cmd))  # right rear
-                self.publish('can', CAN_packet(0x34, cmd))  # left rear
+                if use_current:
+                    cmd = [0, 0, 4, 0]  # 1Amp
+                    self.publish('can', CAN_packet(0x11, cmd))  # right front
+                    self.publish('can', CAN_packet(0x12, cmd))  # left front
+                    self.publish('can', CAN_packet(0x13, cmd))  # right rear
+                    self.publish('can', CAN_packet(0x14, cmd))  # left rear
+                else:
+                    cmd = [0, 0, 0, 60]
+                    self.publish('can', CAN_packet(0x31, cmd))  # right front
+                    self.publish('can', CAN_packet(0x32, cmd))  # left front
+                    self.publish('can', CAN_packet(0x33, cmd))  # right rear
+                    self.publish('can', CAN_packet(0x34, cmd))  # left rear
             else:
-                self.publish('can', CAN_packet(0x21, [0, 0, 0, 0]))  # right front
-                self.publish('can', CAN_packet(0x22, [0, 0, 0, 0]))  # left front
-                self.publish('can', CAN_packet(0x23, [0, 0, 0, 0]))  # right rear
-                self.publish('can', CAN_packet(0x24, [0, 0, 0, 0]))  # left rear
+                if use_current:
+                    cmd = [0, 0, 0, 0]
+                    self.publish('can', CAN_packet(0x11, cmd))  # right front
+                    self.publish('can', CAN_packet(0x12, cmd))  # left front
+                    self.publish('can', CAN_packet(0x13, cmd))  # right rear
+                    self.publish('can', CAN_packet(0x14, cmd))  # left rear
+                else:
+                    self.publish('can', CAN_packet(0x21, [0, 0, 0, 0]))  # right front
+                    self.publish('can', CAN_packet(0x22, [0, 0, 0, 0]))  # left front
+                    self.publish('can', CAN_packet(0x23, [0, 0, 0, 0]))  # right rear
+                    self.publish('can', CAN_packet(0x24, [0, 0, 0, 0]))  # left rear
 
     def slot_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
