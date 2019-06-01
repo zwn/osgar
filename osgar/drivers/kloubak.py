@@ -124,7 +124,7 @@ class RobotKloubak(Node):
         if abs(self.desired_angular_speed) < math.radians(5):
             limit_r = 400
             limit_l = 400
-        elif self.desired_angular_speed) > 0:  # TODO handle backup
+        elif self.desired_angular_speed > 0:  # TODO handle backup
             # turn left
             limit_r = 400
             limit_l = 200
