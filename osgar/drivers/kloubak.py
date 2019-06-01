@@ -139,6 +139,8 @@ class RobotKloubak(Node):
                         self.publish('can', CAN_packet(0x12, stop))  # left front
                     else:
                         self.publish('can', CAN_packet(0x12, fwd))  # left front
+                self.publish('can', CAN_packet(0x13, stop))  # right rear
+                self.publish('can', CAN_packet(0x14, stop))  # left rear
 
             elif self.desired_speed < 0:
                 if self.last_encoders_rear_right is not None:
@@ -150,7 +152,9 @@ class RobotKloubak(Node):
                     if abs(self.last_encoders_rear_left) > limit_l:
                         self.publish('can', CAN_packet(0x14, stop))  # left front
                     else:
-                        self.publish('can', CAN_packet(0x14, bwd))  # left front 
+                        self.publish('can', CAN_packet(0x14, bwd))  # left front
+                self.publish('can', CAN_packet(0x11, stop))  # right front
+                self.publish('can', CAN_packet(0x12, stop))  # left front 
 
             else:
                 self.publish('can', CAN_packet(0x11, stop))  # right front
