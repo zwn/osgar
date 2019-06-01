@@ -121,7 +121,8 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, data):
-        limit = 1000
+        limit_r = 1000
+        limit_l = 900
         if self.process_packet(data):
 #            print(self.last_encoders_front_left, self.last_encoders_front_right)
             fwd = [0, 0, 16, 0]  # 4Amp
@@ -129,24 +130,24 @@ class RobotKloubak(Node):
             stop = [0, 0, 0, 0]
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
-                    if abs(self.last_encoders_front_right) > limit:
+                    if abs(self.last_encoders_front_right) > limit_r:
                         self.publish('can', CAN_packet(0x11, stop))  # right front
                     else:
                         self.publish('can', CAN_packet(0x11, fwd))  # right front
                 if self.last_encoders_front_left is not None:
-                    if abs(self.last_encoders_front_left) > limit:
+                    if abs(self.last_encoders_front_left) > limit_l:
                         self.publish('can', CAN_packet(0x12, stop))  # left front
                     else:
                         self.publish('can', CAN_packet(0x12, fwd))  # left front
 
             elif self.desired_speed < 0:
                 if self.last_encoders_rear_right is not None:
-                    if abs(self.last_encoders_rear_right) > limit:
+                    if abs(self.last_encoders_rear_right) > limit_r:
                         self.publish('can', CAN_packet(0x13, stop))  # right front
                     else:
                         self.publish('can', CAN_packet(0x13, bwd))  # right front
                 if self.last_encoders_rear_left is not None:
-                    if abs(self.last_encoders_rear_left) > limit:
+                    if abs(self.last_encoders_rear_left) > limit_l:
                         self.publish('can', CAN_packet(0x14, stop))  # left front
                     else:
                         self.publish('can', CAN_packet(0x14, bwd))  # left front 
