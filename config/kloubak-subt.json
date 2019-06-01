@@ -33,7 +33,7 @@
           "driver": "lidar",
           "in": ["raw"],
           "out": ["raw", "scan"],
-          "init": {"sleep": 0.1, "mask": [15, -15], "blind_zone": 100}
+          "init": {"sleep": 0.1, "mask": [45, -45], "blind_zone": 100}
       },
       "lidar_tcp": {
           "driver": "tcp",
