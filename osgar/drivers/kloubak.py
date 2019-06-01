@@ -122,12 +122,22 @@ class RobotKloubak(Node):
 
     def slot_can(self, data):
         use_current = True
+        limit = 1000
         if self.process_packet(data):
             if self.desired_speed > 0:
                 if use_current:
                     cmd = [0, 0, 4, 0]  # 1Amp
-                    self.publish('can', CAN_packet(0x11, cmd))  # right front
-                    self.publish('can', CAN_packet(0x12, cmd))  # left front
+                    stop = [0, 0, 0, 0]
+                    if self.last_encoders_front_right is not None:
+                        if self.last_encoders_front_right > limit:
+                            self.publish('can', CAN_packet(0x11, stop))  # right front
+                        else:
+                            self.publish('can', CAN_packet(0x11, cmd))  # right front
+                    if self.last_encoders_front_left is not None:
+                        if self.last_encoders_front_left > limit:
+                            self.publish('can', CAN_packet(0x12, stop))  # left front
+                        else:
+                            self.publish('can', CAN_packet(0x12, cmd))  # left front
 #                    self.publish('can', CAN_packet(0x13, cmd))  # right rear
 #                    self.publish('can', CAN_packet(0x14, cmd))  # left rear
                 else:
