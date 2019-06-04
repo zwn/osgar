@@ -47,7 +47,7 @@
           "out": ["raw"],
           "init": {
               "port": 0,
-              "sleep": 1.0
+              "sleep": 0.1
           }
       },
       "imu": {
