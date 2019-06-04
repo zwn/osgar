@@ -22,6 +22,7 @@ CAN_ID_VESC_FRONT_L = 0x92
 CAN_ID_VESC_REAR_R = 0x93
 CAN_ID_VESC_REAR_L = 0x94
 CAN_ID_SYNC = CAN_ID_VESC_FRONT_L
+CAN_ID_CURRENT = 0x10
 
 
 class RobotKloubak(Node):
@@ -105,6 +106,10 @@ class RobotKloubak(Node):
                 self.update_buttons(packet[2:])
             elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
                 self.update_encoders(msg_id, packet[2:])
+            elif msg_id == CAN_ID_CURRENT:
+                assert len(packet) == 5, len(packet)  # expected 24bit integer miliAmps
+                current = struct.unpack_from('>i', packet, 1)[0] & 0xFFFFFF
+#                print(current)
 
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
