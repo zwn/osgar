@@ -121,6 +121,7 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, data):
+        limit_brake = 100
         if abs(self.desired_angular_speed) < math.radians(5):
             limit_r = 400
             limit_l = 400
@@ -140,12 +141,18 @@ class RobotKloubak(Node):
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
                     if abs(self.last_encoders_front_right) > limit_r:
-                        self.publish('can', CAN_packet(0x11, stop))  # right front
+                        if abs(self.last_encoders_front_right) - limit_r > limit_brake:
+                            self.publish('can', CAN_packet(0x21, stop))  # brake right front
+                        else:
+                            self.publish('can', CAN_packet(0x11, stop))  # right front
                     else:
                         self.publish('can', CAN_packet(0x11, fwd))  # right front
                 if self.last_encoders_front_left is not None:
                     if abs(self.last_encoders_front_left) > limit_l:
-                        self.publish('can', CAN_packet(0x12, stop))  # left front
+                        if abs(self.last_encoders_front_left) - limit_l > limit_brake:
+                            self.publish('can', CAN_packet(0x22, stop))  # brake left front
+                        else:
+                            self.publish('can', CAN_packet(0x12, stop))  # left front
                     else:
                         self.publish('can', CAN_packet(0x12, fwd))  # left front
                 self.publish('can', CAN_packet(0x13, stop))  # right rear
