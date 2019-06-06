@@ -144,10 +144,9 @@ class RobotKloubak(Node):
             fwd = [0, 0, 72, 0]  # 6Amp
             bwd = [255, 255, 255-72, 255]  # 4Amp
             stop = [0, 0, 0, 0]
-            rot = [0, 0, 1, 0]
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
-                    self.publish('can', CAN_packet(0x31, rot))
+                    self.publish('can', CAN_packet(0x31, [0, 0, limit_r//256, limit_r % 256]))
                     """
                     if abs(self.last_encoders_front_right) > limit_r:
                         if abs(self.last_encoders_front_right) - limit_r > limit_brake:
@@ -157,7 +156,7 @@ class RobotKloubak(Node):
                     else:
                         self.publish('can', CAN_packet(0x11, fwd))  # right front"""
                 if self.last_encoders_front_left is not None:
-                    self.publish('can', CAN_packet(0x32, rot))
+                    self.publish('can', CAN_packet(0x32, [0, 0, limit_l//256, limit_l % 256]))
                     """
                     if abs(self.last_encoders_front_left) > limit_l:
                         if abs(self.last_encoders_front_left) - limit_l > limit_brake:
@@ -171,15 +170,19 @@ class RobotKloubak(Node):
 
             elif self.desired_speed < 0:
                 if self.last_encoders_rear_right is not None:
+                    self.publish('can', CAN_packet(0x33, [255, 255, 255 - limit_r//256, 255 - limit_r % 256]))
+                    """
                     if abs(self.last_encoders_rear_right) > limit_r:
                         self.publish('can', CAN_packet(0x13, stop))  # right front
                     else:
-                        self.publish('can', CAN_packet(0x13, bwd))  # right front
+                        self.publish('can', CAN_packet(0x13, bwd))  # right front"""
                 if self.last_encoders_rear_left is not None:
+                    self.publish('can', CAN_packet(0x34, [255, 255, 255 - limit_l//256, 255 - limit_l % 256]))
+                    """
                     if abs(self.last_encoders_rear_left) > limit_l:
                         self.publish('can', CAN_packet(0x14, stop))  # left front
                     else:
-                        self.publish('can', CAN_packet(0x14, bwd))  # left front
+                        self.publish('can', CAN_packet(0x14, bwd))  # left front"""
                 self.publish('can', CAN_packet(0x11, stop))  # right front
                 self.publish('can', CAN_packet(0x12, stop))  # left front 
 
