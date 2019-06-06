@@ -64,6 +64,7 @@ class RobotKloubak(Node):
         rpm3, current, duty_cycle = struct.unpack('>ihh', data)
         if msg_id == CAN_ID_VESC_FRONT_L:
             self.last_encoders_front_left = rpm3
+#            print(rpm3, current, duty_cycle)
         elif msg_id == CAN_ID_VESC_FRONT_R:
             self.last_encoders_front_right = rpm3
         if msg_id == CAN_ID_VESC_REAR_L:
@@ -140,8 +141,8 @@ class RobotKloubak(Node):
             limit_l = 400
         if self.process_packet(data):
 #            print(self.last_encoders_front_left, self.last_encoders_front_right)
-            fwd = [0, 0, 24, 0]  # 6Amp
-            bwd = [255, 255, 255-24, 255]  # 4Amp
+            fwd = [0, 0, 72, 0]  # 6Amp
+            bwd = [255, 255, 255-72, 255]  # 4Amp
             stop = [0, 0, 0, 0]
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
