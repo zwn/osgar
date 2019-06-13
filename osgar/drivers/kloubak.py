@@ -25,6 +25,12 @@ CAN_ID_SYNC = CAN_ID_VESC_FRONT_L
 CAN_ID_CURRENT = 0x10
 
 
+def draw(arr):
+    import matplotlib.pyplot as plt
+    plt.plot(range(len(arr)), arr, 'o-', linewidth=2)
+    plt.show()
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -42,6 +48,9 @@ class RobotKloubak(Node):
         self.last_encoders_rear_left = None
         self.last_encoders_rear_right = None
         self.last_encoders_time = None
+
+        self.verbose = False  # should be in Node
+        self.enc_debug_arr = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -147,6 +156,10 @@ class RobotKloubak(Node):
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
                     self.publish('can', CAN_packet(0x31, [0, 0, limit_r//256, limit_r % 256]))
+                    if self.verbose:
+                        self.enc_debug_arr.append((limit_l, limit_r,
+                            self.last_encoders_front_left, self.last_encoders_front_right,
+                            self.last_encoders_rear_left, self.last_encoders_rear_right))
                     """
                     if abs(self.last_encoders_front_right) > limit_r:
                         if abs(self.last_encoders_front_right) - limit_r > limit_brake:
@@ -199,7 +212,14 @@ class RobotKloubak(Node):
     def run(self):
         try:
             while True:
-                self.time, channel, data = self.listen()
+                try:
+                    self.time, channel, data = self.listen()
+                except StopIteration:
+                    if self.verbose:
+                        print(len(self.enc_debug_arr))
+#                        draw(self.enc_debug_arr)
+                    raise BusShutdownException
+
                 if channel == 'can':
                     self.slot_can(data)
                 elif channel == 'desired_speed':
