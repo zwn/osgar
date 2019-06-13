@@ -27,7 +27,7 @@ CAN_ID_CURRENT = 0x10
 
 def draw(arr):
     import matplotlib.pyplot as plt
-    plt.plot(range(len(arr)), arr, 'o-', linewidth=2)
+    plt.plot(range(len(arr)), arr, '-', linewidth=2)
     plt.show()
 
 
@@ -153,13 +153,18 @@ class RobotKloubak(Node):
             fwd = [0, 0, 72, 0]  # 6Amp
             bwd = [255, 255, 255-72, 255]  # 4Amp
             stop = [0, 0, 0, 0]
+            if self.verbose:
+                cmd_l, cmd_r = limit_l, limit_r
+                if self.desired_speed < 0:
+                    cmd_l, cmd_r = -cmd_l, -cmd_r
+                elif self.desired_speed == 0:
+                    cmd_l, cmd_r = 0, 0
+                self.enc_debug_arr.append((cmd_l, cmd_r,
+                    self.last_encoders_front_left, self.last_encoders_front_right,
+                    self.last_encoders_rear_left, self.last_encoders_rear_right))
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
                     self.publish('can', CAN_packet(0x31, [0, 0, limit_r//256, limit_r % 256]))
-                    if self.verbose:
-                        self.enc_debug_arr.append((limit_l, limit_r,
-                            self.last_encoders_front_left, self.last_encoders_front_right,
-                            self.last_encoders_rear_left, self.last_encoders_rear_right))
                     """
                     if abs(self.last_encoders_front_right) > limit_r:
                         if abs(self.last_encoders_front_right) - limit_r > limit_brake:
