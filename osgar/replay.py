@@ -74,6 +74,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', nargs='+', help='force alternative configuration file')
     parser.add_argument('--module', help='module name for analysis', required=True)  # TODO default "all"
     parser.add_argument('--verbose', '-v', help="verbose mode", action='store_true')
+    parser.add_argument('--draw', help="draw debug results", action='store_true')
     args = parser.parse_args()
 
     module_instance = replay(args)
@@ -84,5 +85,8 @@ if __name__ == "__main__":
     module_instance.join()
     if not args.force:
         print("maximum delay:", module_instance.bus.max_delay)
+
+    if args.draw:
+        module_instance.draw()
 
 # vim: expandtab sw=4 ts=4
