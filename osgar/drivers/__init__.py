@@ -12,6 +12,7 @@ from .cortexpilot import Cortexpilot
 from .logusb import LogUSB
 from .replay import ReplayDriver
 from .lord_imu import LordIMU
+from .velodyne import Velodyne
 
 # dictionary of all available drivers
 all_drivers = dict(gps=GPS, imu=IMU, spider=Spider, serial=LogSerial,
@@ -24,5 +25,6 @@ all_drivers = dict(gps=GPS, imu=IMU, spider=Spider, serial=LogSerial,
                    usb=LogUSB,
                    replay=ReplayDriver,
                    lordimu=LordIMU,
+                   velodyne=Velodyne,
                    )
 
