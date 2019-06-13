@@ -217,7 +217,6 @@ class RobotKloubak(Node):
                 except StopIteration:
                     if self.verbose:
                         print(len(self.enc_debug_arr))
-#                        draw(self.enc_debug_arr)
                     raise BusShutdownException
 
                 if channel == 'can':
@@ -228,5 +227,11 @@ class RobotKloubak(Node):
                     assert False, channel  # unsupported channel
         except BusShutdownException:
             pass
+
+    def draw(self):
+        """
+        Debug - draw encoders
+        """
+        draw(self.enc_debug_arr)
 
 # vim: expandtab sw=4 ts=4
