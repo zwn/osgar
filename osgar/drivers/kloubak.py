@@ -23,17 +23,24 @@ CAN_ID_VESC_REAR_R = 0x93
 CAN_ID_VESC_REAR_L = 0x94
 CAN_ID_SYNC = CAN_ID_VESC_FRONT_L
 CAN_ID_CURRENT = 0x70
+CAN_ID_JOIN_ANGLE = 0x80
 
 
-def draw(arr):
+def draw(arr, join_arr):
     import matplotlib.pyplot as plt
     t = [a[0] for a in arr]
     values = [a[1:] for a in arr]
-    line = plt.plot(t, values, '-', linewidth=2) #, label=)
-    plt.xlabel('time (s)')
-    plt.legend(line, ['request left', 'request right',
+
+    f, ax = plt.subplots(2, sharex=True)
+
+    line = ax[0].plot(t, values, '-', linewidth=2)
+    ax[0].legend(line, ['request left', 'request right',
                       'enc front left', 'enc front right',
                       'enc rear left', 'enc rear right'])
+
+    line = ax[1].plot(t, join_arr, '-', linewidth=2)
+
+    plt.xlabel('time (s)')
     plt.show()
 
 
@@ -54,9 +61,11 @@ class RobotKloubak(Node):
         self.last_encoders_rear_left = None
         self.last_encoders_rear_right = None
         self.last_encoders_time = None
+        self.last_join_angle = None
 
         self.verbose = False  # should be in Node
         self.enc_debug_arr = []
+        self.join_debug_arr = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -126,6 +135,10 @@ class RobotKloubak(Node):
                 assert len(packet) == 5, len(packet)  # expected 24bit integer miliAmps
                 current = struct.unpack_from('>i', packet, 1)[0] & 0xFFFFFF
 #                print(current)
+            elif msg_id == CAN_ID_JOIN_ANGLE:
+                assert len(packet) == 2 + 4, len(packet)
+                self.last_join_angle = struct.unpack_from('>i', packet, 2)[0]
+#                print(self.last_join_angle)
 
             if msg_id == CAN_ID_SYNC:
                 self.publish('encoders', 
@@ -168,6 +181,7 @@ class RobotKloubak(Node):
                 self.enc_debug_arr.append((timestamp.total_seconds(), cmd_l, cmd_r,
                     self.last_encoders_front_left, self.last_encoders_front_right,
                     self.last_encoders_rear_left, self.last_encoders_rear_right))
+                self.join_debug_arr.append(self.last_join_angle)
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
                     self.publish('can', CAN_packet(0x31, [0, 0, limit_r//256, limit_r % 256]))
@@ -243,6 +257,6 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-        draw(self.enc_debug_arr)
+        draw(self.enc_debug_arr, self.join_debug_arr)
 
 # vim: expandtab sw=4 ts=4
