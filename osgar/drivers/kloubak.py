@@ -135,7 +135,7 @@ class RobotKloubak(Node):
                 return True
         return False
 
-    def slot_can(self, data):
+    def slot_can(self, timestamp, data):
         limit_brake = 100
         if abs(self.desired_angular_speed) < math.radians(5):
             limit_r = 400
@@ -159,7 +159,7 @@ class RobotKloubak(Node):
                     cmd_l, cmd_r = -cmd_l, -cmd_r
                 elif self.desired_speed == 0:
                     cmd_l, cmd_r = 0, 0
-                self.enc_debug_arr.append((cmd_l, cmd_r,
+                self.enc_debug_arr.append((timestamp.total_seconds(), cmd_l, cmd_r,
                     self.last_encoders_front_left, self.last_encoders_front_right,
                     self.last_encoders_rear_left, self.last_encoders_rear_right))
             if self.desired_speed > 0:
@@ -211,7 +211,7 @@ class RobotKloubak(Node):
                 self.publish('can', CAN_packet(0x14, stop))  # left rear
 
 
-    def slot_desired_speed(self, data):
+    def slot_desired_speed(self, timestamp, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def run(self):
@@ -225,9 +225,9 @@ class RobotKloubak(Node):
                     raise BusShutdownException
 
                 if channel == 'can':
-                    self.slot_can(data)
+                    self.slot_can(self.time, data)
                 elif channel == 'desired_speed':
-                    self.slot_desired_speed(data)
+                    self.slot_desired_speed(self.time, data)
                 else:
                     assert False, channel  # unsupported channel
         except BusShutdownException:
