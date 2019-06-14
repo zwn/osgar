@@ -27,7 +27,13 @@ CAN_ID_CURRENT = 0x10
 
 def draw(arr):
     import matplotlib.pyplot as plt
-    plt.plot(range(len(arr)), arr, '-', linewidth=2)
+    t = [a[0] for a in arr]
+    values = [a[1:] for a in arr]
+    line = plt.plot(t, values, '-', linewidth=2) #, label=)
+    plt.xlabel('time (s)')
+    plt.legend(line, ['request left', 'request right',
+                      'enc front left', 'enc front right',
+                      'enc rear left', 'enc rear right'])
     plt.show()
 
 
