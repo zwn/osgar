@@ -44,6 +44,17 @@ def draw(arr, join_arr):
     plt.show()
 
 
+def draw_enc_stat(arr):
+    import matplotlib.pyplot as plt
+    t = [a[0] for a in arr]
+    values = [a[1:] for a in arr]
+
+    line = plt.plot(t, values, '-', linewidth=2)
+
+    plt.xlabel('time (s)')
+    plt.show()
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -66,6 +77,8 @@ class RobotKloubak(Node):
         self.verbose = False  # should be in Node
         self.enc_debug_arr = []
         self.join_debug_arr = []
+        self.count = [0, 0, 0, 0]
+        self.count_arr = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -88,13 +101,18 @@ class RobotKloubak(Node):
         rpm3, current, duty_cycle = struct.unpack('>ihh', data)
         if msg_id == CAN_ID_VESC_FRONT_L:
             self.last_encoders_front_left = rpm3
-#            print(rpm3, current, duty_cycle)
+#            print('left', rpm3, current, duty_cycle)
         elif msg_id == CAN_ID_VESC_FRONT_R:
             self.last_encoders_front_right = rpm3
+#            print('right', rpm3, current, duty_cycle)
         if msg_id == CAN_ID_VESC_REAR_L:
             self.last_encoders_rear_left = rpm3
         elif msg_id == CAN_ID_VESC_REAR_R:
             self.last_encoders_rear_right = rpm3
+        self.count[msg_id - 0x91] += 1
+#        print(self.count)
+        if self.verbose:
+            self.count_arr.append([self.time.total_seconds()] + self.count)
 
     def update_pose(self):
         """Update internal pose with 'dt' step"""
@@ -155,6 +173,7 @@ class RobotKloubak(Node):
         return False
 
     def slot_can(self, timestamp, data):
+        self.time = timestamp
         limit_brake = 100
         if abs(self.desired_angular_speed) < math.radians(5):
             limit_r = 400
@@ -257,6 +276,8 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-        draw(self.enc_debug_arr, self.join_debug_arr)
+#        draw(self.enc_debug_arr, self.join_debug_arr)
+#        print(self.count_arr)
+        draw_enc_stat(self.count_arr)
 
 # vim: expandtab sw=4 ts=4
