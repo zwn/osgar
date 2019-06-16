@@ -92,7 +92,7 @@ def scans_gen_legacy(logfile):
 
 def scr(x, y):
     global g_scale
-    return WINDOW_SIZE[0]//2 + round(g_scale*x), WINDOW_SIZE[1]//2 - round(g_scale*y)
+    return 5*WINDOW_SIZE[0]//8 + round(g_scale*x), WINDOW_SIZE[1]//2 - round(g_scale*y)
 
 
 def scan2xy(pose, scan):
