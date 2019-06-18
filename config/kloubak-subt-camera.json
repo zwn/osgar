@@ -53,7 +53,7 @@
       "imu": {
           "driver": "lordimu",
           "in": ["raw"],
-          "out": ["orientation", "rotation"],
+          "out": ["orientation", "rotation", "gps_position"],
           "init": {}
       },
       "imu_serial": {
@@ -73,7 +73,8 @@
               ["lidar.raw", "lidar_tcp.raw"],
               ["lidar.scan", "app.scan"],
               ["kloubak.emergency_stop", "app.emergency_stop"],
-              ["imu_serial.raw", "imu.raw"]
+              ["imu_serial.raw", "imu.raw"],
+              ["imu.gps_position", "app.position"]
       ]
   }
 }
