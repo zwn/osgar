@@ -85,7 +85,7 @@
           "driver": "serial",
           "in": [],
           "out": ["raw"],
-          "init": {"port": "/dev/ttyACM0", "speed": 115200}
+          "init": {"port": "/dev/ttyACM1", "speed": 115200}
       },
       "lord_imu": {
           "driver": "lordimu",
@@ -97,7 +97,7 @@
           "driver": "serial",
           "in": [],
           "out": ["raw"],
-          "init": {"port": "/dev/ttyACM1", "speed": 115200}
+          "init": {"port": "/dev/ttyACM0", "speed": 115200}
       }
 
     },
