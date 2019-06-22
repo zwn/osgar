@@ -199,7 +199,7 @@ class GPSNavigation(Node):
             self.update()
 
             if int(prev_time.total_seconds()) != int(self.time.total_seconds()):
-                print(self.time, geo_length(self.last_position, goal), self.last_imu_yaw, self.wheel_heading)
+                print(self.time, geo_length(self.last_position, goal), self.last_imu_yaw)
 
         print("STOP (3s)")
         self.send_speed_cmd(0, 0)
