@@ -187,10 +187,11 @@ class GPSNavigation(Node):
                 gps_angle = normalizeAnglePIPI(geo_angle(self.last_position_angle, self.last_position))
                 print('step', step, math.degrees(gps_angle))
                 self.last_position_angle = self.last_position
-                desired_wheel_heading = normalizeAnglePIPI(desired_heading - gps_angle + self.wheel_heading)
+                desired_wheel_heading = normalizeAnglePIPI(desired_heading - gps_angle)
 
-            if gps_angle is None or self.wheel_heading is None:
-                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw - 35.5))
+            if gps_angle is None:
+#                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw - 35.5))
+                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw))
                 desired_wheel_heading = normalizeAnglePIPI(desired_heading-spider_heading)
 
             self.send_speed_cmd(self.maxspeed, desired_wheel_heading)
