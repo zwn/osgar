@@ -72,8 +72,8 @@ class GPSNavigation(Node):
         channel = super().update()  # define self.time
         if channel == 'position':
             self.last_position = self.position
-        elif channel == 'rotation':
-            yaw, pitch, roll = self.rotation
+        elif channel == 'rot':  # should be rather 'rotation'
+            yaw, pitch, roll = self.rot
             self.last_imu_yaw = yaw
 
     def register(self, callback):
