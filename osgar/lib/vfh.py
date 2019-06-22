@@ -52,6 +52,7 @@ class VFH:
         candidateDirections,isWide = self.findCandidateDirections(openings,directionOfWaypoint)
         desiredDirection = self.getBestDirection(candidateDirections,directionOfWaypoint)
         self.drawVFHToVisualLog(histogram,candidateDirections,desiredDirection)
+        return desiredDirection
                                 
     def createPrimaryPolarHistogram(self,obstacleMap,currentPose):
         subFrame = self.getSubFrameSingleChannel(obstacleMap,DIST_THRESHOLD)
