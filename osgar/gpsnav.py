@@ -101,6 +101,46 @@ class GPSNavigation(Node):
         self.wait(timedelta(seconds=1))
 
     def run(self):
+        from osgar.lib.horizontal_lidar_ocgm import HorizontalLidarOcgm, OCGM_CELLS_COUNT, OCGM_CELLS_PER_METER
+        from osgar.lib.vfh import VFH
+        from osgar.lib.visual_log import VisualLog
+
+        visualLog = VisualLog()
+        visualLog.init()
+        horizontalLidarOcgm = HorizontalLidarOcgm(cells=OCGM_CELLS_COUNT/2,
+                                               res=1/OCGM_CELLS_PER_METER,
+                                               p_d=0.9,
+                                               p_nd=0.4,
+                                               decay=0.98,
+                                               pose = [0,0,0],
+                                               cols = 190,
+                                               rows = int(OCGM_CELLS_COUNT/2)+1)
+        vfh = VFH(horizontalLidarOcgm,visualLog)
+
+        self.wait(timedelta(seconds=1))
+
+        globalWaypoint = (100, 0)
+        while True:
+            channel = self.update()
+            timestamp = self.time
+            scan = self.scan  # [1000]*270
+            x, y, heading = self.pose2d
+            pose = (x/1000.0, y/1000.0, math.radians(heading/100.0))
+
+            visualLog.init()
+            #OCGM update
+            localMap = horizontalLidarOcgm.update(scan, timestamp, pose)
+            horizontalLidarOcgm.drawImageToVisualLog(visualLog, pose)
+
+            #local planner update
+            cmdVel = vfh.update(globalWaypoint, pose, localMap)
+            print(self.time, pose, len(scan), cmdVel)
+            visualLog.drawCar(pose)
+            visualLog.show()
+
+        self.wait(timedelta(seconds=1))
+
+    def run2(self):
         print("Waiting for valid GPS position...")
         while self.last_position is None or self.last_position == INVALID_COORDINATES:
             self.update()
