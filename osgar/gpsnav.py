@@ -100,10 +100,12 @@ class GPSNavigation(Node):
         self.send_speed_cmd(0, 0)
         self.wait(timedelta(seconds=1))
 
-    def run(self):
+    def run1(self):
         from osgar.lib.horizontal_lidar_ocgm import HorizontalLidarOcgm, OCGM_CELLS_COUNT, OCGM_CELLS_PER_METER
         from osgar.lib.vfh import VFH
         from osgar.lib.visual_log import VisualLog
+
+        STEER_FACTOR = 1 #0.5
 
         visualLog = VisualLog()
         visualLog.init()
@@ -133,14 +135,19 @@ class GPSNavigation(Node):
             horizontalLidarOcgm.drawImageToVisualLog(visualLog, pose)
 
             #local planner update
-            cmdVel = vfh.update(globalWaypoint, pose, localMap)
-            print(self.time, pose, len(scan), cmdVel)
+            desired_direction = vfh.update(globalWaypoint, pose, localMap)
+            if desired_direction is None:
+                print("No direction!")
+                self.send_speed_cmd(0, 0)
+            else:
+                desired_angular_speed = normalizeAnglePIPI(math.pi - desired_direction) * STEER_FACTOR
+                print(self.time, desired_direction, desired_angular_speed)
             visualLog.drawCar(pose)
             visualLog.show()
 
         self.wait(timedelta(seconds=1))
 
-    def run2(self):
+    def run(self):
         print("Waiting for valid GPS position...")
         while self.last_position is None or self.last_position == INVALID_COORDINATES:
             self.update()
