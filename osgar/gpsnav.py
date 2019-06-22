@@ -165,9 +165,9 @@ class GPSNavigation(Node):
                     print("Goal at %.2fm" % geo_length(self.last_position, goal))
                     angle = geo_angle(self.last_position, goal)
                     if angle is not None:
-                        print("Heading %.1fdeg, imu" % math.degrees(angle), self.last_imu_yaw)
+                        print("Heading %.1fdeg, imu %.1fdeg" % (math.degrees(angle), math.degrees(self.last_imu_yaw)))
                     else:
-                        print("Heading None, imu", self.last_imu_yaw)
+                        print("Heading None, imu %.1fdeg" % math.degrees(self.last_imu_yaw))
                     self.navigate_to_goal(goal, timedelta(seconds=600))
         except EmergencyStopException:
             print("EMERGENCY STOP (wait 3s)")
@@ -189,10 +189,9 @@ class GPSNavigation(Node):
                 self.last_position_angle = self.last_position
                 desired_wheel_heading = normalizeAnglePIPI(desired_heading - gps_angle)
 
-            if gps_angle is None:
+            if True:  #gps_angle is None:
 #                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw - 35.5))
-                spider_heading = normalizeAnglePIPI(math.radians(180 - self.last_imu_yaw))
-                desired_wheel_heading = normalizeAnglePIPI(desired_heading-spider_heading)
+                desired_wheel_heading = normalizeAnglePIPI(desired_heading - self.last_imu_yaw)
 
             self.send_speed_cmd(self.maxspeed, desired_wheel_heading)
 
@@ -200,7 +199,7 @@ class GPSNavigation(Node):
             self.update()
 
             if int(prev_time.total_seconds()) != int(self.time.total_seconds()):
-                print(self.time, geo_length(self.last_position, goal), self.last_imu_yaw)
+                print(self.time, geo_length(self.last_position, goal), math.degrees(self.last_imu_yaw))
 
         print("STOP (3s)")
         self.send_speed_cmd(0, 0)
