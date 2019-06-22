@@ -105,7 +105,6 @@
               ["imu_serial.raw", "imu.raw"],
               ["imu.rotation", "app.rot"],
               ["eduro.voltage", "app.voltage"],
-              ["app.artf_xyz", "reporter.artf_xyz"],
               ["gps_serial.raw", "gps.raw"],
               ["gps.position", "app.position"]]
   }
