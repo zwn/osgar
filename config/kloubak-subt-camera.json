@@ -4,7 +4,7 @@
     "modules": {
       "app": {
           "driver": "application",
-          "in": ["encoders", "scan", "emergency_stop", "pose2d", "buttons", "voltage"],
+          "in": ["encoders", "scan", "emergency_stop", "pose2d", "buttons", "voltage", "rot"],
           "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d"],
           "init": {
             "max_speed": 0.5
@@ -74,6 +74,7 @@
               ["lidar.scan", "app.scan"],
               ["kloubak.emergency_stop", "app.emergency_stop"],
               ["imu_serial.raw", "imu.raw"],
+              ["imu.rotation", "app.rot"],
               ["imu.gps_position", "app.position"]
       ]
   }
