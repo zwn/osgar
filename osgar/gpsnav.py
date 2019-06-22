@@ -74,7 +74,7 @@ class GPSNavigation(Node):
             self.last_position = self.position
         elif channel == 'rot':  # should be rather 'rotation'
             yaw, pitch, roll = self.rot
-            self.last_imu_yaw = yaw
+            self.last_imu_yaw = math.radians(yaw/100.0)
 
     def register(self, callback):
         self.monitors.append(callback)
