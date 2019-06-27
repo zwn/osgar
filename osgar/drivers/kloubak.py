@@ -55,6 +55,10 @@ def draw_enc_stat(arr):
     plt.show()
 
 
+def compute_desired_erpm(desired_speed, desired_angular_speed):
+    pass
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
