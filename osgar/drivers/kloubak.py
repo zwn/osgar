@@ -192,9 +192,6 @@ class RobotKloubak(Node):
             limit_r = 200
             limit_l = 400
         if self.process_packet(data):
-#            print(self.last_encoders_front_left, self.last_encoders_front_right)
-            fwd = [0, 0, 72, 0]  # 6Amp
-            bwd = [255, 255, 255-72, 255]  # 4Amp
             stop = [0, 0, 0, 0]
             if self.verbose:
                 cmd_l, cmd_r = limit_l, limit_r
@@ -208,9 +205,9 @@ class RobotKloubak(Node):
                 self.join_debug_arr.append(self.last_join_angle)
             if self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
-                    self.publish('can', CAN_packet(0x31, [0, 0, limit_r//256, limit_r % 256]))
+                    self.publish('can', CAN_packet(0x31, list(struct.pack('>i', limit_r))))
                 if self.last_encoders_front_left is not None:
-                    self.publish('can', CAN_packet(0x32, [0, 0, limit_l//256, limit_l % 256]))
+                    self.publish('can', CAN_packet(0x32, list(struct.pack('>i', limit_l))))
                 self.publish('can', CAN_packet(0x13, stop))  # right rear
                 self.publish('can', CAN_packet(0x14, stop))  # left rear
 
