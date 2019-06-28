@@ -56,7 +56,10 @@ def draw_enc_stat(arr):
 
 
 def compute_desired_erpm(desired_speed, desired_angular_speed):
-    pass
+    scale = 1 / (VESC_REPORT_FREQ * ENC_SCALE)
+    left = scale * (desired_speed - desired_angular_speed * WHEEL_DISTANCE / 2)
+    right = scale * (desired_speed + desired_angular_speed * WHEEL_DISTANCE / 2)
+    return int(round(left)), int(round(right))
 
 
 class RobotKloubak(Node):
