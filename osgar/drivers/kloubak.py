@@ -191,6 +191,7 @@ class RobotKloubak(Node):
             # turn right
             limit_r = 200
             limit_l = 400
+#        limit_l, limit_r = compute_desired_erpm(self.desired_speed, self.desired_angular_speed)
         if self.process_packet(data):
             stop = [0, 0, 0, 0]
             if self.verbose:
@@ -213,9 +214,9 @@ class RobotKloubak(Node):
 
             elif self.desired_speed < 0:
                 if self.last_encoders_rear_right is not None:
-                    self.publish('can', CAN_packet(0x33, [255, 255, 255 - limit_r//256, 255 - limit_r % 256]))
+                    self.publish('can', CAN_packet(0x33, list(struct.pack('>i', -limit_r-1))))  # TODO sign and -1
                 if self.last_encoders_rear_left is not None:
-                    self.publish('can', CAN_packet(0x34, [255, 255, 255 - limit_l//256, 255 - limit_l % 256]))
+                    self.publish('can', CAN_packet(0x34, list(struct.pack('>i', -limit_l-1))))  # TODO sign and -1
                 self.publish('can', CAN_packet(0x11, stop))  # right front
                 self.publish('can', CAN_packet(0x12, stop))  # left front 
 
