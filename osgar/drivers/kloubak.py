@@ -179,19 +179,7 @@ class RobotKloubak(Node):
 
     def slot_can(self, timestamp, data):
         self.time = timestamp
-        limit_brake = 100
-        if abs(self.desired_angular_speed) < math.radians(5):
-            limit_r = 400
-            limit_l = 400
-        elif self.desired_angular_speed > 0:  # TODO handle backup
-            # turn left
-            limit_r = 400
-            limit_l = 200
-        else:
-            # turn right
-            limit_r = 200
-            limit_l = 400
-#        limit_l, limit_r = compute_desired_erpm(self.desired_speed, self.desired_angular_speed)
+        limit_l, limit_r = compute_desired_erpm(self.desired_speed, self.desired_angular_speed)
         if self.process_packet(data):
             stop = [0, 0, 0, 0]
             if self.verbose:
@@ -214,9 +202,9 @@ class RobotKloubak(Node):
 
             elif self.desired_speed < 0:
                 if self.last_encoders_rear_right is not None:
-                    self.publish('can', CAN_packet(0x33, list(struct.pack('>i', -limit_r-1))))  # TODO sign and -1
+                    self.publish('can', CAN_packet(0x33, list(struct.pack('>i', limit_r))))
                 if self.last_encoders_rear_left is not None:
-                    self.publish('can', CAN_packet(0x34, list(struct.pack('>i', -limit_l-1))))  # TODO sign and -1
+                    self.publish('can', CAN_packet(0x34, list(struct.pack('>i', limit_l))))
                 self.publish('can', CAN_packet(0x11, stop))  # right front
                 self.publish('can', CAN_packet(0x12, stop))  # left front 
 
