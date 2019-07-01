@@ -84,6 +84,7 @@ class RobotKloubak(Node):
         self.join_debug_arr = []
         self.count = [0, 0, 0, 0]
         self.count_arr = []
+        self.debug_odo = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -119,14 +120,14 @@ class RobotKloubak(Node):
         if self.verbose:
             self.count_arr.append([self.time.total_seconds()] + self.count)
 
-    def update_pose(self):
+    def compute_pose(self, left, right):
         """Update internal pose with 'dt' step"""
         if self.last_encoders_front_left is None or self.last_encoders_front_right is None:
-            return False
+            return False, None, None
         x, y, heading = self.pose
 
-        metricL = ENC_SCALE * self.last_encoders_front_left  # dt is already part of ENC_SCALE
-        metricR = ENC_SCALE * self.last_encoders_front_right
+        metricL = ENC_SCALE * left  # dt is already part of ENC_SCALE
+        metricR = ENC_SCALE * right
 
         dist = (metricL + metricR)/2.0
         angle = (metricR - metricL)/WHEEL_DISTANCE
@@ -143,8 +144,16 @@ class RobotKloubak(Node):
             x += -r * math.sin(heading) + r * math.sin(heading + angle)
             y += +r * math.cos(heading) - r * math.cos(heading + angle)
             heading += angle # not normalized
-        self.pose = (x, y, heading)
-        return True
+        return True, (x, y, heading), (dist, angle)
+
+    def update_pose(self):
+        ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+        if ret:
+            self.pose = pose
+        ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
+        if self.verbose and ret and ret2:
+            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
+        return ret
 
     def process_packet(self, packet, verbose=False):
         if len(packet) >= 2:
@@ -243,6 +252,7 @@ class RobotKloubak(Node):
         """
 #        draw(self.enc_debug_arr, self.join_debug_arr)
 #        print(self.count_arr)
-        draw_enc_stat(self.count_arr)
+#        draw_enc_stat(self.count_arr)
+        draw_enc_stat(self.debug_odo)
 
 # vim: expandtab sw=4 ts=4
