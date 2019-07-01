@@ -152,7 +152,8 @@ class RobotKloubak(Node):
             self.pose = pose
         ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
         if self.verbose and ret and ret2:
-            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
+#            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
+            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
         return ret
 
     def process_packet(self, packet, verbose=False):
