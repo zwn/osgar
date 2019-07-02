@@ -3,7 +3,7 @@ import math
 from unittest.mock import MagicMock
 
 from osgar.drivers.kloubak import (compute_desired_erpm, WHEEL_DISTANCE,
-        compute_rear)
+        compute_rear, CENTER_AXLE_DISTANCE)
 
 
 class KloubakTest(unittest.TestCase):
@@ -38,7 +38,7 @@ class KloubakTest(unittest.TestCase):
 
         # turn in place
         speed, angular = compute_rear(0.0, 0.1, math.pi/2)
-        self.assertAlmostEqual(speed, 0.1)
+        self.assertAlmostEqual(speed, 0.1 * CENTER_AXLE_DISTANCE)
         self.assertAlmostEqual(angular, 0.0)
 
 # vim: expandtab sw=4 ts=4

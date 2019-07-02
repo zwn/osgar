@@ -11,6 +11,7 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 
 WHEEL_DISTANCE = 0.475  # m
+CENTER_AXLE_DISTANCE = 0.4  # m TODO measure!!!  - distance from potentiometer
 VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
@@ -75,8 +76,8 @@ def joint_deg(analog):
 
 def compute_rear(speed, angular_speed, joint_angle):
     ca, sa = math.cos(joint_angle), math.sin(joint_angle)
-    x = ca * speed + sa * angular_speed
-    y = -sa * speed + ca * angular_speed
+    x = ca * speed + sa * angular_speed * CENTER_AXLE_DISTANCE
+    y = -sa * speed + ca * angular_speed * CENTER_AXLE_DISTANCE
     return x, -y
 
 
