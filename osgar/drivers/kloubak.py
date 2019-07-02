@@ -171,12 +171,16 @@ class RobotKloubak(Node):
         if ret:
             self.pose = pose
         ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
-        if self.verbose and ret and ret2:
+        if self.verbose and ret and ret2 and self.last_join_angle is not None:
 #            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
 #            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
-            self.debug_odo.append((self.time.total_seconds(), motion[0], motion[1],
-                                   motion_rear[0], motion_rear[1],
-                                   joint_deg(self.last_join_angle)))
+#            self.debug_odo.append((self.time.total_seconds(), motion[0], motion[1],
+#                                   motion_rear[0], motion_rear[1],
+#                                   joint_deg(self.last_join_angle)))
+            estimate = compute_rear(motion[0], motion[1], joint_rad(self.last_join_angle))
+#            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0], estimate[0]))
+#            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1], estimate[1]))
+            self.debug_odo.append((self.time.total_seconds(), motion_rear[1], estimate[1]))
         return ret
 
     def process_packet(self, packet, verbose=False):
