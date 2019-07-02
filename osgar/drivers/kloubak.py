@@ -60,6 +60,19 @@ def compute_desired_erpm(desired_speed, desired_angular_speed):
     return int(round(left)), int(round(right))
 
 
+def joint_rad(analog):
+    if analog is None:
+        return None
+    return math.radians(70*(analog - 7000)/4000)
+
+
+def joint_deg(analog):
+    ret = joint_rad(analog)
+    if ret is None:
+        return None
+    return math.degrees(ret)
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -153,7 +166,10 @@ class RobotKloubak(Node):
         ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
         if self.verbose and ret and ret2:
 #            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
-            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
+#            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
+            self.debug_odo.append((self.time.total_seconds(), motion[0], motion[1],
+                                   motion_rear[0], motion_rear[1],
+                                   joint_deg(self.last_join_angle)))
         return ret
 
     def process_packet(self, packet, verbose=False):
