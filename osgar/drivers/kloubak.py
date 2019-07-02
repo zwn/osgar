@@ -73,6 +73,13 @@ def joint_deg(analog):
     return math.degrees(ret)
 
 
+def compute_rear(speed, angular_speed, joint_angle):
+    ca, sa = math.cos(joint_angle), math.sin(joint_angle)
+    x = ca * speed + sa * angular_speed
+    y = -sa * speed + ca * angular_speed
+    return x, -y
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
