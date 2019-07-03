@@ -143,7 +143,7 @@ class RobotKloubak(Node):
 
     def compute_pose(self, left, right):
         """Update internal pose with 'dt' step"""
-        if self.last_encoders_front_left is None or self.last_encoders_front_right is None:
+        if left is None or right is None:
             return False, None, None
         x, y, heading = self.pose
 
