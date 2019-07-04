@@ -288,7 +288,8 @@ class SubTChallenge:
                 self.xyz_quat = [a+b for a, b in zip(self.xyz_quat, dist3d)]
                 self.bus.publish('pose3d', [self.xyz_quat, self.orientation])
             elif channel == 'scan':
-                self.scan = data
+#                self.scan = data
+                self.scan = data[30:-30]
                 if self.local_planner is not None:
                     self.local_planner.update(data)
             elif channel == 'rot':
