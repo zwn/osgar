@@ -245,7 +245,7 @@ class Cortexpilot(Node):
             # restrict scan only to 270 degrees - cut 1/8th on both sides
 #            scan = scan[30:-30]
 #            zero_sides = 20
-#            scan = [10 * d for d in reversed(scan)]  # scale to millimeters
+            scan = [10 * d for d in reversed(scan)]  # scale to millimeters
 #            scan[:zero_sides] = [0]*zero_sides
 #            scan[-zero_sides:] = [0]*zero_sides
             self.publish('scan', scan)
