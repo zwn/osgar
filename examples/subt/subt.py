@@ -26,8 +26,11 @@ RADIUS = 1.0  # 0.6  # 0.9  # 1.0
 #SEARCH_TIME_END = timedelta(minutes=5)
 
 # No artifacts configuration
-SEARCH_TIME_BEGIN = timedelta(minutes=4)
-SEARCH_TIME_END = timedelta(minutes=4)
+#SEARCH_TIME_BEGIN = timedelta(minutes=4)
+#SEARCH_TIME_END = timedelta(minutes=4)
+SEARCH_TIME_BEGIN = timedelta(seconds=20)
+SEARCH_TIME_END = timedelta(seconds=20)
+
 
 RETURN_TIMEOUT = SEARCH_TIME_END + timedelta(minutes=10)  # ??
 
