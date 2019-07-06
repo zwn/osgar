@@ -213,7 +213,7 @@ class SubTChallenge:
                     desired_direction = follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
                     self.go_safely(desired_direction)
                 if dist_limit is not None:
-                    if dist_limit < self.traveled_dist - start_dist:
+                    if dist_limit < abs(self.traveled_dist - start_dist):  # robot can return backward -> abs()
                         print('Distance limit reached! At', self.traveled_dist, self.traveled_dist - start_dist)
                         break
                 if search_since is not None and self.sim_time_sec < search_since.total_seconds():
