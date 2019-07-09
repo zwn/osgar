@@ -127,10 +127,15 @@ class GPSNavigation(Node):
         self.wait(timedelta(seconds=1))
 
         globalWaypoint = (100, 0)
+        prev_time = self.time
         while True:
             channel = self.update()
             if channel != 'scan':
                 continue
+            if int(prev_time.total_seconds()/2) == int(self.time.total_seconds()/2):
+                continue
+            prev_time = self.time
+
             timestamp = self.time
             scan = self.scan  # [1000]*270
             x, y, heading = self.pose2d
