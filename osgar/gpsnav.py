@@ -106,7 +106,7 @@ class GPSNavigation(Node):
         from osgar.lib.vfh import VFH
         from osgar.lib.visual_log import VisualLog
 
-        STEER_FACTOR = 1 #0.5
+        STEER_FACTOR = 0.1 #0.5
 
         if self.verbose:
             visualLog = VisualLog()
@@ -148,6 +148,7 @@ class GPSNavigation(Node):
             else:
                 desired_angular_speed = normalizeAnglePIPI(math.pi - desired_direction) * STEER_FACTOR
                 print(self.time, desired_direction, desired_angular_speed)
+                self.send_speed_cmd(0, desired_angular_speed)
             if visualLog is not None:
                 visualLog.drawCar(pose)
                 visualLog.show()
