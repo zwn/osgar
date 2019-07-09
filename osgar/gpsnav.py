@@ -100,7 +100,7 @@ class GPSNavigation(Node):
         self.send_speed_cmd(0, 0)
         self.wait(timedelta(seconds=1))
 
-    def run1(self):
+    def run(self):
         from osgar.lib.horizontal_lidar_ocgm import HorizontalLidarOcgm, OCGM_CELLS_COUNT, OCGM_CELLS_PER_METER
         from osgar.lib.vfh import VFH
         from osgar.lib.visual_log import VisualLog
@@ -147,7 +147,7 @@ class GPSNavigation(Node):
 
         self.wait(timedelta(seconds=1))
 
-    def run(self):
+    def run2(self):
         print("Waiting for valid GPS position...")
         while self.last_position is None or self.last_position == INVALID_COORDINATES:
             self.update()
