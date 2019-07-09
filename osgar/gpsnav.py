@@ -64,6 +64,7 @@ class GPSNavigation(Node):
         self.cmd = [0, 0]
         self.last_position_angle = None  # for angle computation from dGPS
         self.monitors = []
+        self.verbose = False
 
     def send_speed_cmd(self, speed, angular_speed):
         return self.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
@@ -107,8 +108,11 @@ class GPSNavigation(Node):
 
         STEER_FACTOR = 1 #0.5
 
-        visualLog = VisualLog()
-        visualLog.init()
+        if self.verbose:
+            visualLog = VisualLog()
+            visualLog.init()
+        else:
+            visualLog = None
         horizontalLidarOcgm = HorizontalLidarOcgm(cells=OCGM_CELLS_COUNT/2,
                                                res=1/OCGM_CELLS_PER_METER,
                                                p_d=0.9,
@@ -129,10 +133,12 @@ class GPSNavigation(Node):
             x, y, heading = self.pose2d
             pose = (x/1000.0, y/1000.0, math.radians(heading/100.0))
 
-            visualLog.init()
+            if visualLog is not None:
+                visualLog.init()
             #OCGM update
             localMap = horizontalLidarOcgm.update(scan, timestamp, pose)
-            horizontalLidarOcgm.drawImageToVisualLog(visualLog, pose)
+            if visualLog is not None:
+                horizontalLidarOcgm.drawImageToVisualLog(visualLog, pose)
 
             #local planner update
             desired_direction = vfh.update(globalWaypoint, pose, localMap)
@@ -142,8 +148,9 @@ class GPSNavigation(Node):
             else:
                 desired_angular_speed = normalizeAnglePIPI(math.pi - desired_direction) * STEER_FACTOR
                 print(self.time, desired_direction, desired_angular_speed)
-            visualLog.drawCar(pose)
-            visualLog.show()
+            if visualLog is not None:
+                visualLog.drawCar(pose)
+                visualLog.show()
 
         self.wait(timedelta(seconds=1))
 
