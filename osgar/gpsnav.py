@@ -107,7 +107,7 @@ class GPSNavigation(Node):
         from osgar.lib.vfh import VFH
         from osgar.lib.visual_log import VisualLog
 
-        STEER_FACTOR = 0.1 #0.5
+        STEER_FACTOR = 1.0 #0.1 #0.5
 
         if self.verbose:
             visualLog = VisualLog()
@@ -132,9 +132,12 @@ class GPSNavigation(Node):
             channel = self.update()
             if channel != 'scan':
                 continue
-            if int(prev_time.total_seconds()) == int(self.time.total_seconds()):
+#            if int(prev_time.total_seconds()*2) == int(self.time.total_seconds()*2):
+#                continue
+#            prev_time = self.time
+            if prev_time > self.time:
+                print('delay', prev_time - self.time)
                 continue
-            prev_time = self.time
 
             timestamp = self.time
             scan = self.scan  # [1000]*270
@@ -152,11 +155,11 @@ class GPSNavigation(Node):
             desired_direction = vfh.update(globalWaypoint, pose, localMap)
             if desired_direction is None:
                 print("No direction!")
-                self.send_speed_cmd(0, 0)
+                prev_time = self.send_speed_cmd(0, 0)
             else:
                 desired_angular_speed = normalizeAnglePIPI(desired_direction + math.pi/2) * STEER_FACTOR
                 print(self.time, desired_direction, desired_angular_speed)
-                self.send_speed_cmd(0, desired_angular_speed)
+                prev_time = self.send_speed_cmd(0.1, desired_angular_speed)
             if visualLog is not None:
                 visualLog.drawCar(pose)
                 visualLog.show()
