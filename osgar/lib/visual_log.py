@@ -16,7 +16,8 @@ HEADING_SHIFT = -math.pi/2
 
 class VisualLog:
     def __init__(self):
-        self.carImage = cv2.resize(cv2.imread("car_clipart.png"),(0,0),fx=CAR_SCALE,fy=CAR_SCALE)
+        filename = os.path.join(os.path.dirname(__file__), '..', '..', "car_clipart.png")
+        self.carImage = cv2.resize(cv2.imread(filename),(0,0),fx=CAR_SCALE,fy=CAR_SCALE)
         self.carHeight, self.carWidth = self.carImage.shape[:2]
         self.carCenter = (self.carWidth / 2, self.carHeight / 2)
         self.image = None
