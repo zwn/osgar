@@ -17,7 +17,7 @@ HEADING_SHIFT_DEGREES = math.degrees(HEADING_SHIFT)
 
         
 class VFH:
-    def __init__(self,horizontalLidarOcgm,visualLog):
+    def __init__(self,horizontalLidarOcgm, visualLog):
         self.ocgmCellsPerMeter = horizontalLidarOcgm.ocgmCellsPerMeter
         self.visualLog = visualLog
         #initialize proportional distance matrix
@@ -51,7 +51,8 @@ class VFH:
         openings = self.findOpenings(histogram)            
         candidateDirections,isWide = self.findCandidateDirections(openings,directionOfWaypoint)
         desiredDirection = self.getBestDirection(candidateDirections,directionOfWaypoint)
-        self.drawVFHToVisualLog(histogram,candidateDirections,desiredDirection)
+        if self.visualLog is not None:
+          self.drawVFHToVisualLog(histogram,candidateDirections,desiredDirection)
         return desiredDirection
                                 
     def createPrimaryPolarHistogram(self,obstacleMap,currentPose):
