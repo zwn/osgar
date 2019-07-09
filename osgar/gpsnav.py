@@ -149,7 +149,7 @@ class GPSNavigation(Node):
                 print("No direction!")
                 self.send_speed_cmd(0, 0)
             else:
-                desired_angular_speed = normalizeAnglePIPI(math.pi - desired_direction) * STEER_FACTOR
+                desired_angular_speed = normalizeAnglePIPI(desired_direction + math.pi/2) * STEER_FACTOR
                 print(self.time, desired_direction, desired_angular_speed)
                 self.send_speed_cmd(0, desired_angular_speed)
             if visualLog is not None:
