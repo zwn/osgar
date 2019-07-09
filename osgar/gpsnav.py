@@ -76,6 +76,7 @@ class GPSNavigation(Node):
         elif channel == 'rot':  # should be rather 'rotation'
             yaw, pitch, roll = self.rot
             self.last_imu_yaw = math.radians(yaw/100.0)
+        return channel
 
     def register(self, callback):
         self.monitors.append(callback)
@@ -128,6 +129,8 @@ class GPSNavigation(Node):
         globalWaypoint = (100, 0)
         while True:
             channel = self.update()
+            if channel != 'scan':
+                continue
             timestamp = self.time
             scan = self.scan  # [1000]*270
             x, y, heading = self.pose2d
