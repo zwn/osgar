@@ -132,7 +132,7 @@ class GPSNavigation(Node):
             channel = self.update()
             if channel != 'scan':
                 continue
-            if int(prev_time.total_seconds()/2) == int(self.time.total_seconds()/2):
+            if int(prev_time.total_seconds()) == int(self.time.total_seconds()):
                 continue
             prev_time = self.time
 
