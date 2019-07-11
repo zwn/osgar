@@ -73,5 +73,7 @@ class VisualLog:
     
     def show(self):
         cv2.imshow('VisualLog', self.image)
-        cv2.waitKey(1)
+        ch = cv2.waitKey(0)
+        if ch in [27, ord('q')]:
+            assert False  # Force END
         pass
