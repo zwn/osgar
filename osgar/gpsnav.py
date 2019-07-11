@@ -158,7 +158,8 @@ class GPSNavigation(Node):
                 prev_time = self.send_speed_cmd(0, 0)
             else:
                 desired_angular_speed = normalizeAnglePIPI(desired_direction + math.pi/2) * STEER_FACTOR
-                print(self.time, desired_direction, desired_angular_speed)
+                print(self.time, '%.1fdeg' % math.degrees(desired_angular_speed),
+                        'heading = %.1fdeg' % math.degrees(pose[2]))
                 prev_time = self.send_speed_cmd(0.1, desired_angular_speed)
             if visualLog is not None:
                 visualLog.drawCar(pose)
