@@ -67,4 +67,8 @@ class KloubakTest(unittest.TestCase):
         # failing case "ValueError: math domain error" after fix - limits needed
         compute_desired_angle(0.1, 0.3063052837250049)
 
+        # another case "ValueError: math domain error"
+        angle = compute_desired_angle(0.1, -1.0637781790905438)
+        self.assertAlmostEqual(angle, -math.pi)
+
 # vim: expandtab sw=4 ts=4

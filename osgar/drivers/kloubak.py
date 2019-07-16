@@ -71,7 +71,9 @@ def compute_desired_angle(desired_speed, desired_angular_speed):
         return 0.0
     radius = desired_speed/desired_angular_speed
 #    print(radius)
-    return 2 * math.asin((CENTER_AXLE_DISTANCE/2) / radius)
+    if abs(2 * radius) > CENTER_AXLE_DISTANCE:
+        return 2 * math.asin((CENTER_AXLE_DISTANCE/2) / radius)
+    return math.pi if radius > 0 else -math.pi
 
 
 def joint_rad(analog):
