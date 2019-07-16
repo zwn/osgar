@@ -15,6 +15,8 @@ CENTER_AXLE_DISTANCE = 0.35  # distance from potentiometer
 VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
+AD_CENTER = 8128
+
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FRONT_R = 0x91
 CAN_ID_VESC_FRONT_L = 0x92
@@ -79,7 +81,7 @@ def compute_desired_angle(desired_speed, desired_angular_speed):
 def joint_rad(analog):
     if analog is None:
         return None
-    return math.radians(70*(analog - 7000)/4000)
+    return math.radians(70*(analog - AD_CENTER)/4000)
 
 
 def joint_deg(analog):
