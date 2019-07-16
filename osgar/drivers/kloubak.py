@@ -255,6 +255,10 @@ class RobotKloubak(Node):
                 if self.last_join_angle is not None:
                     desired_angle = compute_desired_angle(self.desired_speed, self.desired_angular_speed)
                     angle = joint_rad(self.last_join_angle)
+                    scale = 0.1  # TODO calibrate P-constant
+                    diff = int(round(scale * math.degrees(desired_angle - angle)))
+                    limit_l += diff  # TODO verify!!
+                    limit_r -= diff
 
                 if self.last_encoders_rear_right is not None:
                     self.publish('can', CAN_packet(0x33, list(struct.pack('>i', limit_r))))
