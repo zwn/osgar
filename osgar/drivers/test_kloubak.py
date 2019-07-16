@@ -45,12 +45,26 @@ class KloubakTest(unittest.TestCase):
         # go straight
         self.assertAlmostEqual(0.0, compute_desired_angle(1.0, 0.0))
 
+        # easy case when the joint has 60 degrees and radius is CENTER_AXLE_DISTANCE
+        self.assertAlmostEqual(math.radians(60),
+                compute_desired_angle(CENTER_AXLE_DISTANCE, 1.0))
+
+        # it should be symmetrical
+        self.assertAlmostEqual(math.radians(-60),
+                compute_desired_angle(CENTER_AXLE_DISTANCE, -1.0))
+
         # perpendicular to the left, radius defined by length of joint to wheel center
-        self.assertAlmostEqual(math.radians(90),
-                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(90)))
+#        self.assertAlmostEqual(math.radians(90),
+#                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(90)))
 
         # the same on the other side
-        self.assertAlmostEqual(math.radians(-90),
-                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(-90)))
+#        self.assertAlmostEqual(math.radians(-90),
+#                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(-90)))
+
+        # failing case "ValueError: math domain error"
+        compute_desired_angle(0.1, -0.007853981633974483)
+
+        # failing case "ValueError: math domain error" after fix - limits needed
+        compute_desired_angle(0.1, 0.3063052837250049)
 
 # vim: expandtab sw=4 ts=4

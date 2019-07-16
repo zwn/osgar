@@ -62,10 +62,16 @@ def compute_desired_erpm(desired_speed, desired_angular_speed):
 
 
 def compute_desired_angle(desired_speed, desired_angular_speed):
+    # The angle is computed from triangle, where one
+    # side has length = radius (computed from speed and angular
+    # speed) and the far side is half of CENTER_AXLE_DISTANCE.
+    # The Kloubak part is perpendicular to the turning center.
+#    print(desired_speed, desired_angular_speed)
     if abs(desired_angular_speed) < 0.000001:
         return 0.0
     radius = desired_speed/desired_angular_speed
-    return math.asin(radius/CENTER_AXLE_DISTANCE)
+#    print(radius)
+    return 2 * math.asin((CENTER_AXLE_DISTANCE/2) / radius)
 
 
 def joint_rad(analog):
@@ -237,12 +243,16 @@ class RobotKloubak(Node):
                     self.last_encoders_front_left, self.last_encoders_front_right,
                     self.last_encoders_rear_left, self.last_encoders_rear_right))
                 self.join_debug_arr.append(self.last_join_angle)
+
             rear_drive = True  # experimental
             if rear_drive and self.desired_speed > 0:
                 # control the joint angle and the desired speed
                 self.publish('can', CAN_packet(0x11, stop))  # right front
                 self.publish('can', CAN_packet(0x12, stop))  # left front
-                desired_angle = compute_desired_angle(self.desired_speed, self.desired_angular_speed)
+
+                if self.last_join_angle is not None:
+                    desired_angle = compute_desired_angle(self.desired_speed, self.desired_angular_speed)
+                    angle = joint_rad(self.last_join_angle)
 
                 if self.last_encoders_rear_right is not None:
                     self.publish('can', CAN_packet(0x33, list(struct.pack('>i', limit_r))))
