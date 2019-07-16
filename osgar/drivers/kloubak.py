@@ -261,7 +261,9 @@ class RobotKloubak(Node):
                 if self.last_join_angle is not None:
                     desired_angle = compute_desired_angle(self.desired_speed, self.desired_angular_speed)
                     angle = joint_rad(self.last_join_angle)
-                    speed = 0.0
+                    diff = abs(desired_angle - angle)
+                    speed = self.desired_speed * (1 - diff/math.radians(AD_MAX_DEG))
+
                     angular_speed = desired_angle - angle  # i.e. in 1s it should be the same
                     limit_l, limit_r = compute_desired_erpm(speed, -angular_speed)  # mirror flip (rear)
 
