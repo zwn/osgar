@@ -16,6 +16,10 @@ VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
 AD_CENTER = 8128
+AD_MAX_DEG = 70  # not calibrated
+AD_RANGE = 4000  # not calibrated
+AD_HW_LIMIT_LEFT = 12480  # corresponds to circle 37cm of touching left wheels
+AD_HW_LIMIT_RIGHT = 3584  # circle 40cm diameter, touching right wheels
 
 CAN_ID_BUTTONS = 0x1
 CAN_ID_VESC_FRONT_R = 0x91
@@ -81,7 +85,7 @@ def compute_desired_angle(desired_speed, desired_angular_speed):
 def joint_rad(analog):
     if analog is None:
         return None
-    return math.radians(70*(analog - AD_CENTER)/4000)
+    return -math.radians(AD_MAX_DEG * (analog - AD_CENTER)/AD_RANGE)
 
 
 def joint_deg(analog):
