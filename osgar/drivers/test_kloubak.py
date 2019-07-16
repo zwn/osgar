@@ -2,8 +2,8 @@ import unittest
 import math
 from unittest.mock import MagicMock
 
-from osgar.drivers.kloubak import (compute_desired_erpm, WHEEL_DISTANCE,
-        compute_rear, CENTER_AXLE_DISTANCE)
+from osgar.drivers.kloubak import (compute_desired_erpm, compute_desired_angle,
+        WHEEL_DISTANCE, compute_rear, CENTER_AXLE_DISTANCE)
 
 
 class KloubakTest(unittest.TestCase):
@@ -40,5 +40,17 @@ class KloubakTest(unittest.TestCase):
         speed, angular = compute_rear(0.0, 0.1, math.pi/2)
         self.assertAlmostEqual(speed, 0.1 * CENTER_AXLE_DISTANCE)
         self.assertAlmostEqual(angular, 0.0)
+
+    def test_rear_drive(self):
+        # go straight
+        self.assertAlmostEqual(0.0, compute_desired_angle(1.0, 0.0))
+
+        # perpendicular to the left, radius defined by length of joint to wheel center
+        self.assertAlmostEqual(math.radians(90),
+                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(90)))
+
+        # the same on the other side
+        self.assertAlmostEqual(math.radians(-90),
+                compute_desired_angle(CENTER_AXLE_DISTANCE * math.radians(90), math.radians(-90)))
 
 # vim: expandtab sw=4 ts=4
