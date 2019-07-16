@@ -11,7 +11,7 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 
 WHEEL_DISTANCE = 0.475  # m
-CENTER_AXLE_DISTANCE = 0.4  # m TODO measure!!!  - distance from potentiometer
+CENTER_AXLE_DISTANCE = 0.35  # distance from potentiometer
 VESC_REPORT_FREQ = 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
