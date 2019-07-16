@@ -263,7 +263,7 @@ class RobotKloubak(Node):
                     angle = joint_rad(self.last_join_angle)
                     speed = 0.0
                     angular_speed = desired_angle - angle  # i.e. in 1s it should be the same
-                    limit_l, limit_r = compute_desired_erpm(speed, angular_speed)
+                    limit_l, limit_r = compute_desired_erpm(speed, -angular_speed)  # mirror flip (rear)
 
                 if self.last_encoders_rear_right is not None:
                     self.publish('can', CAN_packet(0x33, list(struct.pack('>i', limit_r))))
