@@ -266,7 +266,7 @@ class Framer:
 
 
 
-def lidarview(gen, caption_filename, callback=False):
+def lidarview(gen, caption_filename, callback=False, display_vfh=False):
     global g_scale
 
     pygame.display.init()
@@ -301,9 +301,10 @@ def lidarview(gen, caption_filename, callback=False):
     history = gen
     max_timestamp = None
     
-    visualLog = VisualLog()
-    visualLog.init()
-    horizontalLidarOcgm = HorizontalLidarOcgm(cells=OCGM_CELLS_COUNT/2,
+    if display_vfh:
+        visualLog = VisualLog()
+        visualLog.init()
+        horizontalLidarOcgm = HorizontalLidarOcgm(cells=OCGM_CELLS_COUNT/2,
                                            res=1/OCGM_CELLS_PER_METER,
                                            p_d=0.9,
                                            p_nd=0.4,
@@ -312,7 +313,7 @@ def lidarview(gen, caption_filename, callback=False):
                                            cols = 190,
                                            rows = int(OCGM_CELLS_COUNT/2)+1)
 
-    vfh = VFH(horizontalLidarOcgm,visualLog)
+        vfh = VFH(horizontalLidarOcgm,visualLog)
     
     while True:
         timestamp, pose, scan, image, eof = history.next()
@@ -333,16 +334,17 @@ def lidarview(gen, caption_filename, callback=False):
             continue
         skip_frames = frames_step
 
-        visualLog.init()
-        #OCGM update
-        localMap = horizontalLidarOcgm.update(scan,timestamp,pose)
-        horizontalLidarOcgm.drawImageToVisualLog(visualLog,pose)
+        if display_vfh:
+            visualLog.init()
+            #OCGM update
+            localMap = horizontalLidarOcgm.update(scan,timestamp,pose)
+            horizontalLidarOcgm.drawImageToVisualLog(visualLog,pose)
 
-        globalWaypoint = (-100,0)
-        #local planner update
-        cmdVel = vfh.update(globalWaypoint,pose,localMap)
-        visualLog.drawCar(pose)
-        visualLog.show()
+            globalWaypoint = (-100,0)
+            #local planner update
+            cmdVel = vfh.update(globalWaypoint,pose,localMap)
+            visualLog.drawCar(pose)
+            visualLog.show()
         while True:
             caption = caption_filename + ": %s" % timestamp
             if paused:
@@ -443,6 +445,8 @@ def main():
     parser.add_argument('--rotate', help='rotate poses by angle in degrees, offset',
                         type=float, default=0.0)
 
+    parser.add_argument('--vfh', help='display Vector Field Histogram in separate window with gridmap', action='store_true')
+
     args = parser.parse_args()
     if not any([args.lidar, args.pose2d, args.pose3d, args.camera]):
         print("Available streams:")
@@ -461,7 +465,7 @@ def main():
                   callback=callback)
     else:
         with Framer(args.logfile, lidar_name=args.lidar, pose2d_name=args.pose2d, pose3d_name=args.pose3d, camera_name=args.camera) as framer:
-            lidarview(framer, caption_filename=filename, callback=callback)
+            lidarview(framer, caption_filename=filename, callback=callback, display_vfh=args.vfh)
 
 if __name__ == "__main__":
     main()
