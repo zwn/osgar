@@ -243,7 +243,13 @@ class Framer:
                 return timestamp, self.pose, self.scan, self.image, False
             elif stream_id == self.camera_id:
                 jpeg = deserialize(data)
-                self.image = pygame.image.load(io.BytesIO(jpeg), 'JPG').convert()
+                try:
+                    self.image = pygame.image.load(io.BytesIO(jpeg), 'JPG').convert()
+                except pygame.error as e:
+                    print(e, '   data size:', len(jpeg))
+                    with open('error.jpg', 'wb') as f:
+                        f.write(jpeg)
+                    self.image = None
                 if self.lidar_id is None:
                     return timestamp, self.pose, self.scan, self.image, False
             elif stream_id == self.pose3d_id:
