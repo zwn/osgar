@@ -252,7 +252,7 @@ class RobotKloubak(Node):
                     self.last_encoders_rear_left, self.last_encoders_rear_right))
                 self.join_debug_arr.append(self.last_join_angle)
 
-            rear_drive = True  # experimental
+            rear_drive = False  # True  # experimental
             if rear_drive and self.desired_speed > 0:
                 # control the joint angle and the desired speed
                 self.publish('can', CAN_packet(0x11, stop))  # right front
