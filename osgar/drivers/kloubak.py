@@ -321,9 +321,10 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-#        draw(self.enc_debug_arr, self.join_debug_arr)
+        draw(self.enc_debug_arr, self.join_debug_arr)
 #        print(self.count_arr)
+        print(self.count_arr[-1])
 #        draw_enc_stat(self.count_arr)
-        draw_enc_stat(self.debug_odo)
+#        draw_enc_stat(self.debug_odo)
 
 # vim: expandtab sw=4 ts=4
