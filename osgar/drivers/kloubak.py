@@ -12,7 +12,7 @@ from osgar.bus import BusShutdownException
 
 WHEEL_DISTANCE = 0.475  # m
 CENTER_AXLE_DISTANCE = 0.35  # distance from potentiometer
-VESC_REPORT_FREQ = 100  # Hz
+VESC_REPORT_FREQ = 20  # was 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
 AD_CENTER = 8128
