@@ -229,14 +229,14 @@ if __name__ == "__main__":
         game.play()
 
     elif args.command == 'run':
-        log = LogWriter(prefix='ro2018-', note=str(sys.argv))
-        config = config_load(*args.config)
-        log.write(0, bytes(str(config), 'ascii'))  # write configuration
-        recorder = Recorder(config=config['robot'], logger=log, application=RoboOrienteering2018)
-        game = robot.modules['app']  # TODO nicer reference
-        robot.start()
-        game.play()
-        recorder.finish()
+        with LogWriter(prefix='ro2018-', note=str(sys.argv)) as log:
+            config = config_load(*args.config)
+            log.write(0, bytes(str(config), 'ascii'))  # write configuration
+            robot = Recorder(config=config['robot'], logger=log, application=RoboOrienteering2018)
+            game = robot.modules['app']  # TODO nicer reference
+            robot.start()
+            game.play()
+        robot.finish()
     else:
         assert False, args.command  # unsupported command
 
