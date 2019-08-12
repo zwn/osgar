@@ -51,7 +51,7 @@ def writer(filepath, input):
     with open(filepath, 'wb') as f:
         for data in iter(input.get, 'STOP'):
             f.write(data)
-            f.flush()
+#hack            f.flush()
 
 
 class LogWriter:
