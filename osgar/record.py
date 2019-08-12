@@ -62,20 +62,23 @@ def record(config_filename, log_prefix, duration_sec=None, application=None):
     else:
         config = load(*config_filename)
     with LogWriter(prefix=log_prefix, note=str(sys.argv)) as log:
-        log.write(0, bytes(str(config), 'ascii'))  # write configuration
-        recorder = Recorder(config=config['robot'], logger=log, application=application)
-        recorder.start()
-        if application is not None:
-            game = recorder.modules['app']  # TODO nicer reference
-            game.join()  # wait for application termination
-        else:
-            if duration_sec is None:
-                while True:
-                    time.sleep(1.0)
+        try:
+            log.write(0, bytes(str(config), 'ascii'))  # write configuration
+            recorder = Recorder(config=config['robot'], logger=log, application=application)
+            recorder.start()
+            if application is not None:
+                game = recorder.modules['app']  # TODO nicer reference
+                game.join()  # wait for application termination
             else:
-                time.sleep(duration_sec)
-
-    recorder.finish()
+                if duration_sec is None:
+                    while True:
+                        time.sleep(1.0)
+                else:
+                    time.sleep(duration_sec)
+        except KeyboardInterrupt:
+            print("record() caught KeyboardInterrupt")
+        finally:
+            recorder.finish()
 
 
 def main():
