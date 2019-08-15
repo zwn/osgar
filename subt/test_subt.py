@@ -3,7 +3,7 @@ import math
 
 import cv2
 
-from subt.main import Trace
+from subt.main import Trace, ray
 
 
 class SubTChallengeTest(unittest.TestCase):
@@ -42,6 +42,14 @@ class SubTChallengeTest(unittest.TestCase):
 
         st.prune()
         self.assertEqual(len(st.trace), 4)
+
+    def test_ray(self):
+        self.assertAlmostEqual(ray(0.0, 1, 0, -5), 5)
+        self.assertAlmostEqual(ray(math.radians(45), 1, 0, -5), 5*math.sqrt(2))
+        self.assertIsNone(ray(math.radians(90), 1, 0, -5))
+        self.assertIsNone(ray(math.radians(135), 1, 0, -5))
+
+        self.assertAlmostEqual(ray(math.radians(90), 0, 1, -5), 5)
 
 # vim: expandtab sw=4 ts=4
 

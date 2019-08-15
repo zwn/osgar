@@ -8,7 +8,10 @@
           "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d"],
           "init": {
             "max_speed": 0.5,
-            "symmetric": true
+            "symmetric": true,
+            "width": 0.5,
+            "length": 0.84,
+            "scan_size": 179
           }
       },
       "detector": {

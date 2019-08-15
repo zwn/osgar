@@ -112,6 +112,19 @@ class EmergencyStopMonitor:
         self.robot.unregister(self.callback)
 
 
+def ray(angle, a, b, c, default=None):
+    # calculate intersection of ray and line described as
+    #   ax + by + c = 0
+    # for non-intersecting rays return default
+    # a * math.cos(angle) * t + b * math.sin(angle) * t + c = 0
+    base = a * math.cos(angle) + b * math.sin(angle)
+    if abs(base) > 0.000001:
+        t = -c/base
+        if t >= 0:
+            return t
+    return default
+
+
 class SubTChallenge:
     def __init__(self, config, bus):
         self.bus = bus
@@ -129,6 +142,29 @@ class SubTChallenge:
         if virtual_bumper_sec is not None:
             virtual_bumper_radius = config.get('virtual_bumper_radius', 0.1)
             self.virtual_bumper = VirtualBumper(timedelta(seconds=virtual_bumper_sec), virtual_bumper_radius)
+
+        self.width = config.get("width")
+        self.length = config.get("length")
+        scan_size = config.get("scan_size")
+        if scan_size is not None and self.width is not None and self.length is not None:
+            deg_resolution = 270 / (scan_size - 1)
+            self.robot_mask = np.zeros(shape=(scan_size,), dtype=int)
+            self.left_mask = np.zeros(shape=(scan_size,), dtype=int)
+            self.right_mask = np.zeros(shape=(scan_size,), dtype=int)
+            for index in range(scan_size):
+                angle = math.radians(-135 + index * deg_resolution)
+                front = ray(angle, 1, 0, -self.length/2, 30)
+                back = ray(angle, 1, 0, self.length/2, 30)
+                left = ray(angle, 0, 1, -self.width/2, 30)
+                right = ray(angle, 0, 1, self.width/2, 30)
+                self.robot_mask[index] = 1000 * min([front, back, left, right])
+                safety = 0.1
+                self.left_mask[index] = 1000 * ray(angle, 0, 1, self.width/2 + safety, 30) # cut right side
+                self.right_mask[index] = 1000 * ray(angle, 0, 1, -self.width/2 - safety, 30) # cut left side
+        else:
+            self.robot_mask = None
+            self.left_mask = None
+            self.right_mask = None
 
         self.last_position = (0, 0, 0)  # proper should be None, but we really start from zero
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
@@ -254,12 +290,19 @@ class SubTChallenge:
         last_pause_time = timedelta()  # for multiple Pause
         current_pause_time = timedelta()
         pause_start_time = None
+
+        side_mask = self.right_mask if right_wall else self.left_mask
         while self.sim_time_sec - start_time < (timeout + last_pause_time + current_pause_time).total_seconds():
             try:
                 channel = self.update()
                 if (channel == 'scan' and not self.flipped) or (channel == 'scan_back' and self.flipped) or channel == 'scan360':
                     if pause_start_time is None:
-                        desired_direction = follow_wall_angle(self.scan, radius=radius, right_wall=right_wall)
+                        scan = np.array(self.scan)
+                        mask = (scan <= 300)  # ignore internal reflections
+                        scan[mask] = 20000
+                        if self.robot_mask is not None:
+                            scan = scan - self.robot_mask
+                        desired_direction = follow_wall_angle(scan, radius=radius, right_wall=right_wall, ignore=(scan > side_mask))
                         self.go_safely(desired_direction)
                 if dist_limit is not None:
                     if dist_limit < abs(self.traveled_dist - start_dist):  # robot can return backward -> abs()

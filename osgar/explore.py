@@ -38,7 +38,7 @@ def tangent_circle(dist, radius):
     return None
 
 
-def follow_wall_angle(laser_data, radius, right_wall=False):
+def follow_wall_angle(laser_data, radius, right_wall=False, ignore=None):
     """
         Find the angle to the closest point in laser scan (either on the left or right side).
         Then calculate an angle to a free space as tangent to circle of given radius.
@@ -47,12 +47,8 @@ def follow_wall_angle(laser_data, radius, right_wall=False):
     data = np.array(laser_data)
     size = len(laser_data)
     deg_resolution = 270 / (size - 1)  # SICK uses extra the first and the last, i.e. 271 rays for 1 degree resolution
-    mask = (data <= 300)  # ignore internal reflections
-    data[mask] = 20000
-    if right_wall:
-        index = np.argmin(data[:size//2])  # only right side
-    else:
-        index = size//2 + np.argmin(data[size//2:])  # only left side
+    data[ignore] = 20000
+    index = np.argmin(data)  # only right side
     dist = data[index]/1000.0
     laser_angle = math.radians(-135 + index * deg_resolution)
     angle = tangent_circle(dist, radius)
