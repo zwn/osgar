@@ -59,7 +59,7 @@
           "in": [],
           "out": ["raw"],
           "init": {
-              "url": "http://192.168.2.32/img.jpg",
+              "url": "http://192.168.2.32/image?res=half",
               "sleep": 0.1,
               "timeout": 1.0
           }
@@ -69,7 +69,7 @@
           "in": [],
           "out": ["raw"],
           "init": {
-              "url": "http://192.168.3.32/img.jpg",
+              "url": "http://192.168.3.32/image?res=half",
               "sleep": 0.1,
               "timeout": 1.0
           }
