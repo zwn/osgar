@@ -16,9 +16,9 @@ CENTER_AXLE_DISTANCE = 0.348  # distance from potentiometer
 VESC_REPORT_FREQ = 20  # was 100  # Hz
 ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 
-AD_CENTER = 404 # K2
+AD_CENTER = 515 # K2
 AD_MAX_DEG = 79  # K2
-AD_RANGE = 322  # K2
+AD_RANGE = 315  # K2
 AD_HW_LIMIT_LEFT = 12480  # corresponds to circle 37cm of touching left wheels
 AD_HW_LIMIT_RIGHT = 3584  # circle 40cm diameter, touching right wheels
 
