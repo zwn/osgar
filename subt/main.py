@@ -159,8 +159,11 @@ class SubTChallenge:
                 right = ray(angle, 0, 1, self.width/2, 30)
                 self.robot_mask[index] = 1000 * min([front, back, left, right])
                 safety = 0.1
-                self.left_mask[index] = 1000 * ray(angle, 0, 1, self.width/2 + safety, 30) # cut right side
-                self.right_mask[index] = 1000 * ray(angle, 0, 1, -self.width/2 - safety, 30) # cut left side
+                left = ray(angle, 0, 1, self.width/2 + safety, 30) # cut right side
+                right = ray(angle, 0, 1, -self.width/2 - safety, 30) # cut left side
+                front = ray(angle, 1, 0, -self.length*1.2, 30)
+                self.left_mask[index] = 1000 * min([left, front])
+                self.right_mask[index] = 1000 * min([right, front])
         else:
             self.robot_mask = None
             self.left_mask = None
