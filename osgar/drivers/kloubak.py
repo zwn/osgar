@@ -121,6 +121,8 @@ class RobotKloubak(Node):
         self.last_encoders_rear_right = None
         self.last_encoders_time = None
         self.last_join_angle = None
+        self.probably_blocked_count = 0
+        self.blocked = False
 
         self.verbose = False  # should be in Node
         self.enc_debug_arr = []
@@ -190,10 +192,27 @@ class RobotKloubak(Node):
         return True, (x, y, heading), (dist, angle)
 
     def update_pose(self):
-        ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+        if self.desired_speed < 0:
+            ret, pose, motion = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
+            ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+            print(motion_rear)
+        else:
+            ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+            ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
         if ret:
             self.pose = pose
-        ret2, pose2, motion_rear = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
+        
+        if ret and ret2:
+            if motion[0] != 0 and motion_rear[0] == 0:
+                self.probably_blocked_count += 1
+            else:
+                self.probably_blocked_count = 0
+        if self.probably_blocked_count > 100:
+            self.blocked = True
+            print("BLOCKED", self.blocked)
+        else:
+            self.blocked = False
+            
         if self.verbose and ret and ret2 and self.last_join_angle is not None:
 #            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
 #            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
@@ -203,7 +222,8 @@ class RobotKloubak(Node):
             estimate = compute_rear(motion[0], motion[1], joint_rad(self.last_join_angle))
 #            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0], estimate[0]))
 #            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1], estimate[1]))
-            self.debug_odo.append((self.time.total_seconds(), motion_rear[1], estimate[1]))
+#            self.debug_odo.append((self.time.total_seconds(), motion_rear[1], estimate[1]))
+            self.debug_odo.append((self.time.total_seconds(), motion_rear[0], motion[0]))
         return ret
 
     def process_packet(self, packet, verbose=False):
@@ -322,10 +342,11 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-        draw(self.enc_debug_arr, self.join_debug_arr)
+#        draw(self.enc_debug_arr, self.join_debug_arr)
 #        print(self.count_arr)
-        print(self.count_arr[-1])
+#        print(self.count_arr[-1])
 #        draw_enc_stat(self.count_arr)
-#        draw_enc_stat(self.debug_odo)
+#        print(self.debug_odo)
+        draw_enc_stat(self.debug_odo)
 
 # vim: expandtab sw=4 ts=4
