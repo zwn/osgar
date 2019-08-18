@@ -239,7 +239,7 @@ class SubTChallenge:
         dist = min_dist(scan[size//3:2*size//3])
         if dist < 0.75:  # 2.0:
 #            desired_speed = self.max_speed * (1.2/2.0) * (dist - 0.4) / 1.6
-            desired_speed = self.max_speed * (dist - 0.2) / 0.55
+            desired_speed = self.max_speed * (dist - 0.5) / 0.55
         else:
             desired_speed = self.max_speed  # was 2.0
         '''
