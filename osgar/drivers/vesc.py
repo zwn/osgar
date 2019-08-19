@@ -37,24 +37,97 @@ from osgar.bus import BusShutdownException
 
 def draw_diff(arr):
     import matplotlib.pyplot as plt
-    import numpy as np
+    motors = sort_enc(arr)
     
+#    t = [a[0] for a in arr]
+#    values = [a[1:] for a in arr]   
+    labels = ["m1", "m2", "m3", "m4"] 
+    for ii, motor in enumerate(motors):
+        plt.plot(motor[:, 0], motor[:, 1], '-o', label = labels[ii])
+    plt.legend()
+    plt.xlabel('time (s)')
+    plt.show()
+
+
+def sort_enc(arr):
+    import numpy as np
     motors = []
+    start_enc = [None, None, None, None]
     for ii in range(1,5):
         motor = []
         for a in arr:
             if a[ii] is None:
                 continue
-            motor.append([a[0], a[ii]])
+            if start_enc[ii-1] is None:
+                start_enc[ii-1] = a[ii]
+            motor.append([a[0], ( a[ii] - start_enc[ii-1] ) *0.845/100])
         motor = np.array(motor)
         #print(motor.shape)
         motors.append(motor)
-#    t = [a[0] for a in arr]
-#    values = [a[1:] for a in arr]    
-    for motor in motors:
-        plt.plot(motor[:,0], motor[:,1] * 0.845/100, '-o')
+    return motors
 
-    plt.xlabel('time (s)')
+
+def vesc_odometry(arr, artf_time = 66):
+    import numpy as np
+    step = 0.5
+    motors = sort_enc(arr)
+    motors2 = []
+    for motor in motors:
+        actual_time = 2.0
+        actual_dist = 0
+        motor2 = [ [ actual_time, actual_dist ] ]
+        for motor_time, motor_dist in motor:
+            if motor_time > actual_time:
+                actual_time += step
+                actual_dist = motor_dist
+                motor2.append( [actual_time, actual_dist] )
+                if artf_time and artf_time < actual_time:
+                    break
+        motors2.append( np.array(motor2) )
+    """
+    import matplotlib.pyplot as plt
+    for data in motors2:
+        plt.plot(data[:, 0], data[:, 1], "+")
+    plt.show()
+    """
+    
+    m1, m2, m3, m4 = motors2
+    mL = m4[:, 1]
+    mR = m3[:, 1]
+    N = min( len(mL), len(mR) )
+    pose2d = []
+    x = 0
+    y = 0
+    heading = 0
+    pose2d.append( [x, y, heading] )
+    for ii in range(1, N):
+        mL_diff = mL[ii] - mL[ii-1]
+        mR_diff = mR[ii] - mR[ii-1]
+        
+        dist = (mL_diff + mR_diff)/2.0
+#        print(dist)
+        angle = (mR_diff - mL_diff)/0.496
+
+        # advance robot by given distance and angle
+        if abs(angle) < 0.0000001:  # EPS
+            # Straight movement - a special case
+            x += dist * math.cos(heading)
+            y += dist * math.sin(heading)
+            #Not needed: heading += angle
+        else:
+            # Arc
+            r = dist / angle
+            x += -r * math.sin(heading) + r * math.sin(heading + angle)
+            y += +r * math.cos(heading) - r * math.cos(heading + angle)
+            heading += angle # not normalized
+        pose2d.append( [x, y, heading] )
+        #print(x, y, heading)
+    print(pose2d[-1])
+
+    import matplotlib.pyplot as plt
+    arr = np.array(pose2d)
+    plt.plot(arr[:,0], arr[:, 1], "+")
+    plt.axis('equal')
     plt.show()
 
 
@@ -114,6 +187,7 @@ commands_send_packet(send_buffer, ind);
                 self.tachometer[motor_index] = struct.unpack_from('>i', b, 3)[0]
                 if prev != self.tachometer[motor_index] and self.verbose:
                     print(self.time, hex(msg_id), self.tachometer[motor_index])
+
                 tmp = [None] * 4
                 tmp[motor_index] = self.tachometer[motor_index]
                 if self.verbose:
@@ -156,7 +230,8 @@ commands_send_packet(send_buffer, ind);
         """
         Debug Draw
         """
-        draw_diff(self.debug_arr)
+        vesc_odometry(self.debug_arr)
+#        draw_diff(self.debug_arr)
 
 
 # vim: expandtab sw=4 ts=4
