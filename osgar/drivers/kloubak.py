@@ -130,6 +130,12 @@ class RobotKloubak(Node):
         self.count = [0, 0, 0, 0]
         self.count_arr = []
         self.debug_odo = []
+        
+        self.id_list = []
+        self.v_arr =  []
+        self.v12 = []
+        self.t12 = []
+        self.t = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -216,6 +222,9 @@ class RobotKloubak(Node):
         if len(packet) >= 2:
             msg_id = ((packet[0]) << 3) | (((packet[1]) >> 5) & 0x1f)
 #            print(hex(msg_id), packet[2:])
+            if hex(msg_id) not in self.id_list:
+                self.id_list.append(hex(msg_id))
+                print(self.id_list)
             if msg_id == CAN_ID_BUTTONS:
                 self.update_buttons(packet[2:])
             elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
@@ -241,6 +250,14 @@ class RobotKloubak(Node):
 #                self.last_encoders_rear_left = None
 #                self.last_encoders_rear_right = None
                 return True
+            if msg_id == 0x82:
+                print(hex(msg_id), struct.unpack_from('>i', packet, 2)[0])
+                self.v_arr.append(struct.unpack_from('>i', packet, 2)[0])
+                self.t.append(self.time.total_seconds())
+            if msg_id ==0x81:
+                self.v12.append(struct.unpack_from('>i', packet, 2)[0])
+                self.t12.append(self.time.total_seconds())
+                
         return False
 
     def slot_can(self, timestamp, data):
@@ -257,7 +274,7 @@ class RobotKloubak(Node):
                 self.enc_debug_arr.append((timestamp.total_seconds(), cmd_l, cmd_r,
                     self.last_encoders_front_left, self.last_encoders_front_right,
                     self.last_encoders_rear_left, self.last_encoders_rear_right))
-                self.join_debug_arr.append(self.last_join_angle)
+                self.join_debug_arr.append(joint_deg( self.last_join_angle ) )
 
             rear_drive = False  # True  # experimental
             if rear_drive and self.desired_speed > 0:
@@ -328,10 +345,15 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-        draw(self.enc_debug_arr, self.join_debug_arr)
+#        draw(self.enc_debug_arr, self.join_debug_arr)
 #        print(self.count_arr)
-        print(self.count_arr[-1])
+#        print(self.count_arr[-1])
 #        draw_enc_stat(self.count_arr)
 #        draw_enc_stat(self.debug_odo)
+        import matplotlib.pyplot as plt
+        plt.plot(self.t, self.v_arr, "k", label = "36 V")
+        plt.plot(self.t12, self.v12, "r", label = "12 V")
+        plt.legend()
+        plt.show()
 
 # vim: expandtab sw=4 ts=4
