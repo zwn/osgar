@@ -37,10 +37,22 @@ from osgar.bus import BusShutdownException
 
 def draw_diff(arr):
     import matplotlib.pyplot as plt
-    t = [a[0] for a in arr]
-    values = [a[1:] for a in arr]
-
-    line = plt.plot(t, values, '-o', linewidth=2)
+    import numpy as np
+    
+    motors = []
+    for ii in range(1,5):
+        motor = []
+        for a in arr:
+            if a[ii] is None:
+                continue
+            motor.append([a[0], a[ii]])
+        motor = np.array(motor)
+        #print(motor.shape)
+        motors.append(motor)
+#    t = [a[0] for a in arr]
+#    values = [a[1:] for a in arr]    
+    for motor in motors:
+        plt.plot(motor[:,0], motor[:,1] * 0.845/100, '-o')
 
     plt.xlabel('time (s)')
     plt.show()
@@ -145,5 +157,6 @@ commands_send_packet(send_buffer, ind);
         Debug Draw
         """
         draw_diff(self.debug_arr)
+
 
 # vim: expandtab sw=4 ts=4
