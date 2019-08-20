@@ -242,11 +242,18 @@ class SubTChallenge:
             desired_speed = self.max_speed * (dist - 0.5) / 0.55
         else:
             desired_speed = self.max_speed  # was 2.0
-        '''
-        desired_angular_speed = 0.7 * safe_direction
+
+        # if both speeds are close to zero, robot is not moving
+        if abs(desired_speed) < 0.1 and abs(desired_angular_speed) < 0.1:
+            desired_speed *= 2
+            desired_angular_speed *= 3
+
+        # if high angular speed, robot is turning around corner -> make it tighter
         T = math.pi / 2
-        desired_speed = 2.0 * (0.8 - min(T, abs(desired_angular_speed)) / T)
-        '''
+        a = 1 - 0.5*(min(T, abs(desired_angular_speed)) / T)
+        #print(a, desired_angular_speed, desired_speed * a)
+        desired_speed *= a
+
         if self.flipped:
             self.send_speed_cmd(-desired_speed, desired_angular_speed)  # ??? angular too??!
         else:
