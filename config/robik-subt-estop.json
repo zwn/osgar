@@ -66,20 +66,6 @@
               "D": [[-0.010466264497355346], [-0.0079365073509699], [0.004351357276495163], [-0.0012964835752230174]]
           }
       },
-      "slope_lidar": {
-          "driver": "lidar",
-          "in": ["raw"],
-          "out": ["raw", "scan"],
-          "init": {
-            "sleep": 0.1
-          }
-      },
-      "lidar_usb": {
-          "driver": "usb",
-          "in": [],
-          "out": ["raw"],
-          "init": {}
-      },
       "estop": {
           "driver": "subt.estop:EStop",
           "in": ["raw"],
@@ -113,8 +99,6 @@
               ["cortexpilot_serial.raw", "cortexpilot.raw"],
               ["cortexpilot.raw", "cortexpilot_serial.raw"],
               ["cortexpilot.scan", "app.scan360"],
-              ["lidar_usb.raw", "slope_lidar.raw"],
-              ["slope_lidar.raw", "lidar_usb.raw"],
               ["cortexpilot.rotation", "app.rot"],
               ["camera_orange.raw", "detector.image"],
               ["cortexpilot.scan", "detector.scan"],
