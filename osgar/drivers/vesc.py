@@ -67,13 +67,14 @@ def sort_enc(arr):
     return motors
 
 
-def vesc_odometry(arr, artf_time = 66):
+def vesc_odometry(arr, artf_time = None):
     import numpy as np
     step = 0.5
+    start_time = 2.0
     motors = sort_enc(arr)
     motors2 = []
     for motor in motors:
-        actual_time = 2.0
+        actual_time = start_time
         actual_dist = 0
         motor2 = [ [ actual_time, actual_dist ] ]
         for motor_time, motor_dist in motor:
@@ -123,10 +124,18 @@ def vesc_odometry(arr, artf_time = 66):
         pose2d.append( [x, y, heading] )
         #print(x, y, heading)
     print(pose2d[-1])
+    pose2d = np.array(pose2d)
+    
+    f = open("vesc.txt", "w")
+    t = start_time
+    for ii in range(N):
+        f.write( str( [t, pose2d[ii, 0], pose2d[ii, 1], pose2d[ii, 2] ] ) +"\r\n" )
+        t += step
+    f.close()
 
     import matplotlib.pyplot as plt
-    arr = np.array(pose2d)
-    plt.plot(arr[:,0], arr[:, 1], "+")
+    pose2d = np.array(pose2d)
+    plt.plot(pose2d[:,0], pose2d[:, 1], "+")
     plt.axis('equal')
     plt.show()
 
