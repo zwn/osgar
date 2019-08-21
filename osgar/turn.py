@@ -30,9 +30,10 @@ class Turn(Node):
             print(self.time, 'Go', channel)
         if channel == 'pose2d':
             x, y, heading = self.pose2d
-            pose = (x/1000.0, y/1000.0, math.radians(heading/100.0))
+            pose = (x/1000.0, y/1000.0, math.radians(heading/100.0))            
             if self.start_pose is None:
                 self.start_pose = pose
+            self.last_position = pose
             if self.last_position is not None:
                 self.is_moving = (self.last_position != pose)
 
