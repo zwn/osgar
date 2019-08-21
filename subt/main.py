@@ -245,8 +245,7 @@ class SubTChallenge:
 
         # if both speeds are close to zero, robot is not moving
         if abs(desired_speed) < 0.1 and abs(desired_angular_speed) < 0.1:
-            desired_speed *= 2
-            desired_angular_speed *= 3
+            desired_speed = 0.25
 
         # if high angular speed, robot is turning around corner -> make it tighter
         T = math.pi / 2
