@@ -160,6 +160,7 @@ class SubTChallenge:
         self.use_right_wall = config['right_wall']
         self.is_virtual = config.get('virtual_world', False)  # workaround to handle tunnel differences
 
+        self.last_send_time = None
         if self.is_virtual:
             self.local_planner = LocalPlanner()
         else:
@@ -168,10 +169,9 @@ class SubTChallenge:
     def send_speed_cmd(self, speed, angular_speed):
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
-        success = self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
+        self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
         # Corresponds to gc.disable() in __main__. See a comment there for more details.
         gc.collect()
-        return success
 
     def maybe_remember_artifact(self, artifact_data, artifact_xyz):
         for _, (x, y, z) in self.artifacts:
@@ -383,7 +383,7 @@ class SubTChallenge:
         x += math.cos(self.pitch) * math.cos(self.yaw) * dist
         y += math.cos(self.pitch) * math.sin(self.yaw) * dist
         z += math.sin(self.pitch) * dist
-        self.bus.publish('pose2d', [round(x * 1000), round(y * 1000),
+        self.last_send_time = self.bus.publish('pose2d', [round(x * 1000), round(y * 1000),
                                     round(math.degrees(self.yaw) * 100)])
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_pose(self.time, pose)  # sim time?!
@@ -407,7 +407,8 @@ class SubTChallenge:
         ]) * gacc.T
         cacc = np.asarray(acc) - egacc.T  # Corrected acceleration (without gravitational acceleration).
         magnitude = math.hypot(cacc[0, 0], cacc[0, 1])
-        if magnitude > 12.0:
+        # used to be 12 - see https://bitbucket.org/osrf/subt/issues/166/expected-x2-acceleration
+        if magnitude > 18.0:
             print(self.time, 'Collision!', acc, 'reported:', self.collision_detector_enabled)
             if self.collision_detector_enabled:
                 self.collision_detector_enabled = False
@@ -442,9 +443,12 @@ class SubTChallenge:
             if handler is not None:
                 handler(timestamp, data)
             elif channel == 'scan' and not self.flipped:
+                if self.last_send_time is not None and self.time - self.last_send_time > timedelta(seconds=0.05):
+                    print('queue delay', self.time - self.last_send_time)
                 self.scan = data
                 if self.local_planner is not None:
-                    self.local_planner.update(data)
+                    if self.last_send_time is not None and self.time - self.last_send_time < timedelta(seconds=0.1):
+                        self.local_planner.update(data)
             elif channel == 'scan_back' and self.flipped:
                 self.scan = data
                 if self.local_planner is not None:
@@ -465,6 +469,7 @@ class SubTChallenge:
                 self.orientation = data
             elif channel == 'sim_time_sec':
                 self.sim_time_sec = data
+
             elif channel == 'voltage':
                 self.voltage = data
             elif channel == 'emergency_stop':
@@ -543,10 +548,11 @@ class SubTChallenge:
 
     def play_virtual_track(self):
         print("SubT Challenge Ver2!")
-        self.go_straight(9.0)  # go to the tunnel entrance (used to be 9m)
+        self.turn(math.radians(-45))
+        self.go_straight(7.0)  # go to the tunnel entrance (used to be 9m)
         self.collision_detector_enabled = True
         self.follow_wall(radius = 0.9, right_wall=self.use_right_wall,
-                            timeout=timedelta(minutes=12, seconds=0))
+                            timeout=timedelta(minutes=1, seconds=0))  # was 12 min
         self.collision_detector_enabled = False
 
         print("Artifacts:", self.artifacts)
