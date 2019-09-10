@@ -29,10 +29,14 @@
 
 #include <subt_communication_broker/common_types.h>
 #include <subt_communication_broker/subt_communication_client.h>
-#include <subt_gazebo/protobuf/artifact.pb.h>
+#include <subt_ign/protobuf/artifact.pb.h>
 #include <subt_msgs/PoseFromArtifact.h>
 
 #include <subt_example/CreatePeer.h>
+
+#include <ignition/transport/Node.hh>  // new type of communication including origin
+#include "subt_ign/CommonTypes.hh"
+
 
 /// \brief. Example control class, running as a ROS node to control a robot.
 class Controller
@@ -118,10 +122,20 @@ class Controller
     subt::msgs::Artifact artifact;
     artifact.set_type(_type);
     artifact.mutable_pose()->CopyFrom(_pose);
-    return this->client->SendTo(artifact.SerializeAsString(), "BaseStation");
+    return this->client->SendTo(artifact.SerializeAsString(), subt::kBaseStationName);
   }
 
-  public: bool get_origin(double *x, double *y, double *z)
+  public: bool start_scoring()
+  {
+    ignition::msgs::Boolean req;
+    ignition::msgs::Boolean rep;
+    unsigned int timeout = 5000;
+    bool result;
+    req.set_data(true);
+    return this->node.Request("/subt/start", req, timeout, rep, result); 
+  }
+
+  public: bool get_origin_gazebo(double *x, double *y, double *z)
   {
     ros::NodeHandle nodeHandle;
     ros::ServiceClient cli = nodeHandle.serviceClient<subt_msgs::PoseFromArtifact>(
@@ -139,6 +153,29 @@ class Controller
     }
     return ret;
   }
+
+  public: bool get_origin(double *x, double *y, double *z)
+  {
+    // Ignition version
+    ignition::msgs::StringMsg req;
+    ignition::msgs::Pose rep;
+    unsigned int timeout = 5000;
+    bool result;
+    req.set_data("X2"); 
+
+    bool ret = this->node.Request("/subt/pose_from_artifact_origin", req, timeout, rep, result);
+
+    if(ret)
+    {
+    *x = rep.position().x();
+    *y = rep.position().y();
+    *z = rep.position().z();
+    }
+    return ret;
+  }
+
+  /// \brief The ignition transport node comms handler.
+  protected: ignition::transport::Node node; 
 
  private:
   // indexed by remote name, store port and Callback function
@@ -404,6 +441,9 @@ int main(int argc, char** argv)
 
 //  ros::spin();
 //  ros::Rate r(1);
+  bool start = controller.start_scoring();
+  ROS_INFO("start_scoring %d", (int)start);
+
   int i;
   while (ros::ok())
   {
@@ -428,43 +468,47 @@ int main(int argc, char** argv)
         pose.mutable_position()->set_y(y + offset_y);
         pose.mutable_position()->set_z(z + offset_z);
 
-        int type = -1;
+        subt::ArtifactType type;
         if(strcmp(buf, "TYPE_BACKPACK") == 0)
         {
-          type = 0;
+          type = subt::ArtifactType::TYPE_BACKPACK;
         }
         if(strcmp(buf, "TYPE_DUCT") == 0)
         {
-          type = 1;
+          type = subt::ArtifactType::TYPE_DUCT;
         }
         if(strcmp(buf, "TYPE_ELECTRICAL_BOX") == 0)
         {
-          type = 2;
+          type = subt::ArtifactType::TYPE_ELECTRICAL_BOX;
         }
         if(strcmp(buf, "TYPE_EXTINGUISHER") == 0)
         {
-          type = 3;
+          type = subt::ArtifactType::TYPE_EXTINGUISHER;
         }
         if(strcmp(buf, "TYPE_PHONE") == 0)
         {
-          type = 4;
+          type = subt::ArtifactType::TYPE_PHONE;
         }
         if(strcmp(buf, "TYPE_RADIO") == 0)
         {
-          type = 5;
+          type = subt::ArtifactType::TYPE_RADIO;
+        }
+        if(strcmp(buf, "TYPE_RESCUE_RANDY") == 0)
+        {
+          type = subt::ArtifactType::TYPE_RESCUE_RANDY;
         }
         if(strcmp(buf, "TYPE_TOOLBOX") == 0)
         {
-          type = 6;
+          type = subt::ArtifactType::TYPE_TOOLBOX;
         }
         if(strcmp(buf, "TYPE_VALVE") == 0)
         {
-          type = 7;
+          type = subt::ArtifactType::TYPE_VALVE;
         }
 
-        ROS_INFO_STREAM("MD enum" << type);
+        ROS_INFO_STREAM("MD enum" << static_cast<uint32_t>(type));
 
-        ret |= controller.ReportArtifact(type, pose);
+        ret |= controller.ReportArtifact(static_cast<uint32_t>(type), pose);
         if(ret)
         {
           ROS_INFO("MD SUCCESS\n");
