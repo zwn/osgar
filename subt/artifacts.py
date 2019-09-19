@@ -21,7 +21,7 @@ RADIO = 'TYPE_RADIO'
 TOOLBOX = 'TYPE_TOOLBOX'
 DUCT = 'TYPE_DUCT'
 
-RED_THRESHOLD = 100
+RED_THRESHOLD = 50  # virtual QVGA, used to be 100
 YELLOW_THRESHOLD = 40
 WHITE_THRESHOLD = 20000
 
@@ -56,7 +56,7 @@ def count_red(img):
     b = img[:,:,0]
     g = img[:,:,1]
     r = img[:,:,2]
-    mask = np.logical_and(r > 100, np.logical_and(r/2 > g, r/2 > b))
+    mask = np.logical_and(r > 20, np.logical_and(r/2 > g, r/2 > b))  # QVGA virtual, dark images, used to be 100
     return count_mask(mask)
 
 
@@ -243,17 +243,18 @@ if __name__ == '__main__':
     with open(args.filename, 'rb') as f:
         jpeg_data = f.read()
 
-    config = {}
+    config = {'virtual_world': True}  # for now
     logger = MagicMock()
     logger.register = MagicMock(return_value=1)
+    logger.write = MagicMock(return_value=timedelta(0))
     output = Queue()
-    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
+    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')], 'dropped': []})
     detector = ArtifactDetector(config, bus)
     detector.verbose = args.verbose
     detector.start()
     bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
     for i in range(10 + 1):  # workaround for local minima
-        bus.queue.put((timedelta(0), 'image', jpeg_data))
+        bus.queue.put((timedelta(seconds=1), 'image', jpeg_data))
     detector.request_stop()
     detector.join()
     if output.empty():
