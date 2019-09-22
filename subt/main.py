@@ -425,7 +425,7 @@ class SubTChallenge:
     def update(self):
         packet = self.bus.listen()
         if packet is not None:
-#            print('SubT', packet)
+            # print('SubT', packet)
             timestamp, channel, data = packet
             if self.time is None or int(self.time.seconds)//60 != int(timestamp.seconds)//60:
                 print(timestamp, '(%.1f %.1f %.1f)' % self.xyz, sorted(self.stat.items()))
@@ -441,6 +441,9 @@ class SubTChallenge:
             handler = getattr(self, "on_" + channel, None)
             if handler is not None:
                 handler(timestamp, data)
+            elif channel == 'image':
+                if self.local_planner is not None:
+                    self.local_planner.update(scan = None,image = data)
             elif channel == 'scan' and not self.flipped:
                 self.scan = data
                 if self.local_planner is not None:
