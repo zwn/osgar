@@ -29,12 +29,13 @@ class LocalPlanner:
     def recommend(self, desired_dir):
         pixelsPerMeter = 50
         obstaclesImageSize = 500
-        obstaclesImage = np.zeros((obstaclesImageSize,obstaclesImageSize),dtype=np.uint8)            
+        obstaclesImage = np.zeros((obstaclesImageSize,obstaclesImageSize,3),dtype=np.uint8)            
         if self.last_scan is None:
             return 1.0, desired_dir
 
         
         obstacles = []
+        cv2.circle(obstaclesImage,(int(obstaclesImageSize/2),int(obstaclesImageSize/2)),8,(0,255,255))
         for (i, measurement) in enumerate(self.last_scan):
             if measurement == 0:
                 continue
@@ -45,18 +46,17 @@ class LocalPlanner:
 
             # Converting from tenths of milimeters to meters.
             obstacle_xy = [mv * measurement * 1e-3 for mv in measurement_vector]
-            cv2.circle(obstaclesImage,(int(obstaclesImageSize/2 + obstacle_xy[0]*pixelsPerMeter),int(obstaclesImageSize/2 + obstacle_xy[1]*pixelsPerMeter)),3,(255,0,0))
+            cv2.circle(obstaclesImage,(int(obstaclesImageSize/2 + obstacle_xy[0]*pixelsPerMeter),int(obstaclesImageSize/2 - obstacle_xy[1]*pixelsPerMeter)),3,(0,0,255))
             obstacles.append(obstacle_xy)
         
         if self.last_image:
             nparr = np.fromstring(self.last_image, np.uint8)
-            img = cv2.imdecode(nparr, 0)
-            #jpeg = deserialize(self.last_image)
-            #img = pygame.image.load(io.BytesIO(jpeg), 'JPG').convert()
-            cv2.imshow("image", img)
-            #cameraObstacles = self.cameraThresholding.update(img) #to be uncommented after image will be provided from somewhere
-            #obstacles += cameraObstacles
-                    
+            img = cv2.imdecode(nparr, 1)
+            cameraObstacles = self.cameraThresholding.update(img) 
+            obstacles += cameraObstacles
+            for obstacle in cameraObstacles:
+                cv2.circle(obstaclesImage,(int(obstaclesImageSize/2 + obstacle[0]*pixelsPerMeter),int(obstaclesImageSize/2 - obstacle[1]*pixelsPerMeter)),3,(255,0,0))
+            
         cv2.imshow("obstacles", obstaclesImage)
         
         cv2.waitKey(1)

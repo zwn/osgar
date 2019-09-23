@@ -8,22 +8,31 @@ import numpy as np
 import numpy.linalg as linalg
 import pygame
 
+
+FRAME_WIDTH = 320
+FRAME_HEIGHT = 240
+
+Y_OFFSET = 0 #m
+
 #camera parameters
-ROAD_LENGTH = 10 #m how long segment of road I want to see in the birdseye image
-ROAD_WIDTH= 8 #m how wide road is in front of camera
-BOTTOM_LEFT_X = -180 #where is the left most point of road on the bottom line if it would be vidible
-BOTTOM_RIGHT_X = 500 #where is the right most point of road on the bottom line if it would be vidible
-TOP_LEFT_X = 70 #where is the left point in the original image in the distance of ROAD_LENGTH
-TOP_RIGHT_X = 250 #where is the right point in the original image in the distance of ROAD_LENGTH
+ROAD_LENGTH = 5.94 #m how long segment of road I want to see in the birdseye image
+ROAD_WIDTH= 6.4 #m how wide road is in front of camera
+BOTTOM_LEFT_X = -417 #where is the left most point of road on the bottom line if it would be vidible
+BOTTOM_RIGHT_X = 760 #where is the right most point of road on the bottom line if it would be vidible
+TOP_LEFT_X = 62 #where is the left point in the original image in the distance of ROAD_LENGTH
+TOP_RIGHT_X = 270 #where is the right point in the original image in the distance of ROAD_LENGTH
 TOP_Y = 133 #where is the y coord of the point in the original image in the distance of ROAD_LENGTH
+FOV = 60 #camera FOV in degrees 
+        
+
 
 PIXELS_PER_METER = 320/ROAD_LENGTH
 GRID_CELLS_PER_METER = 10
 
 class CameraThresholding():
     def __init__(self):
-        self.frameWidth = 320
-        self.frameHeight = 240
+        self.frameWidth = FRAME_WIDTH
+        self.frameHeight = FRAME_HEIGHT
         pixelsPerMeter = self.frameHeight / ROAD_LENGTH
         objPts = np.array([(self.frameWidth / 2 - ROAD_WIDTH / 2 * pixelsPerMeter,0),
                   (self.frameWidth / 2 + ROAD_WIDTH / 2 * pixelsPerMeter,0),
@@ -35,15 +44,6 @@ class CameraThresholding():
         
     
     def update(self,image):
-        #  create a copy of the surface
-        view = pygame.surfarray.array3d(image)
-
-        #  convert from (width, height, channel) to (height, width, channel)
-        view = view.transpose([1, 0, 2])
-
-        #  convert from rgb to bgr
-        image = cv2.cvtColor(view, cv2.COLOR_RGB2BGR)
-        
         originalImage = cv2.medianBlur(image,5) 
         element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10))
         originalImage = cv2.dilate(originalImage,element)
@@ -72,7 +72,6 @@ class CameraThresholding():
         forPolarBirdsImage = np.zeros(shape=(360,resizedBirdsImage.shape[1]), dtype="uint8")
         forPolarBirdsImage[360-resizedBirdsImage.shape[0]:,:] = resizedBirdsImage
         
-        
         polar = cv2.linearPolar(forPolarBirdsImage, (forPolarBirdsImage.shape[1]/2,360),forPolarBirdsImage.shape[1], cv2.WARP_FILL_OUTLIERS)
         cv2.imshow("polar", polar)
         cropedPolar = polar[180:,:]
@@ -80,19 +79,23 @@ class CameraThresholding():
         obstaclesInRows = np.argmin(cropedPolar[:,1:],axis=1)
         row = 0
         obstacles = []
-        for index in obstaclesInRows:
-            cv2.circle(cropedPolarBGR,(index,row),3,(255,0,0))
-            obstacles.append((float(index/GRID_CELLS_PER_METER),float(row/GRID_CELLS_PER_METER)))
-            row += 1
-        
+        for (angle,measurement) in enumerate(obstaclesInRows):
+            
+            if measurement == 0 or angle < 90-FOV/2 or angle > 90+FOV/2:
+                #throw away obstacles that are too close or outside of camera FOV
+                continue
+            cv2.circle(cropedPolarBGR,(measurement,angle),3,(255,0,0))
+            angle = math.radians(angle) - math.pi/2
+            measurement_vector = math.cos(angle), math.sin(angle)
+            obstacle_xy = [mv * measurement/GRID_CELLS_PER_METER for mv in measurement_vector]
+            if obstacle_xy[0] > 4.3:
+                #throw away obstacles behing perspective projection boundary
+                continue
+            obstacles.append((float(obstacle_xy[0] + Y_OFFSET),float(-obstacle_xy[1])))
+            
         cv2.imshow("cropedPolar", cropedPolarBGR)
-        
-        
-        
         cv2.imshow("OriginalImage", image)
-        
         cv2.waitKey(1)
-        
         return obstacles
     
     
