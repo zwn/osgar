@@ -6,7 +6,6 @@ import time
 import cv2
 import numpy as np
 import numpy.linalg as linalg
-import pygame
 
 
 FRAME_WIDTH = 320
