@@ -62,10 +62,10 @@ class CameraThresholding():
         road = np.logical_and(tmp1,np.logical_and(tmp2,tmp3))
         
         road = np.array(road*255,dtype = np.uint8)
-        cv2.imshow("Road", road)
+#        cv2.imshow("Road", road)
         birdsImage = cv2.warpPerspective(road,self.inversePerspectiveMatrix,(320,240),
                         flags = cv2.INTER_LINEAR  | cv2.WARP_FILL_OUTLIERS)
-        cv2.imshow("birdsImage", birdsImage)
+#        cv2.imshow("birdsImage", birdsImage)
         factor = GRID_CELLS_PER_METER/PIXELS_PER_METER
         resizedBirdsImage = cv2.resize(birdsImage,(int(self.frameWidth*factor),(int(self.frameHeight*factor))))
         #this is because of weird opencv polar transf. 
@@ -73,7 +73,7 @@ class CameraThresholding():
         forPolarBirdsImage[360-resizedBirdsImage.shape[0]:,:] = resizedBirdsImage
         
         polar = cv2.linearPolar(forPolarBirdsImage, (forPolarBirdsImage.shape[1]/2,360),forPolarBirdsImage.shape[1], cv2.WARP_FILL_OUTLIERS)
-        cv2.imshow("polar", polar)
+#        cv2.imshow("polar", polar)
         cropedPolar = polar[180:,:]
         cropedPolarBGR = cv2.cvtColor(cropedPolar,cv2.COLOR_GRAY2BGR)
         obstaclesInRows = np.argmin(cropedPolar[:,1:],axis=1)
@@ -93,9 +93,9 @@ class CameraThresholding():
                 continue
             obstacles.append((float(obstacle_xy[0] + Y_OFFSET),float(-obstacle_xy[1])))
             
-        cv2.imshow("cropedPolar", cropedPolarBGR)
-        cv2.imshow("OriginalImage", image)
-        cv2.waitKey(1)
+#        cv2.imshow("cropedPolar", cropedPolarBGR)
+#        cv2.imshow("OriginalImage", image)
+#        cv2.waitKey(1)
         return obstacles
     
     
