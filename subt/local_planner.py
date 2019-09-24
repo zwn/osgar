@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from osgar.lib import camera_thresholding
 from osgar.lib.serialize import deserialize
-import pygame
+
 
 def normalize_angle(angle):
     return (angle + math.pi) % (2 * math.pi) - math.pi
