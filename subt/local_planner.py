@@ -53,13 +53,13 @@ class LocalPlanner:
             nparr = np.fromstring(self.last_image, np.uint8)
             img = cv2.imdecode(nparr, 1)
             cameraObstacles = self.cameraThresholding.update(img) 
-            obstacles += cameraObstacles
+            # obstacles += cameraObstacles
             for obstacle in cameraObstacles:
                 cv2.circle(obstaclesImage,(int(obstaclesImageSize/2 + obstacle[0]*pixelsPerMeter),int(obstaclesImageSize/2 - obstacle[1]*pixelsPerMeter)),3,(255,0,0))
             
-#        cv2.imshow("obstacles", obstaclesImage)
+        # cv2.imshow("obstacles", obstaclesImage)
         
-#        cv2.waitKey(1)
+        # cv2.waitKey(1)
             
         if not obstacles:
             return 1.0, normalize_angle(desired_dir)
