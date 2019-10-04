@@ -17,13 +17,13 @@ from osgar.lib import quaternion
 from osgar.lib.virtual_bumper import VirtualBumper
 
 from subt.local_planner import LocalPlanner
-
+import pdb
 
 # safety limits for exploration and return home
 LIMIT_ROLL = math.radians(20)
 LIMIT_PITCH = math.radians(20)
 RETURN_LIMIT_ROLL = math.radians(30)
-RETURN_LIMIT_PITCH = math.radians(30)
+RETURN_LIMIT_PITCH = math.radians(10)
 
 TRACE_STEP = 0.5  # meters in 3D
 
@@ -588,8 +588,9 @@ class SubTChallenge:
         self.turn(math.atan2(-y, -x))
         self.go_straight(math.hypot(x, y))  # go to the tunnel entrance
         self.collision_detector_enabled = True
-        dist, reason = self.follow_wall(radius=self.walldist, right_wall=self.use_right_wall,  # was radius=0.9
-                            timeout=self.timeout)  # timedelta(minutes=1, seconds=0))  # was 12 min
+        dist, reason = self.follow_wall(radius=self.walldist, right_wall=self.use_right_wall, timeout=self.timeout, dist_limit=None,
+                            flipped=False, pitch_limit=RETURN_LIMIT_PITCH, roll_limit=None)
+        
         self.collision_detector_enabled = False
 
         self.stdout("Artifacts:", self.artifacts)
