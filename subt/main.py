@@ -23,7 +23,7 @@ import pdb
 LIMIT_ROLL = math.radians(20)
 LIMIT_PITCH = math.radians(20)
 RETURN_LIMIT_ROLL = math.radians(30)
-RETURN_LIMIT_PITCH = math.radians(10)
+RETURN_LIMIT_PITCH = math.radians(20)
 
 TRACE_STEP = 0.5  # meters in 3D
 
