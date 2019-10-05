@@ -22,10 +22,14 @@ class Recorder:
         buses = {}
         for module_name, module_config in config['modules'].items():
             out, slots = {}, {}
+            no_output = []
             for output_type in module_config['out']:
+                if output_type.endswith(':null'):
+                    output_type = output_type.split(':')[0]
+                    no_output.append(output_type)
                 out[output_type] = []
                 slots[output_type] = []
-            bus = BusHandler(logger, out=out, slots=slots, name=module_name)
+            bus = BusHandler(logger, out=out, slots=slots, name=module_name, no_output=no_output)
             buses[module_name] = bus
 
             module_class = module_config['driver']
