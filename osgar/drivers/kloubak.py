@@ -5,6 +5,7 @@
 
 import struct
 import math
+import ctypes
 
 from .canserial import CAN_packet
 from osgar.node import Node
@@ -30,6 +31,7 @@ CAN_ID_VESC_REAR_L = 0x94
 CAN_ID_SYNC = CAN_ID_VESC_FRONT_L
 CAN_ID_CURRENT = 0x70
 CAN_ID_JOIN_ANGLE = 0x80
+CAN_ID_ENCODERS = 0x83
 
 MIN_SPEED = 0.3
 
@@ -105,6 +107,10 @@ def compute_rear(speed, angular_speed, joint_angle):
     return x, -y
 
 
+def sint16_diff(a, b):
+    return ctypes.c_int16(a - b).value
+
+
 class RobotKloubak(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -152,6 +158,21 @@ class RobotKloubak(Node):
                 print('Emergency STOP:', self.emergency_stop)
 
     def update_encoders(self, msg_id, data):
+        if msg_id == 0x83:
+            encoders = struct.unpack('>HHHH', data)
+            if self.last_encoders_time is not None:
+#                print(self.time - self.last_encoders_time, [e - prev for prev, e in zip(self.prev_encoders, encoders)])
+                pass
+            else:
+                self.first_encoders = encoders
+            self.prev_encoders = encoders
+            self.last_encoders_time = self.time
+#            print(encoders)
+#            assert False, encoders
+            if self.verbose:
+                print(self.time - self.last_encoders_time, [sint16_diff(e, prev) for prev, e in zip(self.first_encoders, encoders)])
+            return
+        assert msg_id in [0x91, 0x92, 0x93, 0x94], hex(msg_id)
         # assert len(data) == 8, data
         if len(data) != 8:
             self.can_errors += 1
@@ -225,7 +246,8 @@ class RobotKloubak(Node):
 #            print(hex(msg_id), packet[2:])
             if msg_id == CAN_ID_BUTTONS:
                 self.update_buttons(packet[2:])
-            elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
+#            elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
+            elif msg_id == CAN_ID_ENCODERS:
                 self.update_encoders(msg_id, packet[2:])
             elif msg_id == CAN_ID_CURRENT:
                 # assert len(packet) == 5, len(packet)  # expected 24bit integer miliAmps
