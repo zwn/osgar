@@ -33,6 +33,11 @@ CAN_ID_CURRENT = 0x70
 CAN_ID_JOIN_ANGLE = 0x80
 CAN_ID_ENCODERS = 0x83
 
+INDEX_FRONT_LEFT = 0  # TODO fix indexes!
+INDEX_FRONT_RIGHT = 1
+INDEX_REAR_LEFT = 2
+INDEX_REAR_RIGHT = 3
+
 MIN_SPEED = 0.3
 
 #Transferring coefficient for the vesc tachometers to meters: distance = vesc_value * 0.845/100
@@ -128,6 +133,9 @@ class RobotKloubak(Node):
         self.last_encoders_rear_left = None
         self.last_encoders_rear_right = None
         self.last_encoders_time = None
+        self.last_pose_encoders = [0, 0, 0, 0]  # accumulated tacho readings
+        self.encoders = [0, 0, 0, 0]  # handling 16bit integrer overflow
+        self.last_encoders_16bit = None  # raw readings
         self.last_join_angle = None
         self.can_errors = 0  # count errors instead of assert
 
@@ -161,16 +169,14 @@ class RobotKloubak(Node):
         if msg_id == 0x83:
             encoders = struct.unpack('>HHHH', data)
             if self.last_encoders_time is not None:
-#                print(self.time - self.last_encoders_time, [e - prev for prev, e in zip(self.prev_encoders, encoders)])
-                pass
+                diff = [sint16_diff(e, prev) for prev, e in zip(self.last_encoders_16bit, encoders)]
             else:
-                self.first_encoders = encoders
-            self.prev_encoders = encoders
+                diff = [0, 0, 0, 0]
+            self.encoders = [e + d for e, d in zip(self.encoders, diff)]
+            self.last_encoders_16bit = encoders
             self.last_encoders_time = self.time
-#            print(encoders)
-#            assert False, encoders
             if self.verbose:
-                print(self.time - self.last_encoders_time, [sint16_diff(e, prev) for prev, e in zip(self.first_encoders, encoders)])
+                print(self.time - self.last_encoders_time, diff, self.encoders)
             return
         assert msg_id in [0x91, 0x92, 0x93, 0x94], hex(msg_id)
         # assert len(data) == 8, data
@@ -220,10 +226,14 @@ class RobotKloubak(Node):
         return True, (x, y, heading), (dist, angle)
 
     def update_pose(self):
+        diff = [e - prev for e, prev in zip(self.encoders, self.last_pose_encoders)]
+        self.last_pose_encoders = self.encoders
         if self.desired_speed >= 0:
-            ret, pose, motion = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
+#            ret, pose, motion = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
+            ret, pose, motion = self.compute_pose(diff[INDEX_REAR_LEFT], diff[INDEX_REAR_RIGHT])
         else:
-            ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+#            ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
+            ret, pose, motion = self.compute_pose(diff[INDEX_FRONT_LEFT], diff[INDEX_FRONT_RIGHT])
         
         if ret:
             self.pose = pose
