@@ -15,7 +15,7 @@ from osgar.bus import BusShutdownException
 WHEEL_DISTANCE = 0.496  # m K2
 CENTER_AXLE_DISTANCE = 0.348  # distance from potentiometer
 VESC_REPORT_FREQ = 20  # was 100  # Hz
-#ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
+SPEED_ENC_SCALE = 0.25 * math.pi / (4 * 3 * 60 * VESC_REPORT_FREQ)  # scale 4x found experimentally
 ENC_SCALE = 8.0/950  # TODO proper calibration
 
 AD_CENTER = 515 # K2
@@ -74,7 +74,7 @@ def draw_enc_stat(arr):
 
 
 def compute_desired_erpm(desired_speed, desired_angular_speed):
-    scale = 1 / (VESC_REPORT_FREQ * ENC_SCALE)
+    scale = 1 / (VESC_REPORT_FREQ * SPEED_ENC_SCALE)
     left = scale * (desired_speed - desired_angular_speed * WHEEL_DISTANCE / 2)
     right = scale * (desired_speed + desired_angular_speed * WHEEL_DISTANCE / 2)
     return int(round(left)), int(round(right))
