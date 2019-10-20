@@ -230,15 +230,13 @@ class RobotKloubak(Node):
         diff = [e - prev for e, prev in zip(self.encoders, self.last_pose_encoders)]
         self.last_pose_encoders = self.encoders
         if self.desired_speed >= 0:
-#            ret, pose, motion = self.compute_pose(self.last_encoders_rear_left, self.last_encoders_rear_right)
             ret, pose, motion = self.compute_pose(diff[INDEX_REAR_LEFT], diff[INDEX_REAR_RIGHT])
         else:
-#            ret, pose, motion = self.compute_pose(self.last_encoders_front_left, self.last_encoders_front_right)
             ret, pose, motion = self.compute_pose(diff[INDEX_FRONT_LEFT], diff[INDEX_FRONT_RIGHT])
-        
+
         if ret:
             self.pose = pose
-            
+
         if self.verbose and ret and self.last_join_angle is not None:
 #            self.debug_odo.append((self.time.total_seconds(), motion[0], motion_rear[0]))
 #            self.debug_odo.append((self.time.total_seconds(), motion[1], motion_rear[1]))
@@ -257,8 +255,7 @@ class RobotKloubak(Node):
 #            print(hex(msg_id), packet[2:])
             if msg_id == CAN_ID_BUTTONS:
                 self.update_buttons(packet[2:])
-#            elif msg_id in [CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
-            elif msg_id == CAN_ID_ENCODERS:
+            elif msg_id in [CAN_ID_ENCODERS, CAN_ID_VESC_FRONT_L, CAN_ID_VESC_FRONT_R, CAN_ID_VESC_REAR_L, CAN_ID_VESC_REAR_R]:
                 self.update_encoders(msg_id, packet[2:])
             elif msg_id == CAN_ID_CURRENT:
                 # assert len(packet) == 5, len(packet)  # expected 24bit integer miliAmps
@@ -274,10 +271,11 @@ class RobotKloubak(Node):
 #                    print(self.last_join_angle)
                 else:
                     self.can_errors += 1
-            if msg_id == CAN_ID_SYNC:
+            if msg_id == CAN_ID_ENCODERS:
+                diff = [e - prev for e, prev in zip(self.encoders, self.last_pose_encoders)]
                 self.publish('encoders', 
-                        [self.last_encoders_front_left, self.last_encoders_front_right,
-                         self.last_encoders_rear_left, self.last_encoders_rear_right])
+                        [diff[INDEX_FRONT_LEFT], diff[INDEX_FRONT_RIGHT],
+                         diff[INDEX_REAR_LEFT], diff[INDEX_REAR_RIGHT]])
                 if self.update_pose():
                     self.send_pose()
                 # reset all encoder values to be sure that new reading were received
