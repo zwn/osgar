@@ -8,10 +8,10 @@ from itertools import chain
 
 def aws2info(filename, outname):
     KEY = 'Python3: stdout '
-    with open(filename) as f:
+    with open(filename) as f, open(outname, 'w') as out:
         for line in f:
             if KEY in line and line.strip().endswith(']'):
-                print(line[line.index(KEY)+len(KEY):].strip())
+                out.write(line[line.index(KEY)+len(KEY):])
 
 
 if __name__ == '__main__':
@@ -21,7 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('filename', help='AWS ROS recorded log file')
     args = parser.parse_args()
 
-    outname = os.path.join(os.path.dirname(args.filename), 'info.txt')
+    assert 'rosout.log' in args.filename, args.filename
+    outname = args.filename.replace('rosout.log', 'info.txt')
     aws2info(args.filename, outname=outname)
 
 # vim: expandtab sw=4 ts=4
