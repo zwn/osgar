@@ -289,6 +289,9 @@ class RobotKloubak(Node):
                 if len(packet) == 2 + 4:
                     self.downdrop = struct.unpack_from('>HH', packet, 2)
 #                    print(self.downdrop)
+                    if max(self.downdrop) > 300:  # readings in mm
+                        print('Downdrop!', self.downdrop, 'sending Emergency STOP!')
+                        self.bus.publish('emergency_stop', True)
                 else:
                     self.can_errors += 1
 
