@@ -96,9 +96,9 @@ def count_red(img, filtered=False, stdout=None):
 #        print(best_area, best_cnt)
         x, y, w, h = cv2.boundingRect(best_cnt)
 
-        if stdout is not None:
-            # dump image to stdout
-            # https://stackoverflow.com/questions/50670326/how-to-check-if-point-is-placed-inside-contour
+#        if stdout is not None:
+#            # dump image to stdout
+#            # https://stackoverflow.com/questions/50670326/how-to-check-if-point-is-placed-inside-contour
 #            print(x, y, w, h)
 #            for j in range(y, y + h):
 #                s = ''
