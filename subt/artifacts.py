@@ -99,12 +99,12 @@ def count_red(img, filtered=False, stdout=None):
         if stdout is not None:
             # dump image to stdout
             # https://stackoverflow.com/questions/50670326/how-to-check-if-point-is-placed-inside-contour
-            print(x, y, w, h)
-            for j in range(y, y + h):
-                s = ''
-                for i in range(x, x + w ):
-                    s += 'X' if mask[j][i] else '.'
-                stdout(s)
+#            print(x, y, w, h)
+#            for j in range(y, y + h):
+#                s = ''
+#                for i in range(x, x + w ):
+#                    s += 'X' if mask[j][i] else '.'
+#                stdout(s)
         # count, w, h, x_min, x_max
         return int(best_area), w, h, x, x+w
 
@@ -271,9 +271,9 @@ class ArtifactDetector(Node):
             # TODO if VALVE -> find it in scan
             self.publish('artf', [artf, deg_100th, dist_mm])
             self.publish('debug_artf', self.best_img)
-            filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
-            with open(filename, 'wb') as f:
-                f.write(self.best_img)
+#            filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
+#            with open(filename, 'wb') as f:
+#                f.write(self.best_img)
 
             # reset detector
             self.best = None
