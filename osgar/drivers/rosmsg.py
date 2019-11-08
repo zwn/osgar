@@ -263,6 +263,7 @@ class ROSMsgParser(Thread):
 
         self.topic_type = config.get('topic_type')
         self.timestamp_sec = None
+        self.timestamp_nsec = None
 
         # initial message contains structure
         self.header = None
@@ -325,14 +326,14 @@ class ROSMsgParser(Thread):
             self.bus.publish('acc', [round(x * 1000) for x in acc])
         elif frame_id.endswith(b'/clock'):
             prev = self.timestamp_sec
-            self.timestamp_sec, __ = parse_clock(packet)
+            self.timestamp_sec, self.timestamp_nsec = parse_clock(packet)
             if prev != self.timestamp_sec:
                 self.bus.publish('sim_time_sec', self.timestamp_sec)
 
-    def slot_tick(self, timestamp, data):
-        #cmd = prefix4BytesLen(packCmdVel(self.desired_speed, self.desired_angular_speed))
-        cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
-        self.bus.publish('cmd_vel', cmd)
+            ms = self.timestamp_nsec//1000000
+            if ms % 20 == 0:  # 50Hz
+                cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
+                self.bus.publish('cmd_vel', cmd)
 
     def slot_desired_speed(self, timestamp, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
@@ -351,8 +352,6 @@ class ROSMsgParser(Thread):
                 timestamp, channel, data = self.bus.listen()
                 if channel == 'raw':
                     self.slot_raw(timestamp, data)
-                elif channel == 'tick':
-                    self.slot_tick(timestamp, data)
                 elif channel == 'desired_speed':
                     self.slot_desired_speed(timestamp, data)
                 elif channel == 'stdout':
