@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <geometry_msgs/Twist.h>
+#include <rosgraph_msgs/Clock.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/CompressedImage.h>
@@ -43,6 +44,7 @@
 #include <zmq.h>
 #include <assert.h>
 
+int g_countClock = 0;
 int g_countImu = 0;
 int g_countScan = 0;
 int g_countImage = 0;
@@ -66,6 +68,15 @@ void initZeroMQ()
   g_requester = zmq_socket (g_contextIn, ZMQ_PULL);  // use "Pipeline pattern" to receive all data to Python3
   rc = zmq_bind (g_requester, "tcp://*:5556");
   assert (rc == 0);
+}
+
+void clockCallback(const rosgraph_msgs::Clock::ConstPtr& msg)
+{
+  ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
+  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
+  if(g_countClock % 1000 == 0)
+    ROS_INFO("received Clock %d ", g_countClock);
+  g_countClock++;
 }
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
@@ -158,6 +169,7 @@ class Controller
   /// \brief Service to request pose from origin.
   subt_msgs::PoseFromArtifact originSrv;
 
+  ros::Subscriber subClock;
   ros::Subscriber subImu;
   ros::Subscriber subScan;
   ros::Subscriber subImage;
@@ -258,6 +270,7 @@ void Controller::Update()
       this->velPub = this->n.advertise<geometry_msgs::Twist>(
           this->name + "/cmd_vel", 1);
 
+      this->subClock  = n.subscribe("/clock", 1000, clockCallback);
       this->subImu  = n.subscribe(this->name + "/imu/data", 1000, imuCallback);
       this->subScan = n.subscribe(this->name + "/front_scan", 1000, scanCallback);
       this->subImage = n.subscribe(this->name + "/front/image_raw/compressed", 1000, imageCallback);
