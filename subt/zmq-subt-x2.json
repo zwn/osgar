@@ -36,14 +36,6 @@
             "endpoint": "tcp://localhost:5556"
           }
       },
-      "timer": {
-          "driver": "subt.mytimer:MyTimer",
-          "in": [],
-          "out": ["tick"],
-          "init": {
-            "sleep": 0.05
-          }
-      },
       "receiver": {
           "driver": "zeromq",
           "in": [],
@@ -85,8 +77,6 @@
               ["detector.artf", "app.artf"],
               ["detector.stdout", "rosmsg.stdout"],
               ["app.artf_xyz", "reporter.artf_xyz"],
-              ["reporter.artf_cmd", "transmitter.raw"],
-
-              ["timer.tick", "rosmsg.tick"]]
+              ["reporter.artf_cmd", "transmitter.raw"]]
   }
 }
