@@ -331,7 +331,7 @@ class ROSMsgParser(Thread):
                 self.bus.publish('sim_time_sec', self.timestamp_sec)
 
             ms = self.timestamp_nsec//1000000
-            if ms % 20 == 0:  # 50Hz
+            if self.timestamp_sec > 0 and ms % 20 == 0:  # 50Hz
                 cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
                 self.bus.publish('cmd_vel', cmd)
 
