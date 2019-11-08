@@ -235,6 +235,11 @@ def parse_points(data):
 def get_frame_id(data):
     size = struct.unpack_from('<I', data)[0]
     pos = 4
+    if size == 8:
+        # exception for /clock ?!
+        timestamp_sec, timestamp_nsec = struct.unpack_from('<II', data, pos)
+        return b'/clock'
+
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
     pos += 4 + 4 + 4 + 4
     frame_id = data[pos:pos+frame_id_size]
