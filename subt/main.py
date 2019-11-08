@@ -626,13 +626,13 @@ class SubTChallenge:
             self.collision_detector_enabled = False
             if reason is None or reason != REASON_PITCH_LIMIT:
                 break
-            self.stdout(self.time, "Microstep HOME", loop, dist, reason)
+            self.stdout(self.time, "Microstep HOME %d %.3f" % (loop, dist), reason)
             self.go_straight(-0.3, timeout=timedelta(seconds=10))
             self.return_home(timedelta(seconds=10))
 
         self.stdout("Artifacts:", self.artifacts)
 
-        self.stdout(self.time, "Going HOME", dist, reason)
+        self.stdout(self.time, "Going HOME %.3f" % dist, reason)
 
         self.return_home(2 * self.timeout)
         self.send_speed_cmd(0, 0)
