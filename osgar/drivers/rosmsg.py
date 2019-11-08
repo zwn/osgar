@@ -232,12 +232,19 @@ def parse_points(data):
     assert pos == len(data), (pos, len(data))
 
 
+def parse_clock(data):
+    size = struct.unpack_from('<I', data)[0]
+    assert size == 8, size  # clock does not contain type, only NTP time
+    pos = 4
+    timestamp_sec, timestamp_nsec = struct.unpack_from('<II', data, pos)
+    return (timestamp_sec, timestamp_nsec)
+
+
 def get_frame_id(data):
     size = struct.unpack_from('<I', data)[0]
     pos = 4
     if size == 8:
         # exception for /clock ?!
-        timestamp_sec, timestamp_nsec = struct.unpack_from('<II', data, pos)
         return b'/clock'
 
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
@@ -307,18 +314,20 @@ class ROSMsgParser(Thread):
                 return
             self.bus.publish('scan', parse_laser(packet))
         elif frame_id.endswith(b'/odom'):  #self.topic_type == 'nav_msgs/Odometry':
-            prev = self.timestamp_sec
-            self.timestamp_sec, (x, y, heading) = parse_odom(packet)
+            __, (x, y, heading) = parse_odom(packet)
             self.bus.publish('pose2d', [round(x*1000),
                                         round(y*1000),
                                         round(math.degrees(heading)*100)])
-            if prev != self.timestamp_sec:
-                self.bus.publish('sim_time_sec', self.timestamp_sec)
         elif frame_id.endswith(b'/base_link/imu_sensor'):  # self.topic_type == 'std_msgs/Imu':
             acc, rot = parse_imu(packet)
             self.bus.publish('rot', [round(math.degrees(angle)*100) 
                                      for angle in rot])
             self.bus.publish('acc', [round(x * 1000) for x in acc])
+        elif frame_id.endswith(b'/clock'):
+            prev = self.timestamp_sec
+            self.timestamp_sec, __ = parse_clock(packet)
+            if prev != self.timestamp_sec:
+                self.bus.publish('sim_time_sec', self.timestamp_sec)
 
     def slot_tick(self, timestamp, data):
         #cmd = prefix4BytesLen(packCmdVel(self.desired_speed, self.desired_angular_speed))
