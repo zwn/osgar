@@ -46,7 +46,6 @@ int g_countOdom = 0;
 void clockCallback(const rosgraph_msgs::Clock::ConstPtr& msg)
 {
   ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
-  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
   if(g_countClock % 1000 == 0)
     ROS_INFO("received Clock %d ", g_countClock);
   g_countClock++;
@@ -55,7 +54,6 @@ void clockCallback(const rosgraph_msgs::Clock::ConstPtr& msg)
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
   ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
-  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
   if(g_countImu % 100 == 0)
     ROS_INFO("received Imu %d ", g_countImu);
   g_countImu++;
@@ -64,7 +62,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
   ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
-  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
   if(g_countScan % 100 == 0)
     ROS_INFO("received Scan %d", g_countScan);
   g_countScan++;
@@ -73,7 +70,6 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 void imageCallback(const sensor_msgs::CompressedImage::ConstPtr& msg)
 {
   ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
-  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
   if(g_countImage % 100 == 0)
     ROS_INFO("received Image %d", g_countImage);
   g_countImage++;
@@ -82,7 +78,6 @@ void imageCallback(const sensor_msgs::CompressedImage::ConstPtr& msg)
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
   ros::SerializedMessage sm = ros::serialization::serializeMessage(*msg);
-  zmq_send(g_responder, sm.buf.get(), sm.num_bytes, 0);
   if(g_countOdom % 100 == 0)
     ROS_INFO("received Odom %d", g_countOdom);
   g_countOdom++;
