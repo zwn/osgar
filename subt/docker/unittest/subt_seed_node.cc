@@ -221,7 +221,7 @@ void Controller::Update()
       this->velPub = this->n.advertise<geometry_msgs::Twist>(
           this->name + "/cmd_vel", 1);
 
-      this->subClock  = n.subscribe("/clock", 1000, clockCallback);
+//      this->subClock  = n.subscribe("/clock", 1000, clockCallback); // This is maybe causing AWS CloudSim failure
       this->subImu  = n.subscribe(this->name + "/imu/data", 1000, imuCallback);
       this->subScan = n.subscribe(this->name + "/front_scan", 1000, scanCallback);
       this->subImage = n.subscribe(this->name + "/front/image_raw/compressed", 1000, imageCallback);
