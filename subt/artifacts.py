@@ -253,13 +253,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run artifact detection and classification for given JPEG image')
     parser.add_argument('filename', help='JPEG filename')
+    parser.add_argument('--num_proc', help='how many processes to use', type=int, default=0)
     parser.add_argument('-v', '--verbose', help='verbose mode', action='store_true')
     args = parser.parse_args()
 
     with open(args.filename, 'rb') as f:
         jpeg_data = f.read()
 
-    config = { 'virtual_world': False }
+    config = { 'virtual_world': False, 'num_proc': args.num_proc }
     logger = MagicMock()
     logger.register = MagicMock(return_value=1)
     output = Queue()
