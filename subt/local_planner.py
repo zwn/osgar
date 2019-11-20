@@ -1,5 +1,7 @@
 import math
+import io
 import concurrent.futures
+
 
 def normalize_angle(angle):
     return (angle + math.pi) % (2 * math.pi) - math.pi
@@ -17,6 +19,12 @@ class LocalPlanner:
         self.max_obstacle_distance = max_obstacle_distance
         self.obstacle_influence = obstacle_influence
 
+    def __repr__(self):
+        out = io.StringIO()
+        for k, v in self.__dict__.items():
+            out.write(f"{k} = {repr(v)}\n")
+        return f"[LocalPlanner]\n{out.getvalue()}".strip()
+
     def update(self, scan):
         self.last_scan = scan
 
@@ -29,7 +37,7 @@ class LocalPlanner:
             measurement_angle = self.scan_right + (self.scan_left - self.scan_right) * i / float(len(self.last_scan) - 1)
             measurement_vector = math.cos(measurement_angle), math.sin(measurement_angle)
 
-            # Converting from tenths of milimeters to meters.
+            # Converting from millimeters to meters.
             obstacle_xy = [mv * measurement * 1e-3 for mv in measurement_vector]
 
             obstacles.append(obstacle_xy)
@@ -80,5 +88,58 @@ class LocalPlanner:
                 return max(executor.map(self._is_good, DIRECTIONS))
 
         return max(self._is_good(direction) for direction in DIRECTIONS)
+
+
+def main():
+    import argparse
+    from pprint import pprint
+    parser = argparse.ArgumentParser(description='LocalPlanner')
+    parser.add_argument('logfile', help='recorded log file')
+    parser.add_argument('--map', default=False, action='store_true')
+    args = parser.parse_args()
+
+    import pathlib
+    stem = pathlib.PurePath(args.logfile).stem
+    robot_name = stem[:stem.index('-')]
+
+    from collections import namedtuple
+    Robot = namedtuple('Robot', ['stream', 'fov'])
+
+    ROBOTS = {
+        'robik': Robot('cortexpilot.scan', 360),
+        'eduro': Robot('lidar.scan', 270),
+        'kloubak2': Robot('lidar.scan', 270),
+    }
+    robot = ROBOTS[robot_name]
+    print(f"{robot_name}: {robot}")
+
+    import osgar.logger
+    streams = osgar.logger.lookup_stream_names(args.logfile)
+    try:
+        stream_id = streams.index(robot.stream)
+    except ValueError:
+        print(f"{robot.stream} not found")
+        print("available scan streams:")
+        for s in streams:
+            if s.endswith('.scan'):
+                print("  ", s)
+        parser.exit(1)
+
+    import time
+    with osgar.logger.LogReader(args.logfile, only_stream_id=stream_id) as log:
+        lp = LocalPlanner(scan_left=math.radians(robot.fov/2), scan_right=-math.radians(robot.fov/2))
+        pprint(lp)
+        start = time.perf_counter()
+        for i, (dt, stream, scan) in enumerate(log):
+            lp.update(scan)
+            lp.recommend(math.radians(20), map=args.map)
+            if i % 100 == 0:
+                print('.', end='', flush=True)
+        end = time.perf_counter()
+    print(f"\ntotal time: {end-start}s")
+
+
+if __name__ == "__main__":
+    main()
 
 # vim: expandtab sw=4 ts=4
