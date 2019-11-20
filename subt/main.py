@@ -160,7 +160,7 @@ class SubTChallenge:
         self.use_right_wall = config['right_wall']
         self.is_virtual = config.get('virtual_world', False)  # workaround to handle tunnel differences
 
-        if self.is_virtual:
+        if True:
             self.local_planner = LocalPlanner()
         else:
             self.local_planner = None
