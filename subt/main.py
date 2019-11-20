@@ -161,7 +161,7 @@ class SubTChallenge:
         self.is_virtual = config.get('virtual_world', False)  # workaround to handle tunnel differences
 
         if True:
-            self.local_planner = LocalPlanner()
+            self.local_planner = LocalPlanner(config.get('num_proc', 0))
         else:
             self.local_planner = None
 

@@ -11,13 +11,32 @@ DIRECTIONS = [math.radians(direction) for direction in range(-180, 180, 3)]
 
 
 class LocalPlanner:
-    def __init__(self, scan_right=math.radians(-135), scan_left=math.radians(135), direction_adherence=math.radians(90), max_obstacle_distance=1.5, obstacle_influence=1.2):
+    def __init__(self,
+                 scan_right=math.radians(-135),
+                 scan_left=math.radians(135),
+                 direction_adherence=math.radians(90),
+                 max_obstacle_distance=1.5,
+                 obstacle_influence=1.2,
+                 num_proc=0):
         self.last_scan = None
         self.scan_right = scan_right
         self.scan_left = scan_left
         self.direction_adherence = direction_adherence
         self.max_obstacle_distance = max_obstacle_distance
         self.obstacle_influence = obstacle_influence
+        self.num_proc = num_proc
+        if self.num_proc > 0:
+            self.pool = concurrent.futures.ProcessPoolExecutor(self.num_proc)
+        self.scan = None
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['pool']
+        del state['scan']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     def __repr__(self):
         out = io.StringIO()
@@ -75,7 +94,7 @@ class LocalPlanner:
     def _is_good(self, direction):
         return min(self._is_safe(direction), self._is_desired(direction)), direction  # Fuzzy AND.
 
-    def recommend(self, desired_dir, map=False):
+    def recommend(self, desired_dir):
         self.desired_dir = normalize_angle(desired_dir)
         if self.last_scan is None:
             return 1.0, self.desired_dir
@@ -83,9 +102,8 @@ class LocalPlanner:
         if not self.obstacles:
             return 1.0, self.desired_dir
 
-        if map:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                return max(executor.map(self._is_good, DIRECTIONS))
+        if self.num_proc > 0:
+            return max(self.pool.map(self._is_good, DIRECTIONS, chunksize=len(DIRECTIONS)//self.num_proc))
 
         return max(self._is_good(direction) for direction in DIRECTIONS)
 
@@ -95,7 +113,7 @@ def main():
     from pprint import pprint
     parser = argparse.ArgumentParser(description='LocalPlanner')
     parser.add_argument('logfile', help='recorded log file')
-    parser.add_argument('--map', default=False, action='store_true')
+    parser.add_argument('--num_proc', default=0, type=int)
     args = parser.parse_args()
 
     import pathlib
@@ -127,12 +145,12 @@ def main():
 
     import time
     with osgar.logger.LogReader(args.logfile, only_stream_id=stream_id) as log:
-        lp = LocalPlanner(scan_left=math.radians(robot.fov/2), scan_right=-math.radians(robot.fov/2))
+        lp = LocalPlanner(scan_left=math.radians(robot.fov/2), scan_right=-math.radians(robot.fov/2), num_proc=args.num_proc)
         pprint(lp)
         start = time.perf_counter()
         for i, (dt, stream, scan) in enumerate(log):
             lp.update(scan)
-            lp.recommend(math.radians(20), map=args.map)
+            lp.recommend(math.radians(20))
             if i % 100 == 0:
                 print('.', end='', flush=True)
         end = time.perf_counter()
