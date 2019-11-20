@@ -76,6 +76,27 @@ def count_yellow(img):
     return count_mask(mask)
 
 
+def count_all(image, is_virtual):
+    img = cv2.imdecode(np.fromstring(image, dtype=np.uint8), 1)
+    rcount, w, h, x_min, x_max = count_red(img)
+    yellow_used = False
+    if is_virtual and rcount == 0:
+        wcount, w, h, x_min, x_max = count_white(img)
+        if wcount > WHITE_THRESHOLD and 1.8 < w / h < 1.9 and wcount / (w * h) > 0.6:
+            count = wcount
+        else:
+            ycount, w, h, x_min, x_max = count_yellow(img)
+            if ycount > YELLOW_THRESHOLD:
+                yellow_used = True
+                count = ycount
+            else:
+                count = 0
+    else:
+        count = rcount
+
+    return count, w, h, x_min, x_max, (count == rcount), yellow_used
+
+
 def artf_in_scan(scan, img_x_min, img_x_max, verbose=False):
     """return precise artefact angle and distance for lidar & camera combination"""
     if scan is None:
@@ -135,33 +156,18 @@ class ArtifactDetector(Node):
             pass
 
     def detect(self, image):
-        img = cv2.imdecode(np.fromstring(image, dtype=np.uint8), 1)
-        rcount, w, h, x_min, x_max = count_red(img)
-        yellow_used = False
-        if self.is_virtual and rcount == 0:
-            wcount, w, h, x_min, x_max = count_white(img)
-            if wcount > WHITE_THRESHOLD and 1.8 < w/h < 1.9 and wcount/(w*h) > 0.6:
-                count = wcount
-            else:
-                ycount, w, h, x_min, x_max = count_yellow(img)
-                if ycount > YELLOW_THRESHOLD:
-                    yellow_used = True
-                    count = ycount
-                else:
-                    count = 0
-        else:
-            count = rcount
+        count, w, h, x_min, x_max, red_used, yellow_used = count_all(image, self.is_virtual)
 
         if self.verbose and count > 0:
-            print(self.time, img.shape, count, w, h, x_min, x_max, w/h, count/(w*h))
+            print(self.time, count, w, h, x_min, x_max, w/h, count/(w*h))
         if self.best_count > 0:
             self.best_count -= 1
         if count > RED_THRESHOLD:
             if self.best is None or count > self.best:
                 self.best = count
                 self.best_count = 10
-                self.best_img = self.image
-                self.best_info = w, h, x_min, x_max, (count == rcount), yellow_used  # RED used
+                self.best_img = image
+                self.best_info = w, h, x_min, x_max, red_used, yellow_used  # RED used
                 self.best_scan = self.scan
 
         if self.best is not None and self.best_count == 0:
