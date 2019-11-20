@@ -243,17 +243,20 @@ if __name__ == '__main__':
     with open(args.filename, 'rb') as f:
         jpeg_data = f.read()
 
-    config = {}
+    config = { 'virtual_world': False }
     logger = MagicMock()
     logger.register = MagicMock(return_value=1)
     output = Queue()
-    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')]})
+    bus = BusHandler(logger=logger, out={'artf': [(output, 'artf')], 'dropped': []})
+    def publish(channel, data):
+        return timedelta(0)
+    bus.publish = publish
     detector = ArtifactDetector(config, bus)
     detector.verbose = args.verbose
     detector.start()
     bus.queue.put((timedelta(0), 'scan', [2000]*270))  # pretend that everything is at 2 meters
     for i in range(10 + 1):  # workaround for local minima
-        bus.queue.put((timedelta(0), 'image', jpeg_data))
+        bus.queue.put((timedelta(1), 'image', jpeg_data))
     detector.request_stop()
     detector.join()
     if output.empty():
