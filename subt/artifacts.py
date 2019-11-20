@@ -1,6 +1,7 @@
 """
   Detect SubT Artifact in Camera Image
 """
+import concurrent.futures
 from datetime import timedelta
 import os
 import tempfile
@@ -133,6 +134,9 @@ class ArtifactDetector(Node):
         self.best_scan = None
         self.verbose = False
         self.scan = None  # should laster initialize super()
+        self.num_proc = config.get("num_proc", 0)
+        if self.num_proc > 0:
+            self.pool = concurrent.futures.ProcessPoolExecutor(self.num_proc)
 
     def waitForImage(self):
         channel = ""
@@ -156,7 +160,13 @@ class ArtifactDetector(Node):
             pass
 
     def detect(self, image):
-        count, w, h, x_min, x_max, red_used, yellow_used = count_all(image, self.is_virtual)
+        if self.num_proc == 0:
+            packed = count_all(image, self.is_virtual)
+        else:
+            result = self.pool.submit(count_all, image, self.is_virtual)
+            packed = result.result()
+
+        count, w, h, x_min, x_max, red_used, yellow_used = packed
 
         if self.verbose and count > 0:
             print(self.time, count, w, h, x_min, x_max, w/h, count/(w*h))
