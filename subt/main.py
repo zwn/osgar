@@ -21,10 +21,10 @@ from subt.local_planner import LocalPlanner
 
 
 # safety limits for exploration and return home
-LIMIT_ROLL = math.radians(20)
-LIMIT_PITCH = math.radians(20)
-RETURN_LIMIT_ROLL = math.radians(30)
-RETURN_LIMIT_PITCH = math.radians(30)
+LIMIT_ROLL = math.radians(25)  # in Virtual Urban are ramps with 20deg slope
+LIMIT_PITCH = math.radians(25)
+RETURN_LIMIT_ROLL = math.radians(35)
+RETURN_LIMIT_PITCH = math.radians(35)
 
 TRACE_STEP = 0.5  # meters in 3D
 
