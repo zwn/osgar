@@ -683,8 +683,8 @@ class SubTChallenge:
             self.stdout('Final xyz (DARPA coord system):', (x + x0, y + y0, z + z0))
 
         self.wait(timedelta(seconds=30), use_sim_time=True)
-        self.dumplog()
-        self.wait(timedelta(seconds=10), use_sim_time=True)
+#        self.dumplog()
+#        self.wait(timedelta(seconds=10), use_sim_time=True)
 
 #############################################
 
