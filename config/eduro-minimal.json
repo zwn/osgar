@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "robot": {
+    "modules": {
+      "app": {
+          "driver": "application",
+          "in": ["encoders", "scan", "emergency_stop", "pose2d", "buttons", "voltage"],
+          "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d"],
+          "init": {
+            "max_speed": 0.5,
+            "symmetric": false,
+            "virtual_bumper_sec": 10.0,
+            "laser_pose2d": [0.13, 0.055, 0]
+          }
+      },
+      "can": {
+          "driver": "can",
+          "in": ["raw", "can"],
+          "out": ["can", "raw"],
+          "init": {"speed": "250k", "canopen":true}
+      },
+      "serial": {
+          "driver": "serial",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {"port": "/dev/ttyS0", "speed": 115200,
+                   "rtscts":true, "reset":true}
+      }
+    },
+    "links": [["serial.raw", "can.raw"],
+              ["can.raw", "serial.raw"],
+              ["eduro.can", "can.can"],
+              ["can.can", "eduro.can"],
+              ["eduro.encoders", "app.encoders"],
+              ["app.desired_speed", "eduro.desired_speed"],
+              ["eduro.emergency_stop", "app.emergency_stop"],
+              ["eduro.pose2d", "app.pose2d"],
+              ["eduro.buttons", "app.buttons"],
+              ["eduro.voltage", "app.voltage"]
+      ]
+  }
+}
