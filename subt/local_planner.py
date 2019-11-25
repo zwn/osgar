@@ -26,6 +26,7 @@ class LocalPlanner:
         self.obstacle_influence = obstacle_influence
         self.num_proc = num_proc
         if self.num_proc > 0:
+            print('creating pool', self.num_proc)
             self.pool = concurrent.futures.ProcessPoolExecutor(self.num_proc)
         self.scan = None
 

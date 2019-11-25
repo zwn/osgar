@@ -161,7 +161,7 @@ class SubTChallenge:
         self.is_virtual = config.get('virtual_world', False)  # workaround to handle tunnel differences
 
         if True:
-            self.local_planner = LocalPlanner(config.get('num_proc', 0))
+            self.local_planner = LocalPlanner(num_proc=config.get('num_proc', 0))
         else:
             self.local_planner = None
 
@@ -488,7 +488,7 @@ class SubTChallenge:
         try:
             with EmergencyStopMonitor(self):
                 allow_virtual_flip = self.symmetric
-                self.go_straight(2.5)  # go to the tunnel entrance
+                #self.go_straight(2.5)  # go to the tunnel entrance
                 walldist = self.walldist
                 total_dist = 0.0
                 start_time = self.sim_time_sec
