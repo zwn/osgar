@@ -65,7 +65,7 @@ def odom2zmq():
     wait_for_master()
 
     mode = 'PUSH'  # config['mode']
-    endpoint = 'tcp://localhost:5556'  # config['endpoint']
+    endpoint = 'tcp://*:5555'  # config['endpoint']
     context = zmq.Context()
     g_socket = context.socket(zmq.PUSH)
     g_socket.connect(endpoint)
