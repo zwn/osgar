@@ -41,6 +41,18 @@ def wait_for_sensors():
     rospy.loginfo('--------------- mdwait END ---------------')
 
 
+def callback(data):
+    # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    print(rospy.get_caller_id(), data)
+
+
+def odom2zmq():
+    wait_for_master()
+    rospy.init_node('listener', anonymous=True)
+    rospy.Subscriber('forwarder', Odometry, callback)
+    rospy.spin()
+
+
 if __name__ == '__main__':
     wait_for_sensors()
 
