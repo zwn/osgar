@@ -54,6 +54,6 @@ def odom2zmq():
 
 
 if __name__ == '__main__':
-    wait_for_sensors()
+    odom2zmq()
 
 # vim: expandtab sw=4 ts=4
