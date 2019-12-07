@@ -2,6 +2,9 @@
   Wait for all necessary ROS sensors
 """
 import time
+from StringIO import StringIO
+
+import zmq
 
 import rospy
 from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
@@ -41,13 +44,32 @@ def wait_for_sensors():
     rospy.loginfo('--------------- mdwait END ---------------')
 
 
+g_socket = None
+
 def callback(data):
+    global g_socket
+    assert g_socket is not None
+
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     print(rospy.get_caller_id(), data)
 
+    # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
+    s1 = StringIO()
+    data.serialize(s1)
+#    g_socket.send(data, zmq.NOBLOCK)    
+    g_socket.send(s1)    
+
 
 def odom2zmq():
+    global g_socket
     wait_for_master()
+
+    mode = 'PUSH'  # config['mode']
+    endpoint = 'tcp://localhost:5556'  # config['endpoint']
+    context = zmq.Context()
+    g_socket = context.socket(zmq.PUSH)
+    g_socket.connect(endpoint)
+
     rospy.init_node('listener', anonymous=True)
     rospy.Subscriber('/'+ROBOT_NAME+'/odom', Odometry, callback)
     rospy.spin()
