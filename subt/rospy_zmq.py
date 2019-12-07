@@ -56,8 +56,8 @@ def callback(data):
     # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
     s1 = StringIO()
     data.serialize(s1)
-#    g_socket.send(data, zmq.NOBLOCK)    
-    g_socket.send(s1)    
+#    g_socket.send(data, zmq.NOBLOCK)
+    g_socket.send(s1.getvalue())
 
 
 def odom2zmq():
