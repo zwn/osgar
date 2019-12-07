@@ -8,6 +8,9 @@ from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
 from nav_msgs.msg import Odometry
 
 
+ROBOT_NAME = 'X0F200L'
+
+
 def wait_for_master():
     # it looks like master is not quite ready for several minutes and the only indication is the list of published
     # topics
@@ -30,11 +33,11 @@ def wait_for_sensors():
     rospy.init_node('mdwait', anonymous=True)
     wait_for_master()
     rospy.loginfo('-------------- mdwait BEGIN --------------')
-    wait_for('/X2/imu/data', Imu)
-    wait_for('/X2/front_scan', LaserScan)
-    wait_for('/X2/front/image_raw/compressed', CompressedImage)
-    wait_for('/X2/odom', Odometry)
-    wait_for('/X2/battery_state', BatteryState)  # note, that this is maybe the critical component!
+    wait_for('/'+ROBOT_NAME+'/imu/data', Imu)
+    wait_for('/'+ROBOT_NAME+'/front_scan', LaserScan)
+    wait_for('/'+ROBOT_NAME+'/front/image_raw/compressed', CompressedImage)
+    wait_for('/'+ROBOT_NAME+'/odom', Odometry)
+    wait_for('/'+ROBOT_NAME+'/battery_state', BatteryState)  # note, that this is maybe the critical component!
     rospy.loginfo('--------------- mdwait END ---------------')
 
 
