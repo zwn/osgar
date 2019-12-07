@@ -49,7 +49,7 @@ def callback(data):
 def odom2zmq():
     wait_for_master()
     rospy.init_node('listener', anonymous=True)
-    rospy.Subscriber('forwarder', Odometry, callback)
+    rospy.Subscriber('/'+ROBOT_NAME+'/odom', Odometry, callback)
     rospy.spin()
 
 
