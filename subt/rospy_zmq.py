@@ -10,7 +10,7 @@ import zmq
 import rospy
 from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
 from nav_msgs.msg import Odometry
-from rosgraph.msgs import Clock
+from rosgraph_msgs.msg import Clock
 
 
 ROBOT_NAME = 'X0F200L'
