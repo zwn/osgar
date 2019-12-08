@@ -10,6 +10,7 @@ import zmq
 import rospy
 from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
 from nav_msgs.msg import Odometry
+from rosgraph.msgs import Clock
 
 
 ROBOT_NAME = 'X0F200L'
@@ -62,6 +63,17 @@ def callback(data):
     g_socket.send(header + to_send)
 
 
+def callback_clock(data):
+    global g_socket
+    assert g_socket is not None
+
+    s1 = BytesIO()
+    data.serialize(s1)
+    to_send = s1.getvalue()
+    header = struct.pack('<I', len(to_send))
+    g_socket.send(header + to_send)
+
+
 def odom2zmq():
     global g_socket
     wait_for_master()
@@ -78,6 +90,7 @@ def odom2zmq():
   
     rospy.init_node('listener', anonymous=True)
     rospy.Subscriber('/'+ROBOT_NAME+'/odom', Odometry, callback)
+    rospy.Subscriber('/clock', Clock, callback_clock)
 
     while True:
         try:
