@@ -68,10 +68,12 @@ def odom2zmq():
 
     context = zmq.Context()
     g_socket = context.socket(zmq.PUSH)
+    g_socket.setsockopt(zmq.LINGER, 100)  # milliseconds
     g_socket.bind('tcp://*:5555')
 
     context2 = zmq.Context()
     g_socket2 = context2.socket(zmq.PULL)
+    g_socket2.RCVTIMEO = 5000 # in milliseconds
     g_socket2.bind('tcp://*:5556')
   
     rospy.init_node('listener', anonymous=True)
