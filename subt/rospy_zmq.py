@@ -2,6 +2,7 @@
   Wait for all necessary ROS sensors
 """
 import time
+import struct
 from io import BytesIO
 
 import zmq
@@ -56,8 +57,9 @@ def callback(data):
     # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
     s1 = BytesIO()
     data.serialize(s1)
-#    g_socket.send(data, zmq.NOBLOCK)
-    g_socket.send(s1.getvalue())
+    to_send = s1.getvalue()
+    header = struct.pack('<I', len(to_send))
+    g_socket.send(header + to_send)
 
 
 def odom2zmq():
