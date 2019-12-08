@@ -52,7 +52,7 @@ def callback(data):
     assert g_socket is not None
 
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
-    print(rospy.get_caller_id(), data)
+#    print(rospy.get_caller_id(), data)
 
     # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
     s1 = BytesIO()
@@ -66,18 +66,27 @@ def odom2zmq():
     global g_socket
     wait_for_master()
 
-    mode = 'PUSH'  # config['mode']
-    endpoint = 'tcp://*:5555'  # config['endpoint']
     context = zmq.Context()
     g_socket = context.socket(zmq.PUSH)
-    g_socket.bind(endpoint)
+    g_socket.bind('tcp://*:5555')
 
+    context2 = zmq.Context()
+    g_socket2 = context2.socket(zmq.PULL)
+    g_socket2.bind('tcp://*:5556')
+  
     rospy.init_node('listener', anonymous=True)
     rospy.Subscriber('/'+ROBOT_NAME+'/odom', Odometry, callback)
-    rospy.spin()
+
+    while True:
+        try:
+            message = g_socket2.recv()
+            print(message)
+        except zmq.error.Again:
+            pass
 
 
 if __name__ == '__main__':
+    wait_for_master()
     odom2zmq()
 
 # vim: expandtab sw=4 ts=4
