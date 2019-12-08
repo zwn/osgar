@@ -2,7 +2,7 @@
   Wait for all necessary ROS sensors
 """
 import time
-from StringIO import StringIO
+from io import BytesIO
 
 import zmq
 
@@ -54,7 +54,7 @@ def callback(data):
     print(rospy.get_caller_id(), data)
 
     # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
-    s1 = StringIO()
+    s1 = BytesIO()
     data.serialize(s1)
 #    g_socket.send(data, zmq.NOBLOCK)
     g_socket.send(s1.getvalue())
