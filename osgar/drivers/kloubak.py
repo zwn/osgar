@@ -169,6 +169,8 @@ class RobotKloubak(Node):
         self.count = [0, 0, 0, 0]
         self.count_arr = []
         self.debug_odo = []
+        self.debug_downdrops_front = []
+        self.debug_downdrops_rear = []
 
     def send_pose(self):
         x, y, heading = self.pose
@@ -302,6 +304,8 @@ class RobotKloubak(Node):
             if len(payload) == 4:
                 self.downdrops_front = struct.unpack_from('>HH', payload)
 #                print(self.time, self.downdrops_front)
+                self.debug_downdrops_front.append(
+                        (self.time.total_seconds(), self.downdrops_front[0], self.downdrops_front[1]))
             else:
                 self.can_errors += 1
         elif msg_id == CAN_ID_DOWNDROPS_REAR:
@@ -309,6 +313,8 @@ class RobotKloubak(Node):
             if len(payload) == 4:
                 self.downdrops_rear = struct.unpack_from('>HH', payload)
 #                print(self.time, self.downdrops_rear)
+                self.debug_downdrops_rear.append(
+                        (self.time.total_seconds(), self.downdrops_rear[0], self.downdrops_rear[1]))
             else:
                 self.can_errors += 1
         if msg_id == CAN_ID_ENCODERS:
@@ -424,10 +430,12 @@ class RobotKloubak(Node):
         """
         Debug - draw encoders
         """
-        draw(self.enc_debug_arr, self.join_debug_arr)
+#        draw(self.enc_debug_arr, self.join_debug_arr)
 #        print(self.count_arr)
-        print(self.count_arr[-1])
+#        print(self.count_arr[-1])
 #        draw_enc_stat(self.count_arr)
 #        draw_enc_stat(self.debug_odo)
+        draw_enc_stat(self.debug_downdrops_front)
+        draw_enc_stat(self.debug_downdrops_rear)
 
 # vim: expandtab sw=4 ts=4
