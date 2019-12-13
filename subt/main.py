@@ -125,7 +125,8 @@ class EmergencyStopMonitor:
 class SubTChallenge:
     def __init__(self, config, bus):
         self.bus = bus
-        bus.register("desired_speed", "pose2d", "artf_xyz", "pose3d", "stdout", "request_origin")
+        bus.register("desired_speed", "pose2d", "artf_xyz", "pose3d", "stdout", "request_origin",
+                     "bumpers_front", "bumpers_rear")
         self.start_pose = None
         self.traveled_dist = 0.0
         self.time = None
@@ -441,6 +442,18 @@ class SubTChallenge:
             self.stdout(self.time, 'Robot at:', (ax, ay, az))
         else:
             self.maybe_remember_artifact(artifact_data, (ax, ay, az))
+
+    def on_bumpers_front(self, timestamp, data):
+        # if any element of boolean array is true raise Collision
+        if not self.flipped and self.collision_detector_enabled and max(data):
+            self.collision_detector_enabled = False
+            raise Collision()
+
+    def on_bumpers_rear(self, timestamp, data):
+        # if any element of boolean array is true raise Collision
+        if self.flipped and self.collision_detector_enabled and max(data):
+            self.collision_detector_enabled = False
+            raise Collision()
 
     def update(self):
         packet = self.bus.listen()
