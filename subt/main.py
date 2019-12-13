@@ -125,8 +125,7 @@ class EmergencyStopMonitor:
 class SubTChallenge:
     def __init__(self, config, bus):
         self.bus = bus
-        bus.register("desired_speed", "pose2d", "artf_xyz", "pose3d", "stdout", "request_origin",
-                     "bumpers_front", "bumpers_rear")
+        bus.register("desired_speed", "pose2d", "artf_xyz", "pose3d", "stdout", "request_origin")
         self.start_pose = None
         self.traveled_dist = 0.0
         self.time = None
