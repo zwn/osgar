@@ -4,7 +4,8 @@
     "modules": {
       "app": {
           "driver": "application",
-          "in": ["encoders", "scan", "scan_back", "emergency_stop", "pose2d", "buttons", "voltage", "rot"],
+          "in": ["encoders", "scan", "scan_back", "emergency_stop", "pose2d", "buttons", "voltage", "rot",
+                 "bumpers_front", "bumpers_rear"],
           "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d"],
           "init": {
             "symmetric": true,
@@ -37,7 +38,9 @@
       "kloubak": {
           "driver": "kloubak",
           "in": ["slot_can", "slot_desired_speed"],
-          "out": ["can", "encoders", "emergency_stop", "pose2d"],
+          "out": ["can", "encoders", "emergency_stop", "pose2d",
+                  "bumper_front", "bumper_rear",
+                  "downdrops_front", "downdrops_rear"],
           "init": {}
       },          
       "can": {
@@ -167,7 +170,9 @@
               ["lora_serial.raw", "lora.raw"],
               ["lora.raw", "lora_serial.raw"],
               ["app.pose2d", "lora.pose2d"],
-              ["lora.cmd", "app.cmd"]
+              ["lora.cmd", "app.cmd"],
+              ["kloubak.bumpers_front", "app.bumpers_front"],
+              ["kloubak.bumpers_rear", "app.bumpers_rear"]
       ]
   }
 }
