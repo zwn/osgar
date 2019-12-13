@@ -556,6 +556,8 @@ class SubTChallenge:
 #############################################
     def play_system_track(self):
         print("SubT Challenge Ver1!")
+        self.collision_detector_enabled = True  # test of downdrops
+
         try:
             with EmergencyStopMonitor(self):
                 allow_virtual_flip = self.symmetric
