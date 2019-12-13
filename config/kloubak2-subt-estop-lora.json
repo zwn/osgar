@@ -39,7 +39,7 @@
           "driver": "kloubak",
           "in": ["slot_can", "slot_desired_speed"],
           "out": ["can", "encoders", "emergency_stop", "pose2d",
-                  "bumper_front", "bumper_rear",
+                  "bumpers_front", "bumpers_rear",
                   "downdrops_front", "downdrops_rear"],
           "init": {}
       },          
