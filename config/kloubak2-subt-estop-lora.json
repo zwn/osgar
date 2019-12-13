@@ -6,7 +6,7 @@
           "driver": "application",
           "in": ["encoders", "scan", "scan_back", "emergency_stop", "pose2d", "buttons", "voltage", "rot",
                  "bumpers_front", "bumpers_rear"],
-          "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d"],
+          "out": ["desired_speed", "pose2d", "artf_xyz", "pose3d", "stdout", "request_origin"],
           "init": {
             "symmetric": true,
             "max_speed": 0.5,
