@@ -3,7 +3,8 @@ import math
 from unittest.mock import MagicMock
 
 from osgar.drivers.kloubak import (compute_desired_erpm, compute_desired_angle,
-        WHEEL_DISTANCE, compute_rear, CENTER_AXLE_DISTANCE, RobotKloubak)
+        WHEEL_DISTANCE, compute_rear, CENTER_AXLE_DISTANCE, RobotKloubak,
+        get_downdrop_bumpers)
 
 
 class KloubakTest(unittest.TestCase):
@@ -83,5 +84,9 @@ class KloubakTest(unittest.TestCase):
         self.assertEqual(k2.can_errors, 1)
 
         k2.update_encoders(msg_id=0x92, data=b'\x97')
+
+    def test_downdrops(self):
+        self.assertEqual(get_downdrop_bumpers([500, 500]), [False, False])
+        self.assertEqual(get_downdrop_bumpers([800, 300]), [True, True])
 
 # vim: expandtab sw=4 ts=4
