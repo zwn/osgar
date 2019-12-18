@@ -8,13 +8,11 @@ import zmq
 
 from osgar.bus import BusShutdownException
 
-
 class LogZeroMQ:
     def __init__(self, config, bus):
         bus.register('raw')
         mode = config['mode']
         endpoint = config['endpoint']
-
         self.context = zmq.Context()
         print("Connecting to hello world server ...")
         if mode == 'PULL':

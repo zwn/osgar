@@ -278,7 +278,7 @@ class ROSMsgParser(Thread):
         if len(data) < 4:
             return None
         size = struct.unpack_from('<I', data, 0)[0]
-#        print(size, len(self._buf))
+        print(size, len(self._buf))
         assert size > 0, size
         size += 4  # the length prefix
         if len(data) < size:
@@ -314,11 +314,14 @@ class ROSMsgParser(Thread):
             if self.count % self.downsample != 0:
                 return
             self.bus.publish('scan', parse_laser(packet))
-        elif frame_id.endswith(b'/odom'):  #self.topic_type == 'nav_msgs/Odometry':
+        elif frame_id.endswith(b'odom'):  #self.topic_type == 'nav_msgs/Odometry':
             __, (x, y, heading) = parse_odom(packet)
             self.bus.publish('pose2d', [round(x*1000),
                                         round(y*1000),
                                         round(math.degrees(heading)*100)])
+            cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
+            self.bus.publish('cmd', cmd)
+
         elif frame_id.endswith(b'/base_link/imu_sensor'):  # self.topic_type == 'std_msgs/Imu':
             acc, rot = parse_imu(packet)
             self.bus.publish('rot', [round(math.degrees(angle)*100) 

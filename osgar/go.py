@@ -6,7 +6,6 @@ from datetime import timedelta
 
 from osgar.node import Node
 
-
 class Go(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)

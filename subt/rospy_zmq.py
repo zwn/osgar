@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
   Wait for all necessary ROS sensors
 """
@@ -11,7 +12,8 @@ import rospy
 from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
-
+from geometry_msgs.msg import Twist
+import pdb
 
 ROBOT_NAME = 'X0F200L'
 
@@ -53,7 +55,7 @@ def callback(data):
     assert g_socket is not None
 
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
-#    print(rospy.get_caller_id(), data)
+    # print(rospy.get_caller_id(), data)
 
     # https://answers.ros.org/question/303115/serialize-ros-message-and-pass-it/
     s1 = BytesIO()
@@ -76,7 +78,7 @@ def callback_clock(data):
 
 def odom2zmq():
     global g_socket
-    wait_for_master()
+    #wait_for_master()
 
     context = zmq.Context()
     g_socket = context.socket(zmq.PUSH)
@@ -89,19 +91,33 @@ def odom2zmq():
     g_socket2.bind('tcp://*:5556')
   
     rospy.init_node('listener', anonymous=True)
-    rospy.Subscriber('/'+ROBOT_NAME+'/odom', Odometry, callback)
+    rospy.Subscriber('/odom', Odometry, callback)
     rospy.Subscriber('/clock', Clock, callback_clock)
-
+    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+    vel_msg = Twist()
+    vel_msg.linear.x = 0
+    vel_msg.linear.y = 0
+    vel_msg.linear.z = 0
+    vel_msg.angular.x = 0
+    vel_msg.angular.y = 0
+    vel_msg.angular.z = 0
+    
+    r = rospy.Rate(10)
     while True:
         try:
             message = g_socket2.recv()
-            print(message)
+            print("OSGAR:" + message)
+            if message.split(" ")[0] == "cmd_vel":
+                vel_msg.linear.x = float(message.split(" ")[1])
+                vel_msg.angular.z = float(message.split(" ")[2])
+                velocity_publisher.publish(vel_msg)
         except zmq.error.Again:
             pass
+        r.sleep()
 
 
 if __name__ == '__main__':
-    wait_for_master()
+    #wait_for_master()
     odom2zmq()
 
 # vim: expandtab sw=4 ts=4
