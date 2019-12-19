@@ -13,7 +13,6 @@ from sensor_msgs.msg import Imu, LaserScan, CompressedImage, BatteryState
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
-import pdb
 
 ROBOT_NAME = 'X0F200L'
 
@@ -105,8 +104,13 @@ def odom2zmq():
     r = rospy.Rate(10)
     while True:
         try:
-            message = g_socket2.recv()
-            print("OSGAR:" + message)
+            message = ""
+            try:
+                while 1:
+                    message = g_socket2.recv(zmq.NOBLOCK)
+            except:
+                pass
+            #print("OSGAR:" + message)
             if message.split(" ")[0] == "cmd_vel":
                 vel_msg.linear.x = float(message.split(" ")[1])
                 vel_msg.angular.z = float(message.split(" ")[2])

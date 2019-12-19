@@ -319,8 +319,9 @@ class ROSMsgParser(Thread):
             self.bus.publish('pose2d', [round(x*1000),
                                         round(y*1000),
                                         round(math.degrees(heading)*100)])
+            #workaround for not existing /clock on MOBoS
             cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
-            self.bus.publish('cmd', cmd)
+            self.bus.publish('cmd', cmd) 
 
         elif frame_id.endswith(b'/base_link/imu_sensor'):  # self.topic_type == 'std_msgs/Imu':
             acc, rot = parse_imu(packet)
