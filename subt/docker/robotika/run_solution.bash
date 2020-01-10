@@ -12,7 +12,7 @@ cd ..
 
 # Run your solution and wait for ROS master
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
-roslaunch subt_seed x1.launch $1 &
+roslaunch subt_seed x1.launch --wait $1 &
 ROS_PID=$!
 
 # Turn everything off in case of CTRL+C and friends.
