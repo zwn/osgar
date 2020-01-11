@@ -195,7 +195,7 @@ class RobotKloubak(Node):
             tmp = struct.unpack('>BBHH', data)
             if tmp[1] != 2:
                 return
-            encoders = list(tmp[2:]) + [0, 0]
+            encoders = [0, 0] + list(tmp[2:])
             #print(tmp)
             if self.last_encoders_time is not None:
                 diff = [sint16_diff(e, prev) for prev, e in zip(self.last_encoders_16bit, encoders)]
