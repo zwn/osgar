@@ -370,10 +370,10 @@ class RobotKloubak(Node):
             elif self.desired_speed > 0:
                 if self.last_encoders_front_right is not None:
                     self.publish('can', CAN_triplet(0x31, list(struct.pack('>i', limit_r))))
-                    self.publish('can', CAN_triplet(0x33, list(struct.pack('>i', limit_r))))
+                    self.publish('can', CAN_triplet(0x33, list(struct.pack('>i', limit_r//2))))
                 if self.last_encoders_front_left is not None:
                     self.publish('can', CAN_triplet(0x32, list(struct.pack('>i', limit_l))))
-                    self.publish('can', CAN_triplet(0x34, list(struct.pack('>i', limit_l))))
+                    self.publish('can', CAN_triplet(0x34, list(struct.pack('>i', limit_l//2))))
 #                self.publish('can', CAN_triplet(0x13, stop))  # right rear/mid
 #                self.publish('can', CAN_triplet(0x14, stop))  # left rear/mid
                 
