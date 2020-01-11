@@ -127,6 +127,12 @@
           "in": ["raw"],
           "out": ["raw"],
           "init": {"port": "/dev/lora", "speed": 115200}
+      },
+      "pcan": {
+          "driver": "pcan",
+          "in": ["can"],
+          "out": ["can"],
+          "init": {}
       }
     },
     "links": [["serial.raw", "can.slot_raw"],
