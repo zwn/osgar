@@ -10,7 +10,7 @@ COPY run_solution.bash ./
 COPY subt_seed_node.cc ./src/subt_seed/src/subt_seed_node.cc
 COPY CMakeLists.txt ./src/subt_seed/CMakeLists.txt
 
-ADD ros ./src/
+ADD ros ./src/subt_seed/
 
 RUN sudo apt install -y ros-melodic-image-geometry \
 			ros-melodic-pcl-ros \
