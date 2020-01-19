@@ -297,8 +297,8 @@ void Controller::Update()
 
       this->subClock  = n.subscribe("/clock", 1000, clockCallback);
       this->subImu  = n.subscribe(this->name + "/imu/data", 1000, imuCallback);
-      this->subScan = n.subscribe(this->name + "/front_scan", 1000, scanCallback);
-      this->subImage = n.subscribe(this->name + "/front/image_raw/compressed", 1000, imageCallback);
+      this->subScan = n.subscribe(this->name + "/map_scan", 1000, scanCallback);
+      this->subImage = n.subscribe(this->name + "/front_rgbd/image_raw/compressed", 1000, imageCallback);
       this->subOdom = n.subscribe(this->name + "/odom", 1000, odomCallback);
       this->subGas = n.subscribe(this->name + "/gas_detected", 1000, gasCallback);
 
