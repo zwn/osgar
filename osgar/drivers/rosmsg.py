@@ -127,16 +127,26 @@ def parse_laser(data):
 #    print(params)
     pos += 7*4
     ranges_size = struct.unpack_from('<I', data, pos)[0]
-    assert ranges_size == 720, ranges_size
+    # assert ranges_size == 720, ranges_size
     pos += 4
     scan = struct.unpack_from('<' + 'f' * ranges_size, data, pos)
     pos += 4 * ranges_size
     intensities_size = struct.unpack_from('<I', data, pos)[0]
-    assert intensities_size == 720, intensities_size
+    # assert intensities_size == 720, intensities_size
     intensities = struct.unpack_from('<' + 'f' * intensities_size, data, pos)
 
     # conversion to int and millimeters
     scan = [int(x*1000) if x < 65.0 else 0 for x in scan]
+    #scan = [0] * 640 + scan + [0] * 640
+    to_cut = int(len(scan) / 360 * 45)  #original scan is 360deg
+    scan = scan[to_cut:len(scan)-to_cut]
+
+
+    #reduced_scan = []
+    #for index,value in enumerate(scan):
+    #    if index % 10 == 1:
+    #        reduced_scan.append(value)
+
     return scan
 
 
