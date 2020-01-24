@@ -10,9 +10,14 @@ python3 -m subt run subt/zmq-subt-x2.json --side auto --walldist 0.9 --timeout 1
 ROBOT_PID=$!
 cd ..
 
+echo "Waiting for robot name"
+ROBOT_NAME=$(./src/get_robot_name.sh)
+echo "Robot name is "
+echo $ROBOT_NAME
+
 # Run your solution and wait for ROS master
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
-roslaunch robotika robot.launch --wait $1 &
+roslaunch robotika robot.launch --wait robot_name:=$ROBOT_NAME &
 ROS_PID=$!
 
 # Turn everything off in case of CTRL+C and friends.
