@@ -3,7 +3,7 @@
   "robot": {
     "modules": {
       "estop": {
-          "driver": "estop:EStop",
+          "driver": "subt.estop:EStop",
           "in": ["raw"],
           "out": ["raw", "emergency_stop"],
           "init": {}
@@ -12,7 +12,7 @@
           "driver": "serial",
           "in": ["raw"],
           "out": ["raw"],
-          "init": {"port": "COM29", "speed": 9600}
+          "init": {"port": "/dev/estop", "speed": 9600}
       }
     },
     "links": [["estop_serial.raw", "estop.raw"],

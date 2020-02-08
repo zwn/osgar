@@ -91,6 +91,7 @@ def odom2zmq():
   
     rospy.init_node('listener', anonymous=True)
     rospy.Subscriber('/odom', Odometry, callback)
+    rospy.Subscriber('/map_scan', LaserScan, callback)
     rospy.Subscriber('/clock', Clock, callback_clock)
     velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()

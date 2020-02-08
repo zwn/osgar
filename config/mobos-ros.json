@@ -10,7 +10,7 @@
           "init": {
             "max_speed": 0.5,
             "symmetric": false,
-            "virtual_world": true
+            "virtual_world": false
           }
       },
       "transmitter": {
@@ -36,13 +36,28 @@
           "in": ["slot_raw", "desired_speed", "tick", "stdout", "request_origin"],
           "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin"],
           "init": {
-            "downsample": 2
+            "downsample": 1
           }
-      }
+      },
+      "estop": {
+	  "driver": "subt.estop:EStop",
+	  "in": ["raw"],
+	  "out": ["raw", "emergency_stop"],
+	  "init": {}
+      },
+      "estop_serial": {
+          "driver": "serial",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {"port": "/dev/estop", "speed": 9600}
+      }	
     },
     "links": [["app.desired_speed", "rosmsg.desired_speed"],
               ["rosmsg.pose2d", "app.pose2d"],
-
+	      ["estop_serial.raw", "estop.raw"],
+	      ["estop.raw", "estop_serial.raw"],
+	      ["estop.emergency_stop", "app.emergency_stop"],
+              ["rosmsg.scan", "app.scan"],
               ["receiver.raw", "rosmsg.slot_raw"],
               ["rosmsg.cmd", "transmitter.raw"]]
   }

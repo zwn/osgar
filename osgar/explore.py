@@ -57,7 +57,7 @@ def follow_wall_angle(laser_data, radius, right_wall=False):
     laser_angle = math.radians(-135 + index * deg_resolution)
     angle = tangent_circle(dist, radius)
     if angle is not None:
-        # print '(%d, %.3f) %.1f' % (index, dist, math.degrees(laser_angle + angle))
+        print("(%d, %.3f) %.1f" % (index, dist, math.degrees(laser_angle - angle)))
         if right_wall:
             return laser_angle + angle
         else:
