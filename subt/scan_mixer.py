@@ -27,8 +27,12 @@ class ScanMixer(Node):
 
         if channel == 'rs_scan':
             pass
+        elif channel == 'slope_scan':
+            assert len(self.slope_scan) == 811, len(self.slope_scan)  # Eduro only
+            size = len(self.slope_scan)
+            print(self.slope_scan[size//2])
         elif channel == 'scan':
-            assert len(self.scan) == 720, len(self.scan)
+            assert len(self.scan) in [271, ], len(self.scan)  # Eduro=271
             if self.rs_scan is None and self.slope_scan is None:
                 self.publish('scan', self.scan)
                 return channel  # when no other sources are available ...
