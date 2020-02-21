@@ -118,6 +118,12 @@
           "out": ["raw"],
           "init": {"port": "/dev/lora", "speed": 115200}
       },
+      "mixer": {
+          "driver": "subt.scan_mixer:ScanMixer",
+          "in": ["scan", "rs_scan", "slope_scan"],
+          "out": ["scan"],
+          "init": {}
+      },
       "wifi": {
           "driver": "subt.wifisignal:WifiSignal",
           "in": [],
@@ -137,7 +143,9 @@
               ["lidar.raw", "lidar_tcp.raw"],
               ["slope_lidar_tcp.raw", "slope_lidar.raw"], 
               ["slope_lidar.raw", "slope_lidar_tcp.raw"],
-              ["lidar.scan", "app.scan"],
+              ["lidar.scan", "mixer.scan"],
+              ["slope_lidar.scan", "mixer.slope_scan"],
+              ["mixer.scan", "app.scan"],
               ["eduro.emergency_stop", "app.emergency_stop"],
               ["eduro.pose2d", "app.pose2d"],
               ["eduro.buttons", "app.buttons"],
