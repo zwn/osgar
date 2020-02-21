@@ -30,7 +30,11 @@ class ScanMixer(Node):
         elif channel == 'slope_scan':
             assert len(self.slope_scan) == 811, len(self.slope_scan)  # Eduro only
             size = len(self.slope_scan)
-            print(self.slope_scan[size//2])
+            if self.scan is not None:
+                ds = self.slope_scan[size//2]
+                d = self.scan[len(self.scan)//2]
+                if d > 0 and d < ds:
+                    print(self.time, ds, d)
         elif channel == 'scan':
             #assert len(self.scan) in [271, ], len(self.scan)  # Eduro=271
             if self.rs_scan is not None:
