@@ -254,10 +254,10 @@ class SubTChallenge:
 
     def go_safely(self, desired_direction):
         if self.local_planner is None:
-            safety, safe_direction = 1.0, desired_direction
+            safety, safe_direction, current_safety = 1.0, desired_direction, 1.0 #to be changed 
         else:
-            safety, safe_direction = self.local_planner.recommend(desired_direction)
-        #print(self.time,"safety:%f    desired:%f  safe_direction:%f"%(safety, desired_direction, safe_direction))
+            safety, safe_direction, current_safety = self.local_planner.recommend(desired_direction)
+        print(self.time,"safety:%f    desired:%f  safe_direction:%f"%(safety, desired_direction, safe_direction))
         #desired_angular_speed = 1.2 * safe_direction
         desired_angular_speed = 0.9 * safe_direction
         size = len(self.scan)
@@ -268,6 +268,7 @@ class SubTChallenge:
         else:
             desired_speed = self.max_speed  # was 2.0
         desired_speed = desired_speed * (1.0 - self.safety_turning_coeff * min(self.max_angular_speed, abs(desired_angular_speed)) / self.max_angular_speed)
+        print("fwd: %f;ang: %f" % (desired_speed, desired_angular_speed))
         if self.flipped:
             self.send_speed_cmd(-desired_speed, desired_angular_speed)  # ??? angular too??!
         else:

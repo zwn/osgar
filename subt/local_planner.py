@@ -240,7 +240,8 @@ class LocalPlannerNumpy:
 
         good = np.minimum(safe, desired)  # Fuzzy and.
         best = np.argmax(good)
-        return good[best], self.considered_directions[best][0]
+        print("Safe:    %f" % (safe[len(safe) // 2]))
+        return good[best], self.considered_directions[best][0], safe[len(safe) // 2]
 
 
 class LocalPlanner:
