@@ -17,6 +17,14 @@
             "obstacle_influence": 0.3
           }
       },
+      "detector": {
+          "driver": "subt.artifacts:ArtifactDetector",
+          "in": ["image", "scan"],
+          "out": ["artf", "dropped"],
+          "init": {
+            "virtual_world": false
+          }
+      },
       "transmitter": {
           "driver": "zeromq",
           "in": [],
@@ -108,6 +116,8 @@
 	      ["rosmsg.t265_rot", "app.rot"],
               ["app.artf_xyz", "lora.artf"],
               ["gas_serial.raw", "gas_detector.raw"],
-              ["gas_detector.raw", "gas_serial.raw"]]
+              ["gas_detector.raw", "gas_serial.raw"],
+              ["wifi.wifiscan", "detector.wifiscan"],
+              ["gas_detector.co2", "detector.co2"]]
   }
 }
