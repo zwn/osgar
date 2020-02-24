@@ -254,21 +254,21 @@ class SubTChallenge:
 
     def go_safely(self, desired_direction):
         if self.local_planner is None:
-            safety, safe_direction, current_safety = 1.0, desired_direction, 1.0 #to be changed 
+            safety, safe_direction = 1.0, desired_direction
         else:
-            safety, safe_direction, current_safety = self.local_planner.recommend(desired_direction)
-        print(self.time,"safety:%f    desired:%f  safe_direction:%f"%(safety, desired_direction, safe_direction))
+            safety, safe_direction = self.local_planner.recommend(desired_direction)
+        #print(self.time,"safety:%f    desired:%f  safe_direction:%f"%(safety, desired_direction, safe_direction))
         #desired_angular_speed = 1.2 * safe_direction
         desired_angular_speed = 0.9 * safe_direction
-        size = len(self.scan)
-        dist = min_dist(self.scan[size//3:2*size//3])
-        if dist < self.min_safe_dist:  # 2.0:
-#            desired_speed = self.max_speed * (1.2/2.0) * (dist - 0.4) / 1.6
-            desired_speed = self.max_speed * (dist - self.dangerous_dist) / (self.min_safe_dist - self.dangerous_dist)
-        else:
-            desired_speed = self.max_speed  # was 2.0
-        desired_speed = desired_speed * (1.0 - self.safety_turning_coeff * min(self.max_angular_speed, abs(desired_angular_speed)) / self.max_angular_speed)
-        print("fwd: %f;ang: %f" % (desired_speed, desired_angular_speed))
+        desired_speed = (1 - min(abs(desired_angular_speed), 1.0)) * self.max_speed 
+        #size = len(self.scan)
+        #dist = min_dist(self.scan[size//3:2*size//3])
+        #if dist < self.min_safe_dist:  # 2.0:
+        #    desired_speed = self.max_speed * (dist - self.dangerous_dist) / (self.min_safe_dist - self.dangerous_dist)
+        #else:
+        #    desired_speed = self.max_speed  # was 2.0
+        #desired_speed = desired_speed * (1.0 - self.safety_turning_coeff * min(self.max_angular_speed, abs(desired_angular_speed)) / self.max_angular_speed)
+        #print("fwd: %f;ang: %f" % (desired_speed, desired_angular_speed))
         if self.flipped:
             self.send_speed_cmd(-desired_speed, desired_angular_speed)  # ??? angular too??!
         else:
