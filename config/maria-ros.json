@@ -81,18 +81,22 @@
           }
       },
       "gas_detector": {
-          "driver": "osgar.drivers.gas_detector:MeasureCO2",
-          "in": ["raw"],
+          "driver": "osgar.drivers.winsen_gas_detector:WinsenCO2",
+          "in": ["raw", "trigger"],
           "out": ["raw", "co2"],
-          "init": {
-            "sleep": 0.5
-          }
+          "init": {}
       },
       "gas_serial": {
           "driver": "serial",
           "in": ["raw"],
           "out": ["raw"],
-          "init": {"port": "/dev/gas_detector", "speed": 115200}
+          "init": {"port": "/dev/mh_z19", "speed": 9600}
+      },
+      "gas_timer": {
+          "driver": "timer",
+          "in": [],
+          "out": ["tick"],
+          "init": {"sleep": 1.0}
       }
     },
     "links": [["estop_serial.raw", "estop.raw"],
@@ -112,6 +116,7 @@
               ["maria.raw", "maria_serial.raw"],
 	      ["rosmsg.t265_rot", "app.rot"],
               ["gas_serial.raw", "gas_detector.raw"],
-              ["gas_detector.raw", "gas_serial.raw"]]
+              ["gas_detector.raw", "gas_serial.raw"],
+              ["gas_timer.tick", "gas_detector.trigger"]]
   }
 }
