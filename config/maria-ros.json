@@ -10,7 +10,11 @@
           "init": {
             "max_speed": 0.5,
             "symmetric": false,
-            "virtual_world": false
+            "virtual_world": false,
+	    "virtual_bumper_sec": 10.0,
+            "virtual_bumper_radius": 0.2,
+            "direction_adherence": 22,
+            "obstacle_influence": 0.3
           }
       },
       "receiver": {
@@ -67,6 +71,28 @@
           "in": ["raw"],
           "out": ["raw"],
           "init": {"port": "/dev/arduino-motor", "speed": 115200}
+      },
+      "wifi": {
+          "driver": "subt.wifisignal:WifiSignal",
+          "in": [],
+          "out": ["wifiscan"],
+          "init": {
+            "sleep": 1.0
+          }
+      },
+      "gas_detector": {
+          "driver": "osgar.drivers.gas_detector:MeasureCO2",
+          "in": ["raw"],
+          "out": ["raw", "co2"],
+          "init": {
+            "sleep": 0.5
+          }
+      },
+      "gas_serial": {
+          "driver": "serial",
+          "in": ["raw"],
+          "out": ["raw"],
+          "init": {"port": "/dev/gas_detector", "speed": 115200}
       }
     },
     "links": [["estop_serial.raw", "estop.raw"],
@@ -83,6 +109,9 @@
               ["maria.emergency_stop", "app.emergency_stop"],
               ["maria.pose2d", "app.pose2d"],
               ["maria_serial.raw", "maria.raw"],
-              ["maria.raw", "maria_serial.raw"]]
+              ["maria.raw", "maria_serial.raw"],
+	      ["rosmsg.t265_rot", "app.rot"],
+              ["gas_serial.raw", "gas_detector.raw"],
+              ["gas_detector.raw", "gas_serial.raw"]]
   }
 }

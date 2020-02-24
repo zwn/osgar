@@ -11,6 +11,8 @@
             "max_speed": 0.5,
             "symmetric": false,
             "virtual_world": false,
+	    "virtual_bumper_sec": 10.0,
+            "virtual_bumper_radius": 0.2,
             "direction_adherence": 22,
             "obstacle_influence": 0.3
           }
