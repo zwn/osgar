@@ -49,6 +49,16 @@
 
 # EXCAVATOR
 # Excavator Arm and Bucket
+# excavator_n/bucket_info  srcp2_msgs/excavator_msg
+# excavator_n/mount_joint_controller/command  - 360 degrees
+# excavator_n/basearm_joint_controller/command  - largest part
+# excavator_n/distalarm_joint_controller/command
+# excavator_n/bucket_joint_controller/command  - last bit "backet"
+
+
+# HAULER
+# /hauler_n/bin_info  srcp2_msgs/hauler_msg
+# /hauler_n/bin_joint_controller/command
 
 
 
