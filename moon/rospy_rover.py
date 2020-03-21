@@ -15,42 +15,13 @@ from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
 
-ROBOT_NAME = 'X0F200L'
+ROBOT_NAME = 'scout_1'
 FILTER_ODOM_NTH = 10 #n - every nth message shall be sent to osgar
 FILTER_CAMERA_NTH = 4 #n - every nth message shall be sent to osgar
 FILTER_DEPTH_NTH = 10000000 #n - every nth message shall be sent to osgar
 g_odom_counter = 0
 g_depth_counter = 0
 g_camera_counter = 0
-
-def wait_for_master():
-    # it looks like master is not quite ready for several minutes and the only indication is the list of published
-    # topics
-    rospy.loginfo('wait_for_master')
-    while True:
-        for topic, topic_type in rospy.get_published_topics():
-            if 'battery_state' in topic:
-                rospy.loginfo('found ' + topic)
-                return topic
-        time.sleep(0.1)
-
-
-def wait_for(topic, topic_type):
-    rospy.loginfo('Wait for ' + topic)
-    rospy.wait_for_message(topic, topic_type)
-    rospy.loginfo('Done with ' + topic)
-
-
-def wait_for_sensors():
-    rospy.init_node('mdwait', anonymous=True)
-    wait_for_master()
-    rospy.loginfo('-------------- mdwait BEGIN --------------')
-    wait_for('/'+ROBOT_NAME+'/imu/data', Imu)
-    wait_for('/'+ROBOT_NAME+'/front_scan', LaserScan)
-    wait_for('/'+ROBOT_NAME+'/front/image_raw/compressed', CompressedImage)
-    wait_for('/'+ROBOT_NAME+'/odom', Odometry)
-    wait_for('/'+ROBOT_NAME+'/battery_state', BatteryState)  # note, that this is maybe the critical component!
-    rospy.loginfo('--------------- mdwait END ---------------')
 
 
 g_socket = None
@@ -68,6 +39,7 @@ def callback(data):
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
     g_socket.send(header + to_send)
+
 
 def callback_odom(data):
     global g_socket, g_odom_counter
@@ -87,6 +59,7 @@ def callback_odom(data):
     else:
         g_odom_counter += 1
 
+
 def callback_depth(data):
     global g_socket, g_depth_counter
     assert g_socket is not None
@@ -105,6 +78,7 @@ def callback_depth(data):
     else:
         g_depth_counter += 1
 
+
 def callback_camera(data):
     global g_socket, g_camera_counter
     assert g_socket is not None
@@ -122,6 +96,7 @@ def callback_camera(data):
         g_camera_counter = 0
     else:
         g_camera_counter += 1
+
 
 def callback_clock(data):
     global g_socket
@@ -149,11 +124,11 @@ def odom2zmq():
     g_socket2.bind('tcp://*:5556')
   
     rospy.init_node('listener', anonymous=True)
-    rospy.Subscriber('/odom', Odometry, callback_odom)
-    rospy.Subscriber('/map_scan', LaserScan, callback)
-    rospy.Subscriber('/depth_image', Image, callback_depth)
-    rospy.Subscriber('/image', CompressedImage, callback_camera)
-    rospy.Subscriber('/clock', Clock, callback_clock)
+#    rospy.Subscriber('/odom', Odometry, callback_odom)
+    rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
+#    rospy.Subscriber('/depth_image', Image, callback_depth)
+#    rospy.Subscriber('/image', CompressedImage, callback_camera)
+#    rospy.Subscriber('/clock', Clock, callback_clock)
     
     
     velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -185,7 +160,6 @@ def odom2zmq():
 
 
 if __name__ == '__main__':
-    #wait_for_master()
     odom2zmq()
 
 # vim: expandtab sw=4 ts=4
