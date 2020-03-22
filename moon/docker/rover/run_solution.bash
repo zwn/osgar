@@ -16,7 +16,7 @@ export ROSCONSOLE_CONFIG_FILE="${samedir}/rosconsole.config"
 # Run your solution and wait for ROS master
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
 ## roslaunch subt_seed x1.launch --wait &
-python moon/rospy_rover.py &
+python ./osgar/moon/rospy_rover.py &
 ROS_PID=$!
 
 # Turn everything off in case of CTRL+C and friends.
