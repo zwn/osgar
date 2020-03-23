@@ -41,6 +41,17 @@ def callback(data):
     g_socket.send(header + to_send)
 
 
+def callback_imu(data):
+    global g_socket
+    assert g_socket is not None
+
+    s1 = BytesIO()
+    data.serialize(s1)
+    to_send = s1.getvalue()
+    header = struct.pack('<I', len(to_send))
+    g_socket.send(header + to_send)
+
+
 def callback_odom(data):
     global g_socket, g_odom_counter
     assert g_socket is not None
@@ -126,6 +137,7 @@ def odom2zmq():
     rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
     rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
+    rospy.Subscriber('/scout_1/imu', Imu, callback_imu)
 #    rospy.Subscriber('/depth_image', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
