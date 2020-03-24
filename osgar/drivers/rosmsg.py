@@ -164,6 +164,13 @@ def parse_laser(data):
         # SubT Virtual World
         return scan
 
+    if angle_range_deg == 149:
+        # NASA moon
+        size = len(scan)
+        assert size == 100, size  # by single sample
+        ret = [0]*40 + scan + [0]*40
+        return ret
+
     # scan from map for MOBoS, Maria, K2, ...
     to_cut = int(len(scan) / 360 * 45)  # original scan is 360deg
     scan = scan[to_cut:len(scan)-to_cut]
@@ -362,7 +369,7 @@ class ROSMsgParser(Thread):
         if frame_id.endswith(b'/base_link/camera_front') or frame_id.endswith(b'camera_color_optical_frame'):
             # used to be self.topic_type == 'sensor_msgs/CompressedImage'
             self.bus.publish('image', parse_jpeg_image(packet))
-        elif frame_id.endswith(b'base_link/front_laser'):  #self.topic_type == 'sensor_msgs/LaserScan':
+        elif frame_id.endswith(b'base_link/front_laser') or frame_id.endswith(b'hokuyo_link'):  #self.topic_type == 'sensor_msgs/LaserScan':
             self.count += 1
             if self.count % self.downsample != 0:
                 return
