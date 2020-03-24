@@ -138,7 +138,7 @@ def odom2zmq():
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
     rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
     rospy.Subscriber('/scout_1/imu', Imu, callback_imu)
-#    rospy.Subscriber('/depth_image', Image, callback_depth)
+    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
     
