@@ -95,6 +95,15 @@ def parse_raw_image(data, dump_filename=None):
     elif encoding == b'16UC1':
         # depth is array as uint16, similar to OSGAR
         arr = np.frombuffer(data[pos:pos + image_arr_size], dtype=np.dtype('H'))
+    elif encoding == b'rgb8':
+        # NASA not compressed data
+        return None  # ignore for now
+        # RGB color format (PPM - Portable PixMap)
+        with open("dump_nasa.ppm", 'wb') as f:
+            f.write(b'P6\n%d %d\n255\n' % (width, height))
+            f.write(data[pos:pos+image_arr_size])
+#        assert False, (width, height, image_arr_size)
+
     else:
         assert False, encoding  # unsuported encoding
 
