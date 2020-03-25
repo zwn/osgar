@@ -386,7 +386,7 @@ class ROSMsgParser(Thread):
             cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
             self.bus.publish('cmd', cmd) 
 
-        elif frame_id.endswith(b'/base_link/imu_sensor'):  # self.topic_type == 'std_msgs/Imu':
+        elif frame_id.endswith(b'/base_link/imu_sensor') or frame_id.endswith(b'imu_link'):  # self.topic_type == 'std_msgs/Imu':
             acc, rot = parse_imu(packet)
             self.bus.publish('rot', [round(math.degrees(angle)*100) 
                                      for angle in rot])
