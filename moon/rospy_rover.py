@@ -9,7 +9,7 @@ from io import BytesIO
 import zmq
 
 import rospy
-from std_msgs.msg import *  # Float64, JointStates
+from std_msgs.msg import *  # Float64, JointState
 from sensor_msgs.msg import *
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -136,7 +136,7 @@ def odom2zmq():
   
     rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
-    rospy.Subscriber('/scout_1/joint_states', JointStates, callback_odom)
+    rospy.Subscriber('/scout_1/joint_states', JointState, callback_odom)
     rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
     rospy.Subscriber('/scout_1/imu', Imu, callback_imu)
     rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
