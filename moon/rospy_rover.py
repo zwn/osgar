@@ -9,7 +9,7 @@ from io import BytesIO
 import zmq
 
 import rospy
-from std_msgs.msg import *
+from std_msgs.msg import *  # Float64
 from sensor_msgs.msg import *
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -143,7 +143,7 @@ def odom2zmq():
 #    rospy.Subscriber('/clock', Clock, callback_clock)
     
     
-    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+#    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
     vel_msg.linear.x = 0
     vel_msg.linear.y = 0
@@ -151,7 +151,17 @@ def odom2zmq():
     vel_msg.angular.x = 0
     vel_msg.angular.y = 0
     vel_msg.angular.z = 0
-    
+
+    speed_msg = Float64()
+    speed_msg.data = 0
+
+    # /name/fl_wheel_controller/command
+    QSIZE = 10
+    vel_fl_publisher = rospy.Publisher('/scout_1/fl_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_fr_publisher = rospy.Publisher('/scout_1/fr_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_bl_publisher = rospy.Publisher('/scout_1/bl_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_br_publisher = rospy.Publisher('/scout_1/br_wheel_controller/command', Float64, queue_size=QSIZE)
+
     r = rospy.Rate(10)
     while True:
         try:
@@ -163,9 +173,15 @@ def odom2zmq():
                 pass
             #print("OSGAR:" + message)
             if message.split(" ")[0] == "cmd_vel":
-                vel_msg.linear.x = float(message.split(" ")[1])
-                vel_msg.angular.z = float(message.split(" ")[2])
-                velocity_publisher.publish(vel_msg)
+#                vel_msg.linear.x = float(message.split(" ")[1])
+#                vel_msg.angular.z = float(message.split(" ")[2])
+#                velocity_publisher.publish(vel_msg)
+                speed_msg.data = float(message.split(" ")[1])
+                vel_fl_publisher.publish(speed_msg)
+                vel_fr_publisher.publish(speed_msg)
+                vel_bl_publisher.publish(speed_msg)
+                vel_br_publisher.publish(speed_msg)
+
         except zmq.error.Again:
             pass
         r.sleep()
