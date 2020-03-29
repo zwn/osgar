@@ -25,9 +25,12 @@ except:
 
 
 #WINDOW_SIZE = 1200, 660
-WINDOW_SIZE = 1600, 1000
+#WINDOW_SIZE = 1600, 1000
+WINDOW_SIZE = 600, 600
 TAIL_MIN_STEP = 0.1  # in meters
 HISTORY_SIZE = 100
+
+MAX_SCAN_LIMIT = 20000  # used to be 10m
 
 g_scale = 30
 g_rotation_offset_rad = 0.0  # set by --rotation (deg)
@@ -45,7 +48,7 @@ def scan2xy(pose, scan):
     X, Y, heading = pose
     pts = []
     for i, i_dist in enumerate(scan):
-        if i_dist == 0 or i_dist >= 10000:
+        if i_dist == 0 or i_dist >= MAX_SCAN_LIMIT:
             continue
         angle = math.radians(g_lidar_fov_deg * (i / len(scan)) - g_lidar_fov_deg/2) + heading
         dist = i_dist/1000.0
@@ -84,7 +87,7 @@ def draw_scan(foreground, pose, scan, color, joint=None):
             Y += dy
 
     for i, i_dist in enumerate(scan):
-        if i_dist == 0 or i_dist >= 10000:
+        if i_dist == 0 or i_dist >= MAX_SCAN_LIMIT:
             continue
         angle = math.radians(g_lidar_fov_deg * (i / len(scan)) - g_lidar_fov_deg/2) + heading
         dist = i_dist/1000.0
@@ -96,7 +99,7 @@ def draw(foreground, pose, scan, poses=[], image=None, callback=None, acc_pts=No
     color = (0, 255, 0)
     X, Y, heading = pose
     for i, i_dist in enumerate(scan):
-        if i_dist == 0 or i_dist >= 10000:
+        if i_dist == 0 or i_dist >= MAX_SCAN_LIMIT:
             continue
         angle = math.radians(g_lidar_fov_deg * (i / len(scan)) - g_lidar_fov_deg/2) + heading
         dist = i_dist/1000.0
