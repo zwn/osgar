@@ -13,7 +13,7 @@ from osgar.lib.quaternion import euler_zyx
 
 # NASA HACK
 import cv2
-g_video_name = 'moon-rover.mp4'
+g_video_name = None  # 'moon-rover.mp4'
 g_writer = None
 
 
