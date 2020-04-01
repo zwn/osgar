@@ -486,6 +486,13 @@ class ROSMsgParser(Thread):
         elif frame_id == b'' and b'br_wheel_joint' in packet:
 #            assert False, parse_joint_state(packet)
             print(parse_joint_state(packet))
+            x, y, heading = 0, 0, 0  # TODO but pulse odometry and command
+            self.bus.publish('pose2d', [round(x * 1000),
+                                        round(y * 1000),
+                                        round(math.degrees(heading) * 100)])
+            # workaround for not existing /clock on Moon rover
+            cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
+            self.bus.publish('cmd', cmd)
 
     def slot_desired_speed(self, timestamp, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
