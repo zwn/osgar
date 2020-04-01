@@ -358,6 +358,12 @@ def parse_joint_state(data):
     velocity = struct.unpack_from('<' + 'd'*size, data, pos)
     pos += 8*size
 
+    tmp = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    assert size == tmp, (size, tmp)  # number of joints
+    effort = struct.unpack_from('<' + 'd'*size, data, pos)
+    pos += 8*size
+
     return position[6:9]
 
 
