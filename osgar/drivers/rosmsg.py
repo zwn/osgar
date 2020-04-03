@@ -364,7 +364,7 @@ def parse_joint_state(data):
     effort = struct.unpack_from('<' + 'd'*size, data, pos)
     pos += 8*size
 
-    return position[6:9]
+    return position[2:12:3]
 
 
 def get_frame_id(data):
