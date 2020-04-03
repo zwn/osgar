@@ -15,6 +15,9 @@ from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
 
+# SRCP2 specific
+from srcp2_msgs.msg import qual_1_scoring_msg
+
 ROBOT_NAME = 'scout_1'
 FILTER_ODOM_NTH = 1  #n - every nth message shall be sent to osgar
 FILTER_CAMERA_NTH = 4 #n - every nth message shall be sent to osgar
@@ -120,6 +123,22 @@ def callback_clock(data):
     g_socket.send(header + to_send)
 
 
+def callback_score(data):
+    global g_socket
+    assert g_socket is not None
+
+    topic_name = '/qual_1_score'  # TODO change it to callback_args
+    # http://docs.ros.org/melodic/api/rospy/html/rospy.topics.Subscriber-class.html
+    # callback_args (any) - additional arguments to pass to the callback.
+    # This is useful when you wish to reuse the same callback for multiple subscriptions.
+
+    s1 = BytesIO()
+    data.serialize(s1)
+    to_send = s1.getvalue()
+    header = struct.pack('<I', len(to_send))
+    g_socket.send(topic_name + '\0' + header + to_send)
+
+
 def odom2zmq():
     global g_socket
     #wait_for_master()
@@ -142,8 +161,10 @@ def odom2zmq():
     rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
-    
-    
+
+    # TODO load it from configuration
+    rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_score)
+
 #    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
     vel_msg.linear.x = 0
