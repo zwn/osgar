@@ -16,6 +16,8 @@ import cv2
 g_video_name = None  # 'moon-rover.mp4'
 g_writer = None
 
+MAX_TOPIC_NAME_LENGTH = 256
+
 
 ROS_MESSAGE_TYPES = {
     'std_msgs/String': '992ce8a1687cec8c8bd883ec73ca41d1',
@@ -383,11 +385,30 @@ def get_frame_id(data):
     return frame_id
 
 
+def parse_topic(topic_type, data):
+    """parse general topic"""
+    if topic_type == 'srcp2_msgs/msg/qual_1_scoring_msg':
+        assert len(data) == 44, (len(data), data)
+        size = struct.unpack_from('<I', data)[0]
+        pos = 4
+        assert size == 40, size
+        # __slots__ = ['score','calls','total_of_types']
+        # _slot_types = ['int32','int32','int32[8]']        
+        return struct.unpack_from('<II', data, pos)  # only score and calls
+    else:
+        assert False, topic_type
+
+
 class ROSMsgParser(Thread):
     def __init__(self, config, bus):
         Thread.__init__(self)
         self.setDaemon(True)
-        bus.register("rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin", "gas_detected", "depth:gz", "t265_rot")
+
+        outputs = ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin", "gas_detected", "depth:gz", "t265_rot"]
+        self.topics = config.get('topics', [])
+        for topic_name, topic_type in self.topics:
+            outputs.append(topic_name)
+        bus.register(*outputs)
 
         self.bus = bus
         self._buf = b''
@@ -499,6 +520,11 @@ class ROSMsgParser(Thread):
             # workaround for not existing /clock on Moon rover
             cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
             self.bus.publish('cmd', cmd)
+        elif b'\0' in packet[:MAX_TOPIC_NAME_LENGTH]:
+            name = packet[:packet.index(b'\0')].decode('ascii')
+            for n, t in self.topics:
+                if name == n:
+                    self.bus.publish(name, parse_topic(t, packet[len(name) + 1:]))
 
     def slot_desired_speed(self, timestamp, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
