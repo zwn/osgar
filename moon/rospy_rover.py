@@ -123,14 +123,9 @@ def callback_clock(data):
     g_socket.send(header + to_send)
 
 
-def callback_score(data):
+def callback_topic(data, topic_name):
     global g_socket
     assert g_socket is not None
-
-    topic_name = '/qual_1_score'  # TODO change it to callback_args
-    # http://docs.ros.org/melodic/api/rospy/html/rospy.topics.Subscriber-class.html
-    # callback_args (any) - additional arguments to pass to the callback.
-    # This is useful when you wish to reuse the same callback for multiple subscriptions.
 
     s1 = BytesIO()
     data.serialize(s1)
@@ -163,7 +158,7 @@ def odom2zmq():
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
     # TODO load it from configuration
-    rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_score)
+    rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_topic, '/qual_1_score')
 
 #    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
