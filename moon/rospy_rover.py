@@ -16,8 +16,7 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
 
 # SRCP2 specific
-from srcp2_msgs.msg import qual_1_scoring_msg
-from srcp2_msgs import vol_sensor_msg
+from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg
 
 
 ROBOT_NAME = 'scout_1'
