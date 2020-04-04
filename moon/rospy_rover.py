@@ -17,6 +17,8 @@ from geometry_msgs.msg import Twist
 
 # SRCP2 specific
 from srcp2_msgs.msg import qual_1_scoring_msg
+from srcp2_msgs import vol_sensor_msg
+
 
 ROBOT_NAME = 'scout_1'
 FILTER_ODOM_NTH = 1  #n - every nth message shall be sent to osgar
@@ -159,6 +161,7 @@ def odom2zmq():
 
     # TODO load it from configuration
     rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_topic, '/qual_1_score')
+    rospy.Subscriber('/scout_1/volatile_sensor', vol_sensor_msg, callback_topic, '/scout_1/volatile_sensor')
 
 #    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
