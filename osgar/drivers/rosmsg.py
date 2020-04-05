@@ -516,7 +516,7 @@ class ROSMsgParser(Thread):
         elif frame_id == b'' and b'br_wheel_joint' in packet:
 #            assert False, parse_joint_state(packet)
             wheels_position = parse_joint_state(packet)
-            x, y, heading = wheels_position[0], 0, 0
+            x, y, heading = wheels_position[0] * 0.275, 0, 0  # Wheel Radius = 0.275 meters
             self.bus.publish('pose2d', [round(x * 1000),
                                         round(y * 1000),
                                         round(math.degrees(heading) * 100)])
