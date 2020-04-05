@@ -45,6 +45,6 @@
               ["rosmsg.scan", "app.scan"],
               ["app.desired_speed", "rosmsg.desired_speed"],
               ["app.request_origin", "rosmsg.request_origin"],
-              ["rosmsg.orign", "app.origin"]]
+              ["rosmsg.origin", "app.origin"]]
   }
 }
