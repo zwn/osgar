@@ -40,6 +40,7 @@ class SpaceRoboticsChallenge(Node):
 
     def run(self):
         try:
+            self.update()  # define self.time
             self.go_straight(10.0, timeout=timedelta(seconds=60))
         except BusShutdownException:
             pass
