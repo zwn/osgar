@@ -515,8 +515,8 @@ class ROSMsgParser(Thread):
                 self.bus.publish('gas_detected', self.gas_detected)
         elif frame_id == b'' and b'br_wheel_joint' in packet:
 #            assert False, parse_joint_state(packet)
-            print(parse_joint_state(packet))
-            x, y, heading = 0, 0, 0  # TODO but pulse odometry and command
+            wheels_position = parse_joint_state(packet)
+            x, y, heading = wheels_position[0], 0, 0
             self.bus.publish('pose2d', [round(x * 1000),
                                         round(y * 1000),
                                         round(math.degrees(heading) * 100)])
