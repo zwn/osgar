@@ -195,11 +195,9 @@ def odom2zmq():
 #                vel_msg.linear.x = float(message.split(" ")[1])
 #                vel_msg.angular.z = float(message.split(" ")[2])
 #                velocity_publisher.publish(vel_msg)
-                speed_msg.data = float(message.split(" ")[1])
-                speed_msg.data = 100.0  # HACK (Nm)
+                speed_msg.data = float(message.split(" ")[1]) * 100  # scale to Nm
                 vel_fl_publisher.publish(speed_msg)
                 vel_fr_publisher.publish(speed_msg)
-                speed_msg.data = 0.0  # HACK (Nm)
                 vel_bl_publisher.publish(speed_msg)
                 vel_br_publisher.publish(speed_msg)
 
