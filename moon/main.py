@@ -17,6 +17,7 @@ class SpaceRoboticsChallenge(Node):
         super().__init__(config, bus)
         bus.register("desired_speed", "artf_xyz", "pose3d", "request_origin")
         self.last_position = (0, 0, 0)  # proper should be None, but we really start from zero
+        self.max_speed = 1.0  # oficial max speed is 1.5m/s
 
     def send_speed_cmd(self, speed, angular_speed):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
