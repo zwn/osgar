@@ -2,6 +2,12 @@
   "version": 2,
   "robot": {
     "modules": {
+      "app": {
+          "driver": "moon.main:SpaceRoboticsChallenge",
+          "in": ["pose2d"],
+          "out": ["desired_speed", "artf_xyz", "pose3d", "request_origin"],
+          "init": {}
+      },
       "transmitter": {
           "driver": "zeromq",
           "in": [],
@@ -34,6 +40,11 @@
       }
     },
     "links": [["receiver.raw", "rosmsg.slot_raw"],
-              ["rosmsg.cmd", "transmitter.raw"]]
+              ["rosmsg.cmd", "transmitter.raw"],
+              ["rosmsg.pose2d", "app.pose2d"],
+              ["rosmsg.scan", "app.scan"],
+              ["app.desired_speed", "rosmsg.desired_speed"],
+              ["app.request_origin", "rosmsg.request_origin"],
+              ["rosmsg.orign", "app.origin"]]
   }
 }
