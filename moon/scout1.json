@@ -27,7 +27,7 @@
           "init": {
             "downsample": 2,
             "topics": [
-              ["/qual_1_score", "srcp2_msgs/msg/qual_1_scoring_msg"],
+              ["/qual_1_score", "srcp2_msgs/qual_1_scoring_msg"],
               ["/scout_1/volatile_sensor", "srcp2_msgs/vol_sensor_msg"]
             ]
           }
