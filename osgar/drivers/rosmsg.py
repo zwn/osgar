@@ -387,7 +387,7 @@ def get_frame_id(data):
 
 def parse_topic(topic_type, data):
     """parse general topic"""
-    if topic_type == 'srcp2_msgs/msg/qual_1_scoring_msg':
+    if topic_type == 'srcp2_msgs/qual_1_scoring_msg':
         assert len(data) == 44, (len(data), data)
         size = struct.unpack_from('<I', data)[0]
         pos = 4
@@ -396,6 +396,7 @@ def parse_topic(topic_type, data):
         # _slot_types = ['int32','int32','int32[8]']        
         return struct.unpack_from('<II', data, pos)  # only score and calls
     elif topic_type == 'srcp2_msgs/vol_sensor_msg':  # TODO unify names
+        assert False, data
         return None
     else:
         assert False, topic_type
