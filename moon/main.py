@@ -31,7 +31,8 @@ class SpaceRoboticsChallenge(Node):
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
 
-        self.min_safe_dist = config.get('min_safe_dist', 0.75)
+        self.min_safe_dist = config.get('min_safe_dist', 2.0)
+        self.dangerous_dist = config.get('dangerous_dist', 1.5)
         self.safety_turning_coeff = config.get('safety_turning_coeff', 0.8)
         scan_subsample = config.get('scan_subsample', 1)
         obstacle_influence = config.get('obstacle_influence', 0.8)
@@ -39,7 +40,7 @@ class SpaceRoboticsChallenge(Node):
         self.local_planner = LocalPlanner(
                 obstacle_influence=obstacle_influence,
                 direction_adherence=direction_adherence,
-                max_obstacle_distance=2.5,
+                max_obstacle_distance=4.0,
                 scan_subsample=scan_subsample,
                 max_considered_obstacles=100)
 
@@ -67,6 +68,7 @@ class SpaceRoboticsChallenge(Node):
         desired_angular_speed = 0.9 * safe_direction
         size = len(self.scan)
         dist = min_dist(self.scan[size//3:2*size//3])
+        print(dist)
         if dist < self.min_safe_dist:
             desired_speed = self.max_speed * (dist - self.dangerous_dist) / (self.min_safe_dist - self.dangerous_dist)
         else:
@@ -87,7 +89,7 @@ class SpaceRoboticsChallenge(Node):
         try:
             self.update()  # define self.time
 #            self.go_straight(2.0, timeout=timedelta(seconds=10))
-            self.random_walk(timeout=timedelta(seconds=10))
+            self.random_walk(timeout=timedelta(seconds=60))
         except BusShutdownException:
             pass
 
