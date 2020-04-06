@@ -24,9 +24,9 @@ except:
     pass  # workaround to merge lib/depth.py
 
 
-#WINDOW_SIZE = 1200, 660
+WINDOW_SIZE = 1200, 660
 #WINDOW_SIZE = 1600, 1000
-WINDOW_SIZE = 600, 600
+#WINDOW_SIZE = 600, 600
 TAIL_MIN_STEP = 0.1  # in meters
 HISTORY_SIZE = 100
 
