@@ -154,13 +154,17 @@ def odom2zmq():
     rospy.Subscriber('/scout_1/joint_states', JointState, callback_odom)
     rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
     rospy.Subscriber('/scout_1/imu', Imu, callback_imu)
-    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
+#    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
     # TODO load it from configuration
     rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_topic, '/qual_1_score')
     rospy.Subscriber('/scout_1/volatile_sensor', vol_sensor_msg, callback_topic, '/scout_1/volatile_sensor')
+    rospy.Subscriber('/scout_1/camera/left/image_raw/compressed', CompressedImage, callback_topic, 
+                     '/scout_1/camera/left/image_raw/compressed')
+    rospy.Subscriber('/scout_1/camera/right/image_raw/compressed', CompressedImage, callback_topic, 
+                     '/scout_1/camera/right/image_raw/compressed')
 
 #    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
