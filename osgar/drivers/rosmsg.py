@@ -395,9 +395,12 @@ def parse_topic(topic_type, data):
         # __slots__ = ['score','calls','total_of_types']
         # _slot_types = ['int32','int32','int32[8]']        
         return struct.unpack_from('<II', data, pos)  # only score and calls
-    elif topic_type == 'srcp2_msgs/vol_sensor_msg':  # TODO unify names
-        assert False, data
+    elif topic_type == 'srcp2_msgs/vol_sensor_msg':
+        print('volatile', data)
         return None
+    elif topic_type == 'sensor_msgs/CompressedImage':
+        image = parse_jpeg_image(data)  # , dump_filename='nasa.jpg')
+        return image
     else:
         assert False, topic_type
 
