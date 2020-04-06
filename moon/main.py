@@ -44,9 +44,14 @@ class SpaceRoboticsChallenge(Node):
                 scan_subsample=scan_subsample,
                 max_considered_obstacles=100)
 
-
     def send_speed_cmd(self, speed, angular_speed):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
+
+    def update(self):
+        channel = super().update()
+        if channel == 'scan':
+            self.local_planner.update(self.scan)
+        return channel
 
     def go_straight(self, how_far, timeout=None):
         print(self.time, "go_straight %.1f (speed: %.1f)" % (how_far, self.max_speed), self.last_position)
@@ -68,7 +73,7 @@ class SpaceRoboticsChallenge(Node):
         desired_angular_speed = 0.9 * safe_direction
         size = len(self.scan)
         dist = min_dist(self.scan[size//3:2*size//3])
-        print(dist)
+#        print(safe_direction, safety, dist)
         if dist < self.min_safe_dist:
             desired_speed = self.max_speed * (dist - self.dangerous_dist) / (self.min_safe_dist - self.dangerous_dist)
         else:
