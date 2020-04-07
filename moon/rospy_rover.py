@@ -17,7 +17,8 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
 
 # SRCP2 specific
-from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg, localization_srv
+from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg
+from srcp2_msgs.srv import localization_srv
 
 
 ROBOT_NAME = 'scout_1'
@@ -243,7 +244,8 @@ def odom2zmq():
                 else:
                     pass  # keep steering angles as they are ...
             elif message_type == "request_origin":
-                p = rospy.ServiceProxy('/scout_1/get_true_pose', localization_srv)
+                request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', localization_srv)
+                p = request_origin(True)
                 s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                      p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
                 g_socket.send(s)
