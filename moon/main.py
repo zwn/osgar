@@ -60,6 +60,11 @@ class SpaceRoboticsChallenge(Node):
             self.origin = data[1:4]
             qx, qy, qz, qw = data[4:]
             self.origin_quat = qx, qy, qz, qw  # quaternion
+
+            # report location as fake artifact
+            artifact_data = 'ethene'
+            ax, ay, az = self.origin
+            self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])            
         return channel
 
     def go_straight(self, how_far, timeout=None):
