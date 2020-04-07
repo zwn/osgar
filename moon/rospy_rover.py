@@ -17,7 +17,7 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist
 
 # SRCP2 specific
-from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg
+from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg, localization_srv
 
 
 ROBOT_NAME = 'scout_1'
@@ -209,7 +209,8 @@ def odom2zmq():
             except:
                 pass
             #print("OSGAR:" + message)
-            if message.split(" ")[0] == "cmd_vel":
+            message_type = message.split(" ")[0]
+            if message_type == "cmd_vel":
 #                vel_msg.linear.x = float(message.split(" ")[1])
 #                vel_msg.angular.z = float(message.split(" ")[2])
 #                velocity_publisher.publish(vel_msg)
@@ -241,6 +242,11 @@ def odom2zmq():
                     steering_br_publisher.publish(steering_msg)
                 else:
                     pass  # keep steering angles as they are ...
+            elif message_type == "request_origin":
+                p = rospy.ServiceProxy('/scout_1/get_true_pose', localization_srv)
+                s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
+                     p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
+                g_socket.send(s)
 
         except zmq.error.Again:
             pass
