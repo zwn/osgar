@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from osgar.node import Node
 from osgar.bus import BusShutdownException
+from osgar.lib import quaternion
 
 from subt.local_planner import LocalPlanner
 
@@ -44,6 +45,9 @@ class SpaceRoboticsChallenge(Node):
                 scan_subsample=scan_subsample,
                 max_considered_obstacles=100)
 
+        self.origin = None  # unknown initial position
+        self.origin_quat = quaternion.identity()
+
     def send_speed_cmd(self, speed, angular_speed):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
@@ -51,6 +55,11 @@ class SpaceRoboticsChallenge(Node):
         channel = super().update()
         if channel == 'scan':
             self.local_planner.update(self.scan)
+        elif channel == 'origin':
+            data = self.origin[:]  # the same name is used for message as internal data
+            self.origin = data[1:4]
+            qx, qy, qz, qw = data[4:]
+            self.origin_quat = qx, qy, qz, qw  # quaternion
         return channel
 
     def go_straight(self, how_far, timeout=None):
@@ -102,6 +111,7 @@ class SpaceRoboticsChallenge(Node):
             self.update()  # define self.time
 #            self.go_straight(2.0, timeout=timedelta(seconds=10))
             self.random_walk(timeout=timedelta(seconds=60))
+            self.bus.publish('request_origin', True)
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
             pass
