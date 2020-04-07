@@ -27,7 +27,7 @@ def min_dist(laser_data):
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "pose3d", "request_origin")
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin")
         self.last_position = (0, 0, 0)  # proper should be None, but we really start from zero
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
@@ -64,7 +64,11 @@ class SpaceRoboticsChallenge(Node):
             # report location as fake artifact
             artifact_data = 'ethene'
             ax, ay, az = self.origin
-            self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])            
+            self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
+
+            s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
+            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+
         return channel
 
     def go_straight(self, how_far, timeout=None):
