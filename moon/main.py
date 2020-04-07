@@ -68,6 +68,13 @@ class SpaceRoboticsChallenge(Node):
                 break
         self.send_speed_cmd(0.0, 0.0)
 
+    def wait(self, dt):  # TODO refactor to some common class
+        if self.time is None:
+            self.update()
+        start_time = self.time
+        while self.time - start_time < dt:
+            self.update()
+
     def go_safely(self, desired_direction):
         safety, safe_direction = self.local_planner.recommend(desired_direction)
         desired_angular_speed = 0.9 * safe_direction
@@ -95,6 +102,7 @@ class SpaceRoboticsChallenge(Node):
             self.update()  # define self.time
 #            self.go_straight(2.0, timeout=timedelta(seconds=10))
             self.random_walk(timeout=timedelta(seconds=60))
+            self.wait(timedelta(seconds=10))
         except BusShutdownException:
             pass
 
