@@ -28,7 +28,7 @@ def min_dist(laser_data):
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin")
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin")
         self.last_position = (0, 0, 0)  # proper should be None, but we really start from zero
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
