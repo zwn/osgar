@@ -3,7 +3,7 @@
 echo "Start robot solution"
 export OSGAR_LOGS=`pwd`
 cd osgar
-python3 -m osgar.record --duration 100 moon/scout1.json --note "collect some ROS data" &
+python3 -m osgar.record --duration 2700 moon/scout1.json --note "collect some ROS data" &
 ROBOT_PID=$!
 cd ..
 
