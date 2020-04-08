@@ -7,6 +7,7 @@ import struct
 import math
 from io import BytesIO
 from threading import RLock
+import threading  # just hacking rospy
 
 import zmq
 
@@ -41,6 +42,7 @@ g_lock = RLock()
 
 
 def socket_send(data):
+    print('Thread', threading.current_thread())
     global g_socket, g_lock
     assert g_socket is not None
     with g_lock:
