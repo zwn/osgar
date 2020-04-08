@@ -385,6 +385,25 @@ def get_frame_id(data):
     return frame_id
 
 
+def parse_volatile(data):
+    # NASA Space Robotics Challenge 2
+    # __slots__ = ['header','vol_type','vol_index','shadowed_state','distance_to']
+    # _slot_types = ['std_msgs/Header','string','int32','bool','float32']
+    size = struct.unpack_from('<I', data)[0]
+    pos = 4
+    assert size + 4 == len(data), (size, len(data))  # it is going to be variable -> remove the assert
+    seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
+    pos += 4 + 4 + 4 + 4
+    frame_id = data[pos:pos+frame_id_size]  # b'scout_1/volatile_sensor'
+    pos += frame_id_size
+    size = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    vol_type = data[pos:pos+size]  # b'methanol'
+    pos += size
+    vol_index, shadowed_state, distance_to = struct.unpack_from('<iBf', data, pos)
+    return [vol_type.decode('ascii'), distance_to]
+
+
 def parse_topic(topic_type, data):
     """parse general topic"""
     if topic_type == 'srcp2_msgs/qual_1_scoring_msg':
@@ -396,8 +415,7 @@ def parse_topic(topic_type, data):
         # _slot_types = ['int32','int32','int32[8]']        
         return struct.unpack_from('<II', data, pos)  # only score and calls
     elif topic_type == 'srcp2_msgs/vol_sensor_msg':
-        print('volatile', data)
-        return None
+        return parse_volatile(data)
     elif topic_type == 'sensor_msgs/CompressedImage':
         image = parse_jpeg_image(data)  # , dump_filename='nasa.jpg')
         return image

@@ -2,7 +2,7 @@ import unittest
 
 from osgar.drivers.rosmsg import (ROSMsgParser, parse_jpeg_image, parse_laser,
                                   parse_odom, parse_imu, parse_points, get_frame_id,
-                                  parse_bool)
+                                  parse_bool, parse_volatile)
 
 
 class ROSMsgParserTest(unittest.TestCase):
@@ -99,4 +99,8 @@ class ROSMsgParserTest(unittest.TestCase):
         data = b'\x01\x00\x00\x00\x00'
         self.assertEqual(parse_bool(data), False)
 
+    def test_parse_volatile(self):
+        data = b"<\x00\x00\x00\x8c\x00\x00\x009\x00\x00\x00\x00'\xb9)\x17\x00\x00\x00" + \
+               b"scout_1/volatile_sensor\x08\x00\x00\x00methanol\n\x00\x00\x00\x01\xfb\xde`?"
+        self.assertEqual(parse_volatile(data), ['methanol', 0.8784024119377136])
 # vim: expandtab sw=4 ts=4
