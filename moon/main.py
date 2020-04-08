@@ -8,6 +8,7 @@ from datetime import timedelta
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 from osgar.lib import quaternion
+from osgar.lib.mathex import normalizeAnglePIPI
 
 from subt.local_planner import LocalPlanner
 
@@ -47,13 +48,48 @@ class SpaceRoboticsChallenge(Node):
 
         self.origin = None  # unknown initial position
         self.origin_quat = quaternion.identity()
+        self.start_pose = None
+        self.yaw_offset = None
+        self.yaw, self.pitch, self.roll = 0, 0, 0
+        self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
+        self.xyz_quat = [0, 0, 0]
+        self.offset = (0, 0, 0)
 
     def send_speed_cmd(self, speed, angular_speed):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def on_pose2d(self, timestamp, data):
+        x, y, heading = data
+        pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
+        if self.last_position is not None:
+            self.is_moving = (self.last_position != pose)
+            dist = math.hypot(pose[0] - self.last_position[0], pose[1] - self.last_position[1])
+            direction = ((pose[0] - self.last_position[0]) * math.cos(self.last_position[2]) +
+                         (pose[1] - self.last_position[1]) * math.sin(self.last_position[2]))
+            if direction < 0:
+                dist = -dist
+        else:
+            dist = 0.0
+        self.last_position = pose
+        if self.start_pose is None:
+            self.start_pose = pose
+#        self.traveled_dist += dist
+        x, y, z = self.xyz
+        x += math.cos(self.pitch) * math.cos(self.yaw) * dist
+        y += math.cos(self.pitch) * math.sin(self.yaw) * dist
+        z += math.sin(self.pitch) * dist
+        x0, y0, z0 = self.offset
+        self.last_send_time = self.bus.publish('pose2d', [round((x + x0) * 1000), round((y + y0) * 1000),
+                                    round(math.degrees(self.yaw) * 100)])
+
     def update(self):
         channel = super().update()
-        if channel == 'scan':
+#        handler = getattr(self, "on_" + channel, None)
+#        if handler is not None:
+#            handler(self.time, data)
+        if channel == 'pose2d':
+            self.on_pose2d(self.time, self.pose2d)
+        elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
@@ -68,6 +104,11 @@ class SpaceRoboticsChallenge(Node):
 
             s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+        elif channel == 'rot':
+            temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
+            if self.yaw_offset is None:
+                self.yaw_offset = -temp_yaw
+            self.yaw = temp_yaw + self.yaw_offset
 
         return channel
 
