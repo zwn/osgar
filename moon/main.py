@@ -54,6 +54,7 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
+        self.last_artf = None
 
     def send_speed_cmd(self, speed, angular_speed):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
@@ -81,6 +82,12 @@ class SpaceRoboticsChallenge(Node):
                                     round(math.degrees(self.yaw) * 100)])
         self.xyz = x, y, z
 
+    def on_artf(self, timestamp, data):
+        artifact_type, dist = data  # meters
+        if self.last_artf is None:
+            self.bus.publish('request_origin', True)
+        self.last_artf = artifact_type
+
     def update(self):
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
@@ -88,6 +95,8 @@ class SpaceRoboticsChallenge(Node):
 #            handler(self.time, data)
         if channel == 'pose2d':
             self.on_pose2d(self.time, self.pose2d)
+        elif channel == 'artf':
+            self.on_artf(self.time, self.artf)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'origin':
@@ -97,7 +106,7 @@ class SpaceRoboticsChallenge(Node):
             self.origin_quat = qx, qy, qz, qw  # quaternion
 
             # report location as fake artifact
-            artifact_data = 'ethene'
+            artifact_data = self.last_artf
             ax, ay, az = self.origin
             self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
 
@@ -160,7 +169,6 @@ class SpaceRoboticsChallenge(Node):
             self.update()  # define self.time
 #            self.go_straight(2.0, timeout=timedelta(seconds=10))
             self.random_walk(timeout=timedelta(seconds=300))
-            self.bus.publish('request_origin', True)
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
             pass
