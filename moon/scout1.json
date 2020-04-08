@@ -44,6 +44,7 @@
     "links": [["receiver.raw", "rosmsg.slot_raw"],
               ["rosmsg.cmd", "transmitter.raw"],
               ["rosmsg.pose2d", "app.pose2d"],
+              ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
               ["app.desired_speed", "rosmsg.desired_speed"],
               ["app.request_origin", "rosmsg.request_origin"],
