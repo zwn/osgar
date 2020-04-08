@@ -68,6 +68,7 @@ def callback_imu(data):
 
 
 def callback_odom(data):
+    global g_odom_counter
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     # print(rospy.get_caller_id(), data)
 
@@ -84,6 +85,7 @@ def callback_odom(data):
 
 
 def callback_depth(data):
+    global g_depth_counter
     # rospy.loginfo(rospy.get_caller_id() + "I heard depth data")
     # print(rospy.get_caller_id(), data)
 
@@ -100,6 +102,7 @@ def callback_depth(data):
 
 
 def callback_camera(data):
+    global g_camera_counter
     # rospy.loginfo(rospy.get_caller_id() + "I heard depth data")
     # print(rospy.get_caller_id(), data)
 
