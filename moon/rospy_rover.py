@@ -6,6 +6,7 @@ import time
 import struct
 import math
 from io import BytesIO
+from threading import RLock
 
 import zmq
 
@@ -36,11 +37,17 @@ g_camera_counter = 0
 
 
 g_socket = None
+g_lock = RLock()
+
+
+def socket_send(data):
+    global g_socket, g_lock
+    assert g_socket is not None
+    with g_lock:
+        g_socket.send(data)
+
 
 def callback(data):
-    global g_socket
-    assert g_socket is not None
-
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     # print(rospy.get_caller_id(), data)
 
@@ -49,24 +56,18 @@ def callback(data):
     data.serialize(s1)
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
-    g_socket.send(header + to_send)
+    socket_send(header + to_send)
 
 
 def callback_imu(data):
-    global g_socket
-    assert g_socket is not None
-
     s1 = BytesIO()
     data.serialize(s1)
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
-    g_socket.send(header + to_send)
+    socket_send(header + to_send)
 
 
 def callback_odom(data):
-    global g_socket, g_odom_counter
-    assert g_socket is not None
-
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     # print(rospy.get_caller_id(), data)
 
@@ -76,16 +77,13 @@ def callback_odom(data):
         data.serialize(s1)
         to_send = s1.getvalue()
         header = struct.pack('<I', len(to_send))
-        g_socket.send(header + to_send)
+        socket_send(header + to_send)
         g_odom_counter = 0
     else:
         g_odom_counter += 1
 
 
 def callback_depth(data):
-    global g_socket, g_depth_counter
-    assert g_socket is not None
-
     # rospy.loginfo(rospy.get_caller_id() + "I heard depth data")
     # print(rospy.get_caller_id(), data)
 
@@ -95,16 +93,13 @@ def callback_depth(data):
         data.serialize(s1)
         to_send = s1.getvalue()
         header = struct.pack('<I', len(to_send))
-        g_socket.send("depth" + header + to_send)
+        socket_send("depth" + header + to_send)
         g_depth_counter = 0
     else:
         g_depth_counter += 1
 
 
 def callback_camera(data):
-    global g_socket, g_camera_counter
-    assert g_socket is not None
-
     # rospy.loginfo(rospy.get_caller_id() + "I heard depth data")
     # print(rospy.get_caller_id(), data)
 
@@ -114,42 +109,36 @@ def callback_camera(data):
         data.serialize(s1)
         to_send = s1.getvalue()
         header = struct.pack('<I', len(to_send))
-        g_socket.send(header + to_send)
+        socket_send(header + to_send)
         g_camera_counter = 0
     else:
         g_camera_counter += 1
 
 
 def callback_clock(data):
-    global g_socket
-    assert g_socket is not None
-
     s1 = BytesIO()
     data.serialize(s1)
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
-    g_socket.send(header + to_send)
+    socket_send(header + to_send)
 
 
 def callback_topic(data, topic_name):
-    global g_socket
-    assert g_socket is not None
-
     s1 = BytesIO()
     data.serialize(s1)
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
-    g_socket.send(topic_name + '\0' + header + to_send)
+    socket_send(topic_name + '\0' + header + to_send)
 
 
 def odom2zmq():
-    global g_socket
-    #wait_for_master()
+    global g_socket, g_lock
 
-    context = zmq.Context()
-    g_socket = context.socket(zmq.PUSH)
-    g_socket.setsockopt(zmq.LINGER, 100)  # milliseconds
-    g_socket.bind('tcp://*:5555')
+    with g_lock:
+        context = zmq.Context()
+        g_socket = context.socket(zmq.PUSH)
+        g_socket.setsockopt(zmq.LINGER, 100)  # milliseconds
+        g_socket.bind('tcp://*:5555')
 
     context2 = zmq.Context()
     g_socket2 = context2.socket(zmq.PULL)
@@ -248,7 +237,7 @@ def odom2zmq():
                 p = request_origin(True)
                 s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                      p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
-                g_socket.send(s)
+                socket_send(s)
             elif message_type == "artf":
                 s = message.split()
                 x, y, z = [float(a) for a in s[1:]]
