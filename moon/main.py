@@ -29,7 +29,7 @@ class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
         bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin")
-        self.last_position = (0, 0, 0)  # proper should be None, but we really start from zero
+        self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
 
@@ -62,7 +62,6 @@ class SpaceRoboticsChallenge(Node):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
         if self.last_position is not None:
-            self.is_moving = (self.last_position != pose)
             dist = math.hypot(pose[0] - self.last_position[0], pose[1] - self.last_position[1])
             direction = ((pose[0] - self.last_position[0]) * math.cos(self.last_position[2]) +
                          (pose[1] - self.last_position[1]) * math.sin(self.last_position[2]))
@@ -73,7 +72,6 @@ class SpaceRoboticsChallenge(Node):
         self.last_position = pose
         if self.start_pose is None:
             self.start_pose = pose
-#        self.traveled_dist += dist
         x, y, z = self.xyz
         x += math.cos(self.pitch) * math.cos(self.yaw) * dist
         y += math.cos(self.pitch) * math.sin(self.yaw) * dist
@@ -81,6 +79,7 @@ class SpaceRoboticsChallenge(Node):
         x0, y0, z0 = self.offset
         self.last_send_time = self.bus.publish('pose2d', [round((x + x0) * 1000), round((y + y0) * 1000),
                                     round(math.degrees(self.yaw) * 100)])
+        self.xyz = x, y, z
 
     def update(self):
         channel = super().update()
