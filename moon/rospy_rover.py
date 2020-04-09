@@ -204,17 +204,18 @@ def odom2zmq():
             #print("OSGAR:" + message)
             message_type = message.split(" ")[0]
             if message_type == "cmd_vel":
-#                vel_msg.linear.x = float(message.split(" ")[1])
-#                vel_msg.angular.z = float(message.split(" ")[2])
-#                velocity_publisher.publish(vel_msg)
-                speed_msg.data = float(message.split(" ")[1]) * 100  # scale to Nm
+                desired_speed = float(message.split(" ")[1])
+                desired_angular_speed = float(message.split(" ")[2])
+
+                if abs(desired_speed) < 0.001 and abs(desired_angular_speed) < 0.001:
+                    speed_msg.data = 0
+                else:
+                    speed_msg.data = 100  # force to move forward, always TODO PID with scale to Nm
                 vel_fl_publisher.publish(speed_msg)
                 vel_fr_publisher.publish(speed_msg)
                 vel_bl_publisher.publish(speed_msg)
                 vel_br_publisher.publish(speed_msg)
 
-                desired_speed = float(message.split(" ")[1])
-                desired_angular_speed = float(message.split(" ")[2])
                 if abs(desired_speed) > 0.001:
                     if abs(desired_angular_speed) > 0.001:
                         # i.e. turn and go
