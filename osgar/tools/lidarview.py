@@ -30,7 +30,7 @@ WINDOW_SIZE = 1200, 660
 TAIL_MIN_STEP = 0.1  # in meters
 HISTORY_SIZE = 100
 
-MAX_SCAN_LIMIT = 20000  # used to be 10m
+MAX_SCAN_LIMIT = 10000  # set by --lidar-limit
 
 g_scale = 30
 g_rotation_offset_rad = 0.0  # set by --rotation (deg)
@@ -541,14 +541,15 @@ def lidarview(gen, caption_filename, callback=False, out_video=None, jump=None):
 def main(args_in=None, startswith=None):
     import argparse
     import os.path
-    global g_rotation_offset_rad, g_lidar_fov_deg
+    global g_rotation_offset_rad, g_lidar_fov_deg, MAX_SCAN_LIMIT
 
     parser = argparse.ArgumentParser(description='View lidar scans')
     parser.add_argument('logfile', help='recorded log file')
 
     parser.add_argument('--lidar', help='stream ID')
     parser.add_argument('--lidar2', help='stream ID of second lidar (back or slope)')
-
+    parser.add_argument('--lidar-limit', help='display scan limit in millimeters',
+                        type=int, default=MAX_SCAN_LIMIT)
     pose = parser.add_mutually_exclusive_group()
     pose.add_argument('--pose2d', help='stream ID for pose2d messages')
     pose.add_argument('--pose3d', help='stream ID for pose3d messages')
@@ -593,6 +594,9 @@ def main(args_in=None, startswith=None):
     callback = None
     if args.callback is not None:
         callback = get_class_by_name(args.callback)
+
+    if args.lidar_limit is not None:
+        MAX_SCAN_LIMIT = args.lidar_limit
 
     filename = os.path.basename(args.logfile)
     g_rotation_offset_rad = math.radians(args.rotate)
