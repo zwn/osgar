@@ -24,9 +24,7 @@ except:
     pass  # workaround to merge lib/depth.py
 
 
-WINDOW_SIZE = 1200, 660
-#WINDOW_SIZE = 1600, 1000
-#WINDOW_SIZE = 600, 600
+WINDOW_SIZE = 1600, 1000  # controlled by --window-size
 TAIL_MIN_STEP = 0.1  # in meters
 HISTORY_SIZE = 100
 
@@ -541,7 +539,7 @@ def lidarview(gen, caption_filename, callback=False, out_video=None, jump=None):
 def main(args_in=None, startswith=None):
     import argparse
     import os.path
-    global g_rotation_offset_rad, g_lidar_fov_deg, MAX_SCAN_LIMIT
+    global g_rotation_offset_rad, g_lidar_fov_deg, MAX_SCAN_LIMIT, WINDOW_SIZE
 
     parser = argparse.ArgumentParser(description='View lidar scans')
     parser.add_argument('logfile', help='recorded log file')
@@ -561,6 +559,8 @@ def main(args_in=None, startswith=None):
 
     parser.add_argument('--keyframes', help='stream ID typically for artifacts detection')
     parser.add_argument('--title', help='stream ID of data to be displayed in title')
+
+    parser.add_argument('--window-size', help='set window size in pixels', type=int, nargs=2)
 
     parser.add_argument('--callback', help='callback function for lidar scans')
 
@@ -597,6 +597,8 @@ def main(args_in=None, startswith=None):
 
     if args.lidar_limit is not None:
         MAX_SCAN_LIMIT = args.lidar_limit
+    if args.window_size is not None:
+        WINDOW_SIZE = args.window_size
 
     filename = os.path.basename(args.logfile)
     g_rotation_offset_rad = math.radians(args.rotate)
