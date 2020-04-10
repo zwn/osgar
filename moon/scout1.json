@@ -14,7 +14,8 @@
           "out": ["raw"],
           "init": {
             "mode": "PUSH",
-            "endpoint": "tcp://localhost:5556"
+            "endpoint": "tcp://localhost:5556",
+            "save_data": true
           }
       },
       "receiver": {
