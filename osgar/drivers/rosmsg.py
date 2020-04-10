@@ -11,11 +11,6 @@ import numpy as np
 from osgar.bus import BusShutdownException
 from osgar.lib.quaternion import euler_zyx
 
-# NASA HACK
-import cv2
-g_video_name = None  # 'moon-rover.mp4'
-g_writer = None
-
 MAX_TOPIC_NAME_LENGTH = 256
 
 
@@ -103,34 +98,12 @@ def parse_raw_image(data, dump_filename=None):
     elif encoding == b'16UC1':
         # depth is array as uint16, similar to OSGAR
         arr = np.frombuffer(data[pos:pos + image_arr_size], dtype=np.dtype('H'))
-    elif encoding == b'rgb8':
-        # NASA not compressed data
-        global g_video_name
-        if g_video_name is not None:
-            global g_writer
-            if g_writer is None:
-                fps = 10
-                g_writer = cv2.VideoWriter(g_video_name,
-                                           cv2.VideoWriter_fourcc(*"mp4v"),
-                                           fps,
-                                           (width, height))
-            img = np.frombuffer(data[pos:pos+image_arr_size], dtype=np.dtype('B'))
-#            img = np.reshape(img, (width, height, 3))
-            img = np.reshape(img, (height, width, 3))
-#            print(img.shape)
-#            assert False
-            g_writer.write(img)
-            if seq == 291:
-                g_writer.release()
-                g_writer = None
-                g_video_name = None
 
-        return None  # ignore for now
-        # RGB color format (PPM - Portable PixMap)
-        with open("dump_nasa.ppm", 'wb') as f:
-            f.write(b'P6\n%d %d\n255\n' % (width, height))
-            f.write(data[pos:pos+image_arr_size])
-#        assert False, (width, height, image_arr_size)
+    elif encoding == b'rgb8':
+        # not compressed image data
+        img = np.frombuffer(data[pos:pos+image_arr_size], dtype=np.dtype('B'))
+        img = np.reshape(img, (height, width, 3))
+        return img
 
     else:
         assert False, encoding  # unsuported encoding
