@@ -14,8 +14,7 @@
           "out": ["raw"],
           "init": {
             "mode": "PUSH",
-            "endpoint": "tcp://localhost:5556",
-            "save_data": true
+            "endpoint": "tcp://localhost:5556"
           }
       },
       "receiver": {
@@ -24,7 +23,8 @@
           "out": ["raw"],
           "init": {
             "mode": "PULL",
-            "endpoint": "tcp://localhost:5555"
+            "endpoint": "tcp://localhost:5555",
+            "save_data": true
           }
       },
       "rosmsg": {
