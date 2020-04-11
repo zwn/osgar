@@ -249,6 +249,7 @@ def odom2zmq():
                 vol_type = s[0]
                 report_artf = rospy.ServiceProxy('/vol_detected_service', qual_1_score_srv)
                 print(report_artf(pose=pose, vol_type=vol_type))
+                assert False, s
 
         except zmq.error.Again:
             pass
