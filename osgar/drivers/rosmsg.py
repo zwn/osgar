@@ -528,7 +528,12 @@ class ROSMsgParser(Thread):
                                         round(y * 1000),
                                         round(math.degrees(heading) * 100)])
             # workaround for not existing /clock on Moon rover
-            cmd = b'cmd_vel %f %f' % (self.desired_speed, self.desired_angular_speed)
+            steering = [0,] * 4
+            if abs(self.desired_speed) < 0.001:
+                effort = [0,] * 4
+            else:
+                effort = [100,] * 4
+            cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
             self.bus.publish('cmd', cmd)
         elif b'\0' in packet[:MAX_TOPIC_NAME_LENGTH]:
             name = packet[:packet.index(b'\0')].decode('ascii')
