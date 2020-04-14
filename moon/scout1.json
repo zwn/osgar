@@ -34,8 +34,8 @@
           "init": {
             "downsample": 2,
             "topics": [
-              ["/qual_1_score", "srcp2_msgs/qual_1_scoring_msg"],
-              ["/scout_1/volatile_sensor", "srcp2_msgs/vol_sensor_msg"],
+              ["/qual_1_score", "srcp2_msgs/Qual1ScoringMsg"],
+              ["/scout_1/volatile_sensor", "srcp2_msgs/VolSensorMsg"],
               ["/scout_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/scout_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
             ]
