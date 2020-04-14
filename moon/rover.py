@@ -70,7 +70,12 @@ class Rover(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
         bus.register("cmd")
+        self.desired_speed = 0.0  # m/s
+        self.desired_angular_speed = 0.0
         self.joint_name = None  # updated via Node.update()
+
+    def on_desired_speed(self, data):
+        self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def on_joint_velocity(self, data):
         assert self.joint_name is not None
