@@ -527,14 +527,7 @@ class ROSMsgParser(Thread):
             self.bus.publish('pose2d', [round(x * 1000),
                                         round(y * 1000),
                                         round(math.degrees(heading) * 100)])
-            # workaround for not existing /clock on Moon rover
-            steering = [0,] * 4
-            if abs(self.desired_speed) < 0.001:
-                effort = [0,] * 4
-            else:
-                effort = [100,] * 4
-            cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
-            self.bus.publish('cmd', cmd)
+
         elif b'\0' in packet[:MAX_TOPIC_NAME_LENGTH]:
             name = packet[:packet.index(b'\0')].decode('ascii')
             for n, t in self.topics:
