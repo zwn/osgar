@@ -18,8 +18,8 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
-from srcp2_msgs.msg import qual_1_scoring_msg, vol_sensor_msg
-from srcp2_msgs.srv import localization_srv, qual_1_score_srv
+from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg
+from srcp2_msgs.srv import LocalizationSrv, Qual1ScoreSrv
 
 
 ROBOT_NAME = 'scout_1'
@@ -158,8 +158,8 @@ def odom2zmq():
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
     # TODO load it from configuration
-    rospy.Subscriber('/qual_1_score', qual_1_scoring_msg, callback_topic, '/qual_1_score')
-    rospy.Subscriber('/scout_1/volatile_sensor', vol_sensor_msg, callback_topic, '/scout_1/volatile_sensor')
+    rospy.Subscriber('/qual_1_score', Qual1ScoringMsg, callback_topic, '/qual_1_score')
+    rospy.Subscriber('/scout_1/volatile_sensor', VolSensorMsg, callback_topic, '/scout_1/volatile_sensor')
     rospy.Subscriber('/scout_1/camera/left/image_raw/compressed', CompressedImage, callback_topic, 
                      '/scout_1/camera/left/image_raw/compressed')
     rospy.Subscriber('/scout_1/camera/right/image_raw/compressed', CompressedImage, callback_topic, 
@@ -253,7 +253,7 @@ def odom2zmq():
                 else:
                     pass  # keep steering angles as they are ...
             elif message_type == "request_origin":
-                request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', localization_srv)
+                request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
                 p = request_origin(True)
                 s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                      p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
@@ -263,7 +263,7 @@ def odom2zmq():
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
-                report_artf = rospy.ServiceProxy('/vol_detected_service', qual_1_score_srv)
+                report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
                 print(report_artf(pose=pose, vol_type=vol_type))
                 assert False, s
 
