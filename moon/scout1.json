@@ -40,6 +40,13 @@
               ["/scout_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
             ]
           }
+      },
+      "rover": {
+          "driver": "moon.rover:Rover",
+          "in": [],
+          "out": [],
+          "init": {
+          }
       }
     },
     "links": [["receiver.raw", "rosmsg.slot_raw"],
@@ -48,7 +55,13 @@
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
               ["rosmsg./scout_1/volatile_sensor", "app.artf"],
-              ["app.desired_speed", "rosmsg.desired_speed"],
+              ["rosmsg.joint_name", "rover.joint_name"],
+              ["rosmsg.joint_position", "rover.joint_position"],
+              ["rosmsg.joint_velocity", "rover.joint_velocity"],
+              ["rosmsg.joint_effort", "rover.joint_effort"],
+              ["rosmsg.rot", "rover.rot"],
+              ["app.desired_speed", "rover.desired_speed"],
+              ["rover.cmd", "transmitter.raw"],
               ["app.request_origin", "rosmsg.request_origin"],
               ["rosmsg.origin", "app.origin"],
               ["app.artf_cmd", "transmitter.raw"]]
