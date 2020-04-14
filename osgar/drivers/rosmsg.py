@@ -339,7 +339,7 @@ def parse_joint_state(data):
     effort = struct.unpack_from('<' + 'd'*size, data, pos)
     pos += 8*size
 
-    return position[2:12:3]
+    return position[2:12:3], name, position, velocity, effort
 
 
 def get_frame_id(data):
@@ -401,7 +401,8 @@ class ROSMsgParser(Thread):
         Thread.__init__(self)
         self.setDaemon(True)
 
-        outputs = ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin", "gas_detected", "depth:gz", "t265_rot"]
+        outputs = ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin", "gas_detected", "depth:gz", "t265_rot",
+                "joint_name", "joint_position", "joint_velocity", "joint_effort"]
         self.topics = config.get('topics', [])
         for topic_name, topic_type in self.topics:
             outputs.append(topic_name)
@@ -422,6 +423,8 @@ class ROSMsgParser(Thread):
         self.desired_speed = 0.0  # m/s
         self.desired_angular_speed = 0.0
         self.gas_detected = None  # this SubT Virtual specific :-(
+
+        self.joint_name = None  # unknown
 
     def get_packet(self):
         data = self._buf
@@ -509,7 +512,17 @@ class ROSMsgParser(Thread):
                 self.bus.publish('gas_detected', self.gas_detected)
         elif frame_id == b'' and b'br_wheel_joint' in packet:
 #            assert False, parse_joint_state(packet)
-            wheels_position = parse_joint_state(packet)
+            wheels_position, name, position, velocity, effort = parse_joint_state(packet)
+
+            # publish names only on change
+            if self.joint_name != name:
+                self.bus.publish('joint_name', list(name))
+                self.joint_name = name
+
+            self.bus.publish('joint_position', list(position))
+            self.bus.publish('joint_velocity', list(velocity))
+            self.bus.publish('joint_effort', list(effort))
+
             x, y, heading = wheels_position[0] * 0.275, 0, 0  # Wheel Radius = 0.275 meters
             self.bus.publish('pose2d', [round(x * 1000),
                                         round(y * 1000),
