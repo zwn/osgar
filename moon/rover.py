@@ -60,6 +60,8 @@
 # /hauler_n/bin_info  srcp2_msgs/hauler_msg
 # /hauler_n/bin_joint_controller/command
 
+import math
+
 from osgar.node import Node
 
 
