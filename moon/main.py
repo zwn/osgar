@@ -166,7 +166,10 @@ class SpaceRoboticsChallenge(Node):
 
     def run(self):
         try:
-            self.update()  # define self.time
+            print('Wait for definition of last_position')
+            while self.last_position is None:
+                self.update()  # define self.time
+            print('done at', self.time)
             self.go_straight(50.0, timeout=timedelta(seconds=60))
 #            self.random_walk(timeout=timedelta(seconds=120))
             self.wait(timedelta(seconds=10))
