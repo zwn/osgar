@@ -179,6 +179,8 @@ def odom2zmq():
 
     steering_msg = Float64()
     steering_msg.data = 0
+    effort_msg = Float64()
+    effort_msg.data = 0
 
     # /name/fl_wheel_controller/command
     QSIZE = 10
@@ -203,7 +205,21 @@ def odom2zmq():
                 pass
             #print("OSGAR:" + message)
             message_type = message.split(" ")[0]
-            if message_type == "cmd_vel":
+            if message_type == "cmd_rover":
+                arr = [float(x) for x in message.split()[1:]]
+                for pub, angle in zip(
+                        [steering_fl_publisher, steering_fr_publisher, steering_bl_publisher, steering_br_publisher],
+                        arr[:4]):
+                    steering_msg.data = angle
+                    pub.publish(steering_msg)
+
+                for pub, effort in zip(
+                        [vel_fl_publisher, vel_fr_publisher, vel_bl_publisher, vel_br_publisher],
+                        arr[4:]):
+                    effort_msg.data = effort
+                    pub.publish(effort_msg)
+
+            elif message_type == "cmd_vel":
                 desired_speed = float(message.split(" ")[1])
                 desired_angular_speed = float(message.split(" ")[2])
 
