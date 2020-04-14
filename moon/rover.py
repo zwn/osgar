@@ -60,6 +60,45 @@
 # /hauler_n/bin_info  srcp2_msgs/hauler_msg
 # /hauler_n/bin_joint_controller/command
 
+from osgar.node import Node
 
+
+WHEEL_RADIUS = 0.275  # meters
+
+
+class Rover(Node):
+    def __init__(self, config, bus):
+        super().__init__(config, bus)
+        bus.register("cmd")
+        self.joint_name = None  # updated via Node.update()
+
+    def on_joint_velocity(self, data):
+        assert self.joint_name is not None
+        # TODO cycle through fl, fr, bl, br
+        speed = WHEEL_RADIUS * data[self.joint_name.index(b'fl_wheel_joint')]
+#        print("%.3f" % speed)  # TODO change to string
+
+    def on_joint_effort(self, data):
+        assert self.joint_name is not None
+        # TODO cycle through fl, fr, bl, br
+        effort =  data[self.joint_name.index(b'fl_wheel_joint')]
+        print("%.3f" % effort)
+
+        # workaround for not existing /clock on Moon rover
+        steering = [0,] * 4
+        if abs(self.desired_speed) < 0.001:
+            effort = [0,] * 4
+        else:
+            effort = [100,] * 4
+        cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
+        self.bus.publish('cmd', cmd)
+
+    def update(self):
+        channel = super().update()
+        handler = getattr(self, "on_" + channel, None)
+        if handler is not None:
+            handler(getattr(self, channel))
+
+        return channel
 
 # vim: expandtab sw=4 ts=4
