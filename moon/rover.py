@@ -66,6 +66,7 @@ from osgar.node import Node
 
 
 WHEEL_RADIUS = 0.275  # meters
+WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 
 
 class Rover(Node):
@@ -75,21 +76,23 @@ class Rover(Node):
         self.desired_speed = 0.0  # m/s
         self.desired_angular_speed = 0.0
         self.joint_name = None  # updated via Node.update()
+        self.debug_arr = []
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def on_joint_velocity(self, data):
         assert self.joint_name is not None
-        # TODO cycle through fl, fr, bl, br
-        speed = WHEEL_RADIUS * data[self.joint_name.index(b'fl_wheel_joint')]
-        print("speed %.3f" % speed)  # TODO change to string
+        speed = []
+        for wheel in WHEEL_NAMES:  # cycle through fl, fr, bl, br
+            speed.append(WHEEL_RADIUS * data[self.joint_name.index(bytes(wheel, 'ascii') + b'_wheel_joint')])
+        if self.verbose:
+            self.debug_arr.append([self.time.total_seconds(),] + speed)
 
     def on_joint_effort(self, data):
         assert self.joint_name is not None
         # TODO cycle through fl, fr, bl, br
         effort =  data[self.joint_name.index(b'fl_wheel_joint')]
-        print("effort %.3f" % effort)
 
         # workaround for not existing /clock on Moon rover
         steering = [0,] * 4
@@ -107,5 +110,19 @@ class Rover(Node):
             handler(getattr(self, channel))
 
         return channel
+
+
+    def draw(self):
+        # for debugging
+        import matplotlib.pyplot as plt
+        arr = self.debug_arr
+        t = [a[0] for a in arr]
+        values = [a[1:] for a in arr]
+
+        line = plt.plot(t, values, '-', linewidth=2)
+
+        plt.xlabel('time (s)')
+        plt.legend(WHEEL_NAMES)
+        plt.show()
 
 # vim: expandtab sw=4 ts=4
