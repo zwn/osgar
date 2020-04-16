@@ -51,7 +51,6 @@
     },
     "links": [["receiver.raw", "rosmsg.slot_raw"],
               ["rosmsg.cmd", "transmitter.raw"],
-              ["rosmsg.pose2d", "app.pose2d"],
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
               ["rosmsg./scout_1/volatile_sensor", "app.artf"],
@@ -62,6 +61,7 @@
               ["rosmsg.rot", "rover.rot"],
               ["app.desired_speed", "rover.desired_speed"],
               ["rover.cmd", "transmitter.raw"],
+              ["rover.pose2d", "app.pose2d"],
               ["app.request_origin", "rosmsg.request_origin"],
               ["rosmsg.origin", "app.origin"],
               ["app.artf_cmd", "transmitter.raw"]]
