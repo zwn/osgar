@@ -77,6 +77,7 @@ class Rover(Node):
         self.desired_angular_speed = 0.0
         self.joint_name = None  # updated via Node.update()
         self.debug_arr = []
+        self.verbose = False
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
