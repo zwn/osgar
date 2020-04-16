@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+echo "Unpause simulation"
+rosservice call /gazebo/unpause_physics "{}"
+echo "wait a moment"
+sleep 5
+
 echo "Start robot solution"
 export OSGAR_LOGS=`pwd`
 cd osgar
