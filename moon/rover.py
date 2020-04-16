@@ -108,7 +108,7 @@ class Rover(Node):
         if abs(self.desired_speed) < 0.001:
             effort = [0,] * 4
         else:
-            effort = [20,] * 4
+            effort = [80,] * 4
         cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
         self.bus.publish('cmd', cmd)
 
