@@ -523,11 +523,6 @@ class ROSMsgParser(Thread):
             self.bus.publish('joint_velocity', list(velocity))
             self.bus.publish('joint_effort', list(effort))
 
-            x, y, heading = wheels_position[0] * 0.275, 0, 0  # Wheel Radius = 0.275 meters
-            self.bus.publish('pose2d', [round(x * 1000),
-                                        round(y * 1000),
-                                        round(math.degrees(heading) * 100)])
-
         elif b'\0' in packet[:MAX_TOPIC_NAME_LENGTH]:
             name = packet[:packet.index(b'\0')].decode('ascii')
             for n, t in self.topics:
