@@ -148,6 +148,26 @@ class SpaceRoboticsChallenge(Node):
                 break
         self.send_speed_cmd(0.0, 0.0)
 
+    def turn(self, angle, with_stop=True, speed=0.0, timeout=None):
+        print(self.time, "turn %.1f" % math.degrees(angle))
+        start_pose = self.last_position
+        if angle >= 0:
+            self.send_speed_cmd(speed, self.max_angular_speed)
+        else:
+            self.send_speed_cmd(speed, -self.max_angular_speed)
+        start_time = self.time
+        while abs(normalizeAnglePIPI(start_pose[2] - self.last_position[2])) < abs(angle):
+            self.update()
+            if timeout is not None and self.time - start_time > timeout:
+                print(self.time, "turn - TIMEOUT!")
+                break
+        if with_stop:
+            self.send_speed_cmd(0.0, 0.0)
+            start_time = self.time
+            while self.time - start_time < timedelta(seconds=2):
+                self.update()
+            print(self.time, 'stop at', self.time - start_time)
+
     def wait(self, dt):  # TODO refactor to some common class
         if self.time is None:
             self.update()
@@ -183,13 +203,20 @@ class SpaceRoboticsChallenge(Node):
             while self.last_position is None:
                 self.update()  # define self.time
             print('done at', self.time)
-            try:
-                self.go_straight(50.0, timeout=timedelta(seconds=60))
-            except VirtualBumperException:
-                print(self.time, "Virtual Bumper!")
-                self.virtual_bumper.reset_counters()
-                self.virtual_bumper = None
-#            self.random_walk(timeout=timedelta(seconds=120))
+
+            self.turn(90, timeout=timedelta(seconds=20))  # TODO scan 360deg
+
+            for loop in range(3):
+                try:
+                    self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
+                    self.go_straight(50.0, timeout=timedelta(seconds=60))
+                except VirtualBumperException:
+                    print(self.time, "Virtual Bumper!")
+                    self.virtual_bumper = None
+                    self.go_straight(-1.0, timeout=timedelta(seconds=10))
+
+                self.turn(90, timeout=timedelta(seconds=20))
+
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
             pass
