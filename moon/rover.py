@@ -78,18 +78,32 @@ class Rover(Node):
         self.joint_name = None  # updated via Node.update()
         self.debug_arr = []
         self.verbose = False
+        self.prev_position = None
+        self.pose2d = 0, 0, 0
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def on_joint_position(self, data):
         assert self.joint_name is not None
+        if self.prev_position is None:
+            self.prev_position = data
+
+        diff = [b - a for a, b in zip(self.prev_position, data)]
+
         assert b'bl_wheel_joint' in self.joint_name, self.joint_name
-        wheels_position = data[self.joint_name.index(b'bl_wheel_joint')]
-        x, y, heading = wheels_position * 0.275, 0, 0  # Wheel Radius = 0.275 meters
+        if self.desired_speed >= 0:
+            name = b'bl_wheel_joint'
+        else:
+            name = b'fl_wheel_joint'
+        wheels_diff = diff[self.joint_name.index(name)]
+        x, y, heading = self.pose2d
+        x += wheels_diff * 0.275  # Wheel Radius = 0.275 meters
         self.bus.publish('pose2d', [round(x * 1000),
                                     round(y * 1000),
                                     round(math.degrees(heading) * 100)])
+        self.prev_position = data
+        self.pose2d = x, y, heading
 
     def on_joint_velocity(self, data):
         assert self.joint_name is not None
