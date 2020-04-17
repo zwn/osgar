@@ -9,8 +9,13 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 from osgar.lib import quaternion
 from osgar.lib.mathex import normalizeAnglePIPI
+from osgar.lib.virtual_bumper import VirtualBumper
 
 from subt.local_planner import LocalPlanner
+
+
+class VirtualBumperException(Exception):
+    pass
 
 
 def distance(pose1, pose2):
@@ -56,7 +61,11 @@ class SpaceRoboticsChallenge(Node):
         self.offset = (0, 0, 0)
         self.last_artf = None
 
+        self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
+
     def send_speed_cmd(self, speed, angular_speed):
+        if self.virtual_bumper is not None:
+            self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
     def on_pose2d(self, timestamp, data):
@@ -81,6 +90,10 @@ class SpaceRoboticsChallenge(Node):
         self.last_send_time = self.bus.publish('pose2d', [round((x + x0) * 1000), round((y + y0) * 1000),
                                     round(math.degrees(self.yaw) * 100)])
         self.xyz = x, y, z
+        if self.virtual_bumper is not None:
+            self.virtual_bumper.update_pose(self.time, pose)
+            if self.virtual_bumper.collision():
+                raise VirtualBumperException()
 
     def on_artf(self, timestamp, data):
         artifact_type, dist = data  # meters
@@ -170,7 +183,12 @@ class SpaceRoboticsChallenge(Node):
             while self.last_position is None:
                 self.update()  # define self.time
             print('done at', self.time)
-            self.go_straight(50.0, timeout=timedelta(seconds=60))
+            try:
+                self.go_straight(50.0, timeout=timedelta(seconds=60))
+            except VirtualBumperException:
+                print(self.time, "Virtual Bumper!")
+                self.virtual_bumper.reset_counters()
+                self.virtual_bumper = None
 #            self.random_walk(timeout=timedelta(seconds=120))
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
