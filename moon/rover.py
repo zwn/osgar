@@ -121,7 +121,15 @@ class Rover(Node):
         # workaround for not existing /clock on Moon rover
         steering = [0,] * 4
         if abs(self.desired_speed) < 0.001:
-            effort = [0,] * 4
+            e = 80
+            if abs(self.desired_angular_speed) < 0.001:
+                effort = [0,] * 4
+            elif self.desired_angular_speed > 0:
+                # turn left
+                effort = [-e, e, -e, e]
+            else:
+                # turn right
+                effort = [e, -e, e, -e]
         else:
             e = 80
             effort = [e, e, 0, 0]
