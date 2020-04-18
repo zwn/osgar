@@ -18,7 +18,7 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
-from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg
+from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg, Qual3ScoringMsg
 from srcp2_msgs.srv import LocalizationSrv, Qual1ScoreSrv
 
 
@@ -158,8 +158,13 @@ def odom2zmq():
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
     # TODO load it from configuration
+    # task 1
     rospy.Subscriber('/qual_1_score', Qual1ScoringMsg, callback_topic, '/qual_1_score')
     rospy.Subscriber('/scout_1/volatile_sensor', VolSensorMsg, callback_topic, '/scout_1/volatile_sensor')
+
+    # task 3
+    rospy.Subscriber('/qual_3_score', Qual3ScoringMsg, callback_topic, '/qual_3_score')
+
     rospy.Subscriber('/scout_1/camera/left/image_raw/compressed', CompressedImage, callback_topic, 
                      '/scout_1/camera/left/image_raw/compressed')
     rospy.Subscriber('/scout_1/camera/right/image_raw/compressed', CompressedImage, callback_topic, 
