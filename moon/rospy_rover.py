@@ -272,7 +272,10 @@ def odom2zmq():
                 if vol_type == 'CubeSat':
                     # Task 3
                     report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
-                    print(report_artf(pose))
+                    try:
+                        print(report_artf(pose))
+                    except rospy.service.ServiceException as e:
+                        print(e)
                 else:
                     report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
                     print(report_artf(pose=pose, vol_type=vol_type))
