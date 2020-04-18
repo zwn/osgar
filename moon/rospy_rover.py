@@ -265,7 +265,7 @@ def odom2zmq():
                      p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
                 socket_send(s)
             elif message_type == "artf":
-                s = message.split()
+                s = message.split()[1:]  # ignore "artf" prefix
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
