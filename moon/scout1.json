@@ -36,6 +36,7 @@
             "topics": [
               ["/qual_1_score", "srcp2_msgs/Qual1ScoringMsg"],
               ["/scout_1/volatile_sensor", "srcp2_msgs/VolSensorMsg"],
+              ["/qual_3_score", "srcp2_msgs/Qual3ScoringMsg"],
               ["/scout_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/scout_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
             ]
