@@ -146,7 +146,7 @@ class SpaceRoboticsChallenge(Node):
         while distance(start_pose, self.last_position) < abs(how_far):
             self.update()
             if timeout is not None and self.time - start_time > timeout:
-                print("go_straight - TIMEOUT!")
+                print("go_straight - timeout at %.1fm" % distance(start_pose, self.last_position))
                 break
         self.send_speed_cmd(0.0, 0.0)
 
@@ -161,7 +161,7 @@ class SpaceRoboticsChallenge(Node):
         while abs(normalizeAnglePIPI(start_pose[2] - self.last_position[2])) < abs(angle):
             self.update()
             if timeout is not None and self.time - start_time > timeout:
-                print(self.time, "turn - TIMEOUT!")
+                print(self.time, "turn - timeout at %.1fdeg" % math.degrees(normalizeAnglePIPI(start_pose[2] - self.last_position[2])))
                 break
         if with_stop:
             self.send_speed_cmd(0.0, 0.0)
@@ -206,19 +206,19 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            self.turn(math.radians(360), timeout=timedelta(seconds=20))
+            self.turn(math.radians(360), timeout=timedelta(seconds=100))
 
-            for loop in range(3):
+            for loop in range(10):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    self.go_straight(50.0, timeout=timedelta(seconds=60))
+                    self.go_straight(100.0, timeout=timedelta(seconds=120))
                 except VirtualBumperException:
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
                     self.go_straight(-1.0, timeout=timedelta(seconds=10))
 
                 deg_angle = self.rand.randrange(-180, 180)
-                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=20))
+                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
 
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
