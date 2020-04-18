@@ -388,7 +388,13 @@ def parse_topic(topic_type, data):
         # _slot_types = ['int32','int32','int32[8]']        
         return struct.unpack_from('<II', data, pos)  # only score and calls
     elif topic_type == 'srcp2_msgs/Qual3ScoringMsg':
-        pass
+        assert len(data) == 12, (len(data), data)
+        size = struct.unpack_from('<I', data)[0]
+        pos = 4
+        assert size == 8, size
+        # __slots__ = ['score','calls']
+        # _slot_types = ['int32','int32']
+        return struct.unpack_from('<II', data, pos)  # score and calls
     elif topic_type == 'srcp2_msgs/VolSensorMsg':
         return parse_volatile(data)
     elif topic_type == 'sensor_msgs/CompressedImage':
