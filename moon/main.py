@@ -3,6 +3,7 @@
 """
 
 import math
+from random import Random
 from datetime import timedelta
 
 from osgar.node import Node
@@ -61,7 +62,8 @@ class SpaceRoboticsChallenge(Node):
         self.offset = (0, 0, 0)
         self.last_artf = None
 
-        self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
+        self.virtual_bumper = None
+        self.rand = Random(0)
 
     def send_speed_cmd(self, speed, angular_speed):
         if self.virtual_bumper is not None:
@@ -204,7 +206,7 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            self.turn(90, timeout=timedelta(seconds=20))  # TODO scan 360deg
+            self.turn(math.radians(360), timeout=timedelta(seconds=20))
 
             for loop in range(3):
                 try:
@@ -215,7 +217,8 @@ class SpaceRoboticsChallenge(Node):
                     self.virtual_bumper = None
                     self.go_straight(-1.0, timeout=timedelta(seconds=10))
 
-                self.turn(90, timeout=timedelta(seconds=20))
+                deg_angle = self.rand.randrange(-180, 180)
+                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=20))
 
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
