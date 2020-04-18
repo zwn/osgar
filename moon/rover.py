@@ -66,6 +66,9 @@ from osgar.node import Node
 
 
 WHEEL_RADIUS = 0.275  # meters
+WHEEL_SEPARATION_WIDTH = 1.87325  # meters
+WHEEL_SEPARATION_HEIGHT = 1.5748  # meters
+
 WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 
 
@@ -94,11 +97,18 @@ class Rover(Node):
         assert b'bl_wheel_joint' in self.joint_name, self.joint_name
         if self.desired_speed >= 0:
             name = b'bl_wheel_joint'
+            name2 = b'br_wheel_joint'
         else:
             name = b'fl_wheel_joint'
-        wheels_diff = diff[self.joint_name.index(name)]
+            name2 = b'fr_wheel_joint'
+        left = WHEEL_RADIUS * diff[self.joint_name.index(name)]
+        right = WHEEL_RADIUS * diff[self.joint_name.index(name2)]
+        dist = (left + right)/2
+        angle = (right - left)/WHEEL_SEPARATION_WIDTH
         x, y, heading = self.pose2d
-        x += wheels_diff * 0.275  # Wheel Radius = 0.275 meters
+        x += math.cos(heading) * dist
+        y += math.sin(heading) * dist
+        heading += angle
         self.bus.publish('pose2d', [round(x * 1000),
                                     round(y * 1000),
                                     round(math.degrees(heading) * 100)])
