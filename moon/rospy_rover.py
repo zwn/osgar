@@ -19,7 +19,8 @@ from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
 from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg, Qual3ScoringMsg
-from srcp2_msgs.srv import LocalizationSrv, Qual1ScoreSrv
+from srcp2_msgs.srv import (LocalizationSrv, Qual1ScoreSrv,
+                            AprioriLocationSrv, HomeLocationSrv, HomeAlignedSrv)
 
 
 ROBOT_NAME = 'scout_1'
@@ -268,9 +269,13 @@ def odom2zmq():
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
-                report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
-                print(report_artf(pose=pose, vol_type=vol_type))
-                assert False, s
+                if vol_type == 'CubeSat':
+                    # Task 3
+                    report_artf = rospy.ServiceProxy('/apriori_location_service', Qual1ScoreSrv)
+                else:
+                    report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
+                    print(report_artf(pose=pose, vol_type=vol_type))
+                    assert False, s
 
         except zmq.error.Again:
             pass
