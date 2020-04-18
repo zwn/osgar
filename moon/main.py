@@ -206,6 +206,11 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
+            ax, ay, az = 10, 20, 15
+            artifact_data = 'CubeSat'
+            s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
+            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+
             self.turn(math.radians(360), timeout=timedelta(seconds=100))
 
             for loop in range(10):
