@@ -98,7 +98,7 @@ class SpaceRoboticsChallenge(Node):
                 raise VirtualBumperException()
 
     def on_artf(self, timestamp, data):
-        artifact_type, dist = data  # meters
+        artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
         if self.last_artf is None:
             self.bus.publish('request_origin', True)
         self.last_artf = artifact_type
