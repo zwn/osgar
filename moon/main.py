@@ -158,10 +158,11 @@ class SpaceRoboticsChallenge(Node):
         else:
             self.send_speed_cmd(speed, -self.max_angular_speed)
         start_time = self.time
-        while abs(normalizeAnglePIPI(start_pose[2] - self.last_position[2])) < abs(angle):
+        # problem with accumulated angle
+        while abs(start_pose[2] - self.last_position[2]) < abs(angle):
             self.update()
             if timeout is not None and self.time - start_time > timeout:
-                print(self.time, "turn - timeout at %.1fdeg" % math.degrees(normalizeAnglePIPI(start_pose[2] - self.last_position[2])))
+                print(self.time, "turn - timeout at %.1fdeg" % math.degrees(start_pose[2] - self.last_position[2]))
                 break
         if with_stop:
             self.send_speed_cmd(0.0, 0.0)
