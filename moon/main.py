@@ -152,17 +152,21 @@ class SpaceRoboticsChallenge(Node):
 
     def turn(self, angle, with_stop=True, speed=0.0, timeout=None):
         print(self.time, "turn %.1f" % math.degrees(angle))
-        start_pose = self.last_position
         if angle >= 0:
             self.send_speed_cmd(speed, self.max_angular_speed)
         else:
             self.send_speed_cmd(speed, -self.max_angular_speed)
         start_time = self.time
         # problem with accumulated angle
-        while abs(start_pose[2] - self.last_position[2]) < abs(angle):
+
+        sum_angle = 0.0
+        prev_angle = self.yaw
+        while abs(sum_angle) < abs(angle):
             self.update()
+            sum_angle += normalizeAnglePIPI(self.yaw - prev_angle)
+            prev_angle = self.yaw
             if timeout is not None and self.time - start_time > timeout:
-                print(self.time, "turn - timeout at %.1fdeg" % math.degrees(start_pose[2] - self.last_position[2]))
+                print(self.time, "turn - timeout at %.1fdeg" % math.degrees(sum_angle))
                 break
         if with_stop:
             self.send_speed_cmd(0.0, 0.0)
@@ -202,8 +206,8 @@ class SpaceRoboticsChallenge(Node):
 
     def run(self):
         try:
-            print('Wait for definition of last_position')
-            while self.last_position is None:
+            print('Wait for definition of last_position and yaw')
+            while self.last_position is None or self.yaw is None:
                 self.update()  # define self.time
             print('done at', self.time)
 
