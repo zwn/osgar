@@ -16,22 +16,11 @@ PROCESSING_PLANT = 'ProcessingPlant'
 CUBE_SAT = 'CubeSat'
 
 
-RED_THRESHOLD = 100 #300  # for close backpacks was good 1000  # virtual QVGA=50, used to be 100, urban=1000
-YELLOW_THRESHOLD = 200  #500  # was 80
-YELLOW_MAX_THRESHOLD = 4000  # 2633 known example
-RED_YELLOW_MIN_3D_THRESHOLD = 50  # number of colored pixels in given depth distance threshold
-WHITE_THRESHOLD = 20000
+RED_THRESHOLD = 100
+YELLOW_THRESHOLD = 100
+
 
 g_mask = None
-
-def old_count_red(img):
-    count = 0
-    for x in range(320):
-        for y in range(240):
-            b, g, r = img[y][x]
-            if r > 100 and r > 2 * g and r > 2 * b:
-                count += 1
-    return count
 
 
 def count_mask(mask):
@@ -51,109 +40,39 @@ def count_mask(mask):
 
 
 def count_red(img, filtered=False, stdout=None):
+    # well rather "orange" of the "Processing Plant"
+    # 192 61 7
+    # 185 59 8
+    # 193 63 14
+    # TODO dark side of the Moon
     b = img[:,:,0]
     g = img[:,:,1]
     r = img[:,:,2]
-    mask = np.logical_and(r > 50, np.logical_and(r/3 > g, r/3 > b))  # QVGA virtual, dark images, used to be 100, r/2
-                                                                     # 3/4-VGA urban, light, strictly red r/3
+    mask = np.logical_and(r > 150, np.logical_and(r/3 > g, r/10 > b))
     not_mask = np.logical_not(mask)
-    kernel = np.ones((2,2), np.uint8)
     img2 = img.copy()
     img2[mask] = (255, 255, 255)
     img2[not_mask] = (0, 0, 0)
-    img2 = cv2.erode(img2, kernel, iterations=1)
-#    cv2.imwrite('artf.jpg', img2)
-#        print('mask', mask.shape)
-#        for x in range(mask.shape[0]):
-#            for y in range(mask.shape[1]):
-#                if mask[x][y]:
-#                    print(x, y)
-    b = img2[:,:,0]
-    mask = b == 255
+
     global g_mask
     g_mask = mask.copy()
-    if filtered:
-        # detect largest blob in img2
-        kernel = np.ones((3,3), np.uint8)
-        img2 = cv2.dilate(img2, kernel, iterations=1)
-#        cv2.imwrite('artf.jpg', img2)
-        b = img2[:,:,0]
-        mask = b == 255
-        reddish = b.astype(np.uint8)
-        __, bin_img = cv2.threshold(reddish, 160, 255, cv2.THRESH_BINARY)
-        
-        im2, contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        best_cnt = None
-        best_area = None
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if best_area is None or area > best_area:
-                best_area = area
-                best_cnt = cnt
-#        print(best_area, best_cnt)
-        x, y, w, h = cv2.boundingRect(best_cnt)
-
-#        if stdout is not None:
-#            # dump image to stdout
-#            # https://stackoverflow.com/questions/50670326/how-to-check-if-point-is-placed-inside-contour
-#            print(x, y, w, h)
-#            for j in range(y, y + h):
-#                s = ''
-#                for i in range(x, x + w ):
-#                    s += 'X' if mask[j][i] else '.'
-#                stdout(s)
-        # count, w, h, x_min, x_max
-        return int(best_area), w, h, x, x+w
-
-    return count_mask(mask)
-
-
-def count_white(img):
-    b = img[:,:,0]
-    g = img[:,:,1]
-    r = img[:,:,2]
-    mask = np.logical_and(r >= 250, np.logical_and(g >= 250, b >= 250))
     return count_mask(mask)
 
 
 def count_yellow(img):
+    # 146 113 34
+    # 170 137 60
     b = img[:,:,0]
     g = img[:,:,1]
     r = img[:,:,2]
-    mask = np.logical_and(np.logical_and(r >= 60, g*0.95 > r), np.logical_and(r*0.5 > b, g*0.5 > b))
+    mask = np.logical_and(np.logical_and(r >= 100, g > 0.7 * r), np.logical_and(r*0.5 > b, g*0.5 > b))
     global g_mask
     g_mask = mask.copy()
     # debug
 #    img2 = img.copy()
-#    img2[mask] = (0, 0, 255)
+#    img2[mask] = (0, 255, 0)
 #    cv2.imwrite('artf.jpg', img2)
     return count_mask(mask)
-
-
-def count_orange_blue(img):  # for phone
-    b = img[:,:,0]
-    g = img[:,:,1]
-    r = img[:,:,2]
-    mask_blue = np.logical_and(b > 40, np.logical_and(b/1.5 > g, b/2 > r))
-
-    # detect phone only in the lowest 1/4 of the image (the phone is lying on the ground)
-    blue = count_mask(mask_blue[90:,:])
-    count, w, h, x_min, x_max = blue
-    if count == 0 or w > 20 or h > 20:
-        return 0, None, None, None, None
-#    print(count)
-    mask_orange = np.logical_and(r > 40, np.logical_and(r/1.5 > g, r/2 > b))
-    orange = count_mask(mask_orange)
-
-#    not_mask = np.logical_not(mask_orange)
-#    img2 = img.copy()
-#    img2[not_mask] = (0, 0, 0)
-#    img2[mask_orange] = (0, 128, 255)
-#    img2[mask_blue] = (255, 0, 0)
-#    cv2.imwrite('artf.jpg', img2)
-
-    mask = np.logical_or(mask_orange, mask_blue)
-    return blue  #count_mask(mask)
 
 
 class ArtifactDetector(Node):
@@ -209,20 +128,9 @@ class ArtifactDetector(Node):
             self.stdout('Image resolution', img.shape)
             self.width = img.shape[1]
         assert self.width == img.shape[1], (self.width, img.shape[1])
-        phone_count, w, h, x_min, x_max = count_orange_blue(img)
-        if phone_count >= 25:
-            print(self.time, 'phone', phone_count)
-            artf = PHONE
-            deg_100th, dist_mm = 0, 500  # in front of the robot
-            self.publish('artf', [artf, deg_100th, dist_mm])
-            self.publish('debug_artf', image)  # JPEG
-            if self.dump_dir is not None:
-                filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
-                with open(os.path.join(self.dump_dir, filename), 'wb') as f:
-                    f.write(image)
         rcount, w, h, x_min, x_max = count_red(img)
         yellow_used = False
-        if True and rcount < 20:
+        if rcount < 20:
             ycount, w, h, x_min, x_max = count_yellow(img)
             if ycount > YELLOW_THRESHOLD:
                 yellow_used = True
@@ -247,94 +155,12 @@ class ArtifactDetector(Node):
 
         if self.best is not None and self.best_count == 0:
             w, h, x_min, x_max, red_used, yellow_used = self.best_info
-            if red_used:
-                # revise noisy points
-                img = cv2.imdecode(np.fromstring(self.best_img, dtype=np.uint8), 1)
-                rcount, w, h, x_min, x_max = count_red(img, filtered=True, stdout=self.stdout)
-                if rcount == 0:
-                    self.stdout('Invalid after filtering! orig count=', self.best)
-                    # reset detector
-                    self.best = None
-                    self.best_count = 0
-                    self.best_img = None
-                    self.best_info = None
-                    self.best_scan = None
-                    self.best_depth = None
-                    return
-                self.stdout(rcount, w, h, x_min, x_max, w/h, count/(w*h))
 
-            if red_used or yellow_used:
-                if self.best_depth is not None:
-                    global g_mask
-                    g_mask = None
-                    img = cv2.imdecode(np.fromstring(self.best_img, dtype=np.uint8), 1)
-                    if red_used:
-                        count_red(img)
-                    else:
-                        count_yellow(img)
-                    assert g_mask is not None  # intermediate results
-                    dist_mm = int(np.median(self.best_depth[g_mask]))
-                    mask2 = np.abs(self.best_depth - dist_mm) < 200
-                    mask = np.logical_and(g_mask, mask2)
-                    # debug
-                    #img2 = img.copy()
-                    #img2[:] = (0, 0, 0)
-                    #img2[g_mask] = (0, 0, 255)
-                    #img2[mask] = (0, 255, 0)
-                    #cv2.imwrite('artf.jpg', img2)
-
-                    count, w, h, x_min, x_max = count_mask(mask)
-                    FX = 462.1  # Focal length.
-                    if (dist_mm > 10000 or count < RED_YELLOW_MIN_3D_THRESHOLD or # mix of infinity
-                            (red_used and dist_mm * h/FX < 210) or                # robot
-                            (yellow_used and dist_mm * h/FX > 850)):              # too high for survivor
-                        self.stdout('Invalid distance, ignore, count=', self.best, count, dist_mm, dist_mm * h/FX)
-                        # reset detector
-                        self.best = None
-                        self.best_count = 0
-                        self.best_img = None
-                        self.best_info = None
-                        self.best_scan = None
-                        self.best_depth = None
-                        return
-
-                    deg_100th = int(round(100 * 69.4 * (self.width/2 - (x_min + x_max)/2)/self.width))
-
-#                    img2 = img.copy()
-#                    img2[mask] = (0, 0, 255)
-#                    img2[np.logical_not(mask)] = (0, 0, 0)
-#                    cv2.imwrite('artfX.jpg', img2)
-                else:
-                    #TODOdeg_100th, dist_mm = artf_in_scan(self.best_scan, self.width, x_min, x_max, verbose=True)
-                    deg_100th, dist_mm = 0, 1000
-            else:
-                deg_100th, dist_mm = 0, 500  # in front of the robot
+            deg_100th, dist_mm = 0, 500  # TODO left & right
 
             if red_used:
-                self.stdout('h/w', h/w)
-#                if self.best < 1000:
-#                    artf = DRILL  # VALVE - hack for simple02
-#                elif h/w > 2.4:
-#                    artf = EXTINGUISHER
-#                elif h/w > 1.0:
-#                    artf = BACKPACK
-#                else:
-#                    artf = TOOLBOX
-#                if self.best < 1000:
-#                    artf = DRILL  # VALVE - hack for simple02, fallback for empty image
-#                if h/w > 2:
-#                    artf = EXTINGUISHER
                 artf = PROCESSING_PLANT  # BACKPACK
             elif yellow_used:
-                if self.best > YELLOW_MAX_THRESHOLD:
-                    # too much yellow - barrel or yellow machine
-                    self.best = None
-                    self.best_count = 0
-                    self.best_img = None
-                    self.best_info = None
-                    self.best_scan = None
-                    self.best_depth = None
-                    return
                 artf = CUBE_SAT  # RESCUE_RANDY  # used to be RADIO
             self.stdout(self.time, 'Relative position:', self.best, deg_100th, dist_mm, artf)
 
@@ -423,25 +249,20 @@ if __name__ == '__main__':
     detector = ArtifactDetector(config, bus.handle('detector'))
     detector.verbose = args.verbose
     tester = bus.handle('tester')
-    tester.register('scan', 'image', 'tick', 'depth')
+    tester.register('scan', 'left_image', 'right_image', 'tick')
     bus.connect('tester.scan', 'detector.scan')
-    bus.connect('tester.depth', 'detector.depth')
-    bus.connect('tester.image', 'detector.image')
+    bus.connect('tester.left_image', 'detector.left_image')
+    bus.connect('tester.right_image', 'detector.right_image')
     bus.connect('detector.artf', 'tester.artf')
     bus.connect('tester.tick', 'tester.tick')
     bus.connect('detector.dropped', 'tester.dropped')
     tester.publish('scan', [2000]*270)  # pretend that everything is at 2 meters
-    if args.depth is not None or args.filename.endswith('.npz'):
-        filename = args.depth if args.depth is not None else args.filename
-        with np.load(filename) as f:
-            depth = f['depth']
-            tester.publish('depth', depth)
     detector.start()
     for i in range(10 + 1):  # workaround for local minima
         a = tester.listen()
 #        print(i, a)
         tester.sleep(0.01)
-        tester.publish('image', jpeg_data)
+        tester.publish('left_image', jpeg_data)  # TODO right image
     detector.request_stop()
     detector.join()
     tester.publish('tick', None)
