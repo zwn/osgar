@@ -19,7 +19,7 @@ from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
 from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg, Qual3ScoringMsg
-from srcp2_msgs.srv import (LocalizationSrv, Qual1ScoreSrv,
+from srcp2_msgs.srv import (ToggleLightSrv, LocalizationSrv, Qual1ScoreSrv,
                             AprioriLocationSrv, HomeLocationSrv, HomeAlignedSrv)
 
 
@@ -157,6 +157,10 @@ def odom2zmq():
 #    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
+
+    lights_on = rospy.ServiceProxy('/scout_1/toggle_light', ToggleLightSrv)
+    lights_on('high')
+
 
     # TODO load it from configuration
     # task 1
