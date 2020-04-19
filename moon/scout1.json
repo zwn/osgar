@@ -48,6 +48,13 @@
           "out": [],
           "init": {
           }
+      },
+      "detector": {
+          "driver": "moon.artifacts:ArtifactDetector",
+          "in": [],
+          "out": [],
+          "init": {
+          }
       }
     },
     "links": [["receiver.raw", "rosmsg.slot_raw"],
@@ -60,6 +67,9 @@
               ["rosmsg.joint_velocity", "rover.joint_velocity"],
               ["rosmsg.joint_effort", "rover.joint_effort"],
               ["rosmsg.rot", "rover.rot"],
+              ["rosmsg./scout_1/camera/left/image_raw/compressed", "detector.left_image"],
+              ["rosmsg./scout_1/camera/right/image_raw/compressed", "detector.right_image"],
+              ["detector.artf", "app.artf"],
               ["app.desired_speed", "rover.desired_speed"],
               ["rover.cmd", "transmitter.raw"],
               ["rover.pose2d", "app.pose2d"],
