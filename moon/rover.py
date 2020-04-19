@@ -140,9 +140,12 @@ class Rover(Node):
             else:
                 # turn right
                 effort = [e, -e, e, -e]
-        else:
+        elif self.desired_speed > 0:
             e = 80
             effort = [e, e, 0, 0]
+        else:
+            e = 80
+            effort = [0, 0, -e, -e]
         cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
         self.bus.publish('cmd', cmd)
 
