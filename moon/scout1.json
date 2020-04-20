@@ -62,6 +62,8 @@
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
               ["rosmsg./scout_1/volatile_sensor", "app.artf"],
+	      ["rosmsg./qual_1_score", "app.score"],
+	      ["rosmsg./qual_3_score", "app.score"],
               ["rosmsg.joint_name", "rover.joint_name"],
               ["rosmsg.joint_position", "rover.joint_position"],
               ["rosmsg.joint_velocity", "rover.joint_velocity"],

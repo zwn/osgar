@@ -99,9 +99,16 @@ class SpaceRoboticsChallenge(Node):
 
     def on_artf(self, timestamp, data):
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
+        if artifact_type == "CubeSat" or artifact_type == "ProcessingPlant":
+            return
+        print (data[0])
         if self.last_artf is None:
             self.bus.publish('request_origin', True)
         self.last_artf = artifact_type
+
+    def on_score(self, timestamp, data):
+        if data[0] > 0:
+            print (data[0])
 
     def update(self):
         channel = super().update()
@@ -112,6 +119,8 @@ class SpaceRoboticsChallenge(Node):
             self.on_pose2d(self.time, self.pose2d)
         elif channel == 'artf':
             self.on_artf(self.time, self.artf)
+        elif channel == 'score':
+            self.on_score(self.time, self.score)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'origin':
@@ -214,7 +223,7 @@ class SpaceRoboticsChallenge(Node):
             ax, ay, az = 10, 20, 15
             artifact_data = 'CubeSat'
             s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
-            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+            #self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
 
             self.turn(math.radians(360), timeout=timedelta(seconds=100))
 
@@ -227,7 +236,10 @@ class SpaceRoboticsChallenge(Node):
                     self.virtual_bumper = None
                     self.go_straight(-1.0, timeout=timedelta(seconds=10))
 
-                deg_angle = self.rand.randrange(-180, 180)
+                deg_angle = self.rand.randrange(90, 180)
+                deg_sign = self.rand.randint(0,1)
+                if deg_sign:
+                    deg_angle = -deg_angle
                 self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
 
             self.wait(timedelta(seconds=10))
