@@ -375,7 +375,7 @@ def parse_volatile(data):
     vol_type = data[pos:pos+size]  # b'methanol'
     pos += size
     vol_index, shadowed_state, distance_to = struct.unpack_from('<iBf', data, pos)
-    return [vol_type.decode('ascii'), distance_to]
+    return [vol_type.decode('ascii'), distance_to, vol_index]
 
 
 def parse_topic(topic_type, data):
