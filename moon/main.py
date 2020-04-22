@@ -60,9 +60,14 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
-        self.last_artf = None
-        self.inException = False;
 
+        self.last_artf = None
+        
+        self.inException = False
+        
+        self.last_volatile_distance = None
+        self.last_vol_index = None
+        
         self.virtual_bumper = None
         self.rand = Random(0)
 
@@ -101,13 +106,35 @@ class SpaceRoboticsChallenge(Node):
 
     def on_artf(self, timestamp, data):
         # called by incoming volatile sensor report (among other sources)
+        # 0 vol_type, 1 distance_to, 2 vol_index
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
         if artifact_type == "CubeSat" or artifact_type == "ProcessingPlant":
             return
+
         if self.last_artf is None:
-            self.last_artf = artifact_type
+            print("Requesting origin over bus")
             self.bus.publish('request_origin', True)
         self.last_artf = artifact_type
+        
+        distance_to = data[1]
+        vol_index = data[2]
+
+        if self.last_volatile_distance is None:
+            self.last_volatile_distance = distance_to
+        elif self.last_volatile_distance > distance_to:
+            print ("Volatile detection, getting closer: %f" % distance_to)
+            self.last_volatile_distance = distance_to
+        elif self.last_vol_index is None or vol_index != self.last_vol_index:
+            self.last_vol_index = vol_index
+            # TODO: this must be adjusted to report the position of the sensor, not the robot (which NASA will update their code for at some point)
+            # the best known distance was in reference to mutual position of the sensor and the volatile
+            ax, ay, az = self.origin
+            print ("Volatile detection, starting to go further, reporting %f %f" % (ax, ay))
+
+            # TODO (maybe): if not accepted, try again?
+            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax, ay, 0.0)
+            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+        
 
     def on_score(self, timestamp, data):
         if data[0] > 0:
@@ -132,14 +159,12 @@ class SpaceRoboticsChallenge(Node):
             qx, qy, qz, qw = data[4:]
             self.origin_quat = qx, qy, qz, qw  # quaternion
 
-            print("Origin received, internal position updated, artificial artefact %s created" % self.last_artf)
+            print("Origin received, internal position updated")
             # report location as fake artifact
             artifact_data = self.last_artf
             ax, ay, az = self.origin
             self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
 
-            s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
-            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
             if self.yaw_offset is None:
@@ -232,7 +257,13 @@ class SpaceRoboticsChallenge(Node):
             s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
             #self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
 
-            self.turn(math.radians(360), timeout=timedelta(seconds=100))
+            try:
+                self.turn(math.radians(360), timeout=timedelta(seconds=100))
+            except VirtualBumperException:
+                print(self.time, "Turn Virtual Bumper!")
+                self.virtual_bumper = None
+                self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
+                self.inException = False
 
             for loop in range(10):
                 try:
