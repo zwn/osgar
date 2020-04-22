@@ -129,6 +129,7 @@ class SpaceRoboticsChallenge(Node):
             self.last_volatile_distance = distance_to
         elif self.last_vol_index is None or vol_index != self.last_vol_index:
             self.last_vol_index = vol_index
+            self.last_volatile_distance = None
             # TODO: this must be adjusted to report the position of the sensor, not the robot (which NASA will update their code for at some point)
             # the best known distance was in reference to mutual position of the sensor and the volatile
             ax, ay, az = self.xyz
@@ -288,7 +289,7 @@ class SpaceRoboticsChallenge(Node):
             while self.time - start_time < timedelta(minutes=40):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    self.go_straight(100.0, timeout=timedelta(seconds=120))
+                    self.go_straight(100.0, timeout=timedelta(minutes=5))
                 except VirtualBumperException:
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
