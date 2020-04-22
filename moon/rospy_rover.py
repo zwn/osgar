@@ -263,16 +263,19 @@ def odom2zmq():
                 else:
                     pass  # keep steering angles as they are ...
             elif message_type == "request_origin":
+                print "Requesting true pose"
                 request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
                 p = request_origin(True)
                 s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                      p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
+                print(s)
                 socket_send(s)
             elif message_type == "artf":
                 s = message.split()[1:]  # ignore "artf" prefix
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
+                print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
                 if vol_type == 'CubeSat':
                     # Task 3
                     report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
@@ -281,9 +284,16 @@ def odom2zmq():
                     except rospy.service.ServiceException as e:
                         print(e)
                 else:
-                    report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
-                    print(report_artf(pose=pose, vol_type=vol_type))
-                    assert False, s
+                    try:
+                        rospy.wait_for_service("/vol_detected_service", timeout=2.0)
+                        report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
+                        resp = report_artf(pose=pose, vol_type=vol_type)
+                        print ("Volatile report result: %r" % resp.result)
+                    except rospy.ServiceException as exc:
+                        print("/vol_detected_service exception: " + str(exc))
+            else:
+                if len(message_type) > 0: 
+                    print ("Unhandled message type: %s" % message_type)
 
         except zmq.error.Again:
             pass

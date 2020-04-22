@@ -61,6 +61,7 @@ class SpaceRoboticsChallenge(Node):
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
         self.last_artf = None
+        self.inException = False;
 
         self.virtual_bumper = None
         self.rand = Random(0)
@@ -94,15 +95,17 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = x, y, z
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_pose(self.time, pose)
-            if self.virtual_bumper.collision():
+            if not self.inException and self.virtual_bumper.collision():
+                self.inException = True
                 raise VirtualBumperException()
 
     def on_artf(self, timestamp, data):
+        # called by incoming volatile sensor report (among other sources)
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
         if artifact_type == "CubeSat" or artifact_type == "ProcessingPlant":
             return
-        print (data[0])
         if self.last_artf is None:
+            self.last_artf = artifact_type
             self.bus.publish('request_origin', True)
         self.last_artf = artifact_type
 
@@ -129,6 +132,7 @@ class SpaceRoboticsChallenge(Node):
             qx, qy, qz, qw = data[4:]
             self.origin_quat = qx, qy, qz, qw  # quaternion
 
+            print("Origin received, internal position updated, artificial artefact %s created" % self.last_artf)
             # report location as fake artifact
             artifact_data = self.last_artf
             ax, ay, az = self.origin
@@ -141,6 +145,9 @@ class SpaceRoboticsChallenge(Node):
             if self.yaw_offset is None:
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
+            if not self.inException and self.pitch > 0.5:
+                self.inException = True
+                raise VirtualBumperException()
 
         return channel
 
@@ -235,12 +242,20 @@ class SpaceRoboticsChallenge(Node):
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
                     self.go_straight(-1.0, timeout=timedelta(seconds=10))
+                    self.inException = False
 
                 deg_angle = self.rand.randrange(90, 180)
                 deg_sign = self.rand.randint(0,1)
                 if deg_sign:
                     deg_angle = -deg_angle
-                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                try:
+                    self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
+                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                except VirtualBumperException:
+                    print(self.time, "Turn Virtual Bumper!")
+                    self.virtual_bumper = None
+                    self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
+                    self.inException = False
 
             self.wait(timedelta(seconds=10))
         except BusShutdownException:
