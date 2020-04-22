@@ -60,6 +60,7 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
+        self.score = 0
 
         self.last_artf = None
         
@@ -67,6 +68,8 @@ class SpaceRoboticsChallenge(Node):
         
         self.last_volatile_distance = None
         self.last_vol_index = None
+
+        self.last_status_timestamp = None
         
         self.virtual_bumper = None
         self.rand = Random(0)
@@ -128,19 +131,30 @@ class SpaceRoboticsChallenge(Node):
             self.last_vol_index = vol_index
             # TODO: this must be adjusted to report the position of the sensor, not the robot (which NASA will update their code for at some point)
             # the best known distance was in reference to mutual position of the sensor and the volatile
-            ax, ay, az = self.origin
-            print ("Volatile detection, starting to go further, reporting %f %f" % (ax, ay))
+            ax, ay, az = self.xyz
+            ox, oy, oz = self.offset
+            print ("Volatile detection, starting to go further, reporting %f %f" % (ax - ox, ay - oy))
 
             # TODO (maybe): if not accepted, try again?
-            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax, ay, 0.0)
+            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax - ox, ay - oy, 0.0)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
         
 
     def on_score(self, timestamp, data):
-        if data[0] > 0:
-            print (data[0])
+        self.score = data[0]
 
     def update(self):
+
+        if self.time is not None:
+            if self.last_status_timestamp is None:
+                self.last_status_timestamp = self.time
+            elif self.time - self.last_status_timestamp > timedelta(seconds=4):
+                self.last_status_timestamp = self.time
+                x, y, z = self.xyz
+                ox, oy, oz = self.offset
+                print ("Loc: %f %f %f; Score: %d" % (x - ox, y - oy, z - oz, self.score))
+
+        
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
 #        if handler is not None:
@@ -156,13 +170,17 @@ class SpaceRoboticsChallenge(Node):
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
             self.origin = data[1:4]
+            sx, sy, sz = self.xyz
+            ox, oy, oz = self.origin
+            self.offset = (sx - ox, sy - oy, sz - oz)
+            
             qx, qy, qz, qw = data[4:]
             self.origin_quat = qx, qy, qz, qw  # quaternion
 
             print("Origin received, internal position updated")
             # report location as fake artifact
             artifact_data = self.last_artf
-            ax, ay, az = self.origin
+            ax, ay, az = self.xyz
             self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
 
         elif channel == 'rot':
@@ -258,14 +276,16 @@ class SpaceRoboticsChallenge(Node):
             #self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
 
             try:
-                self.turn(math.radians(360), timeout=timedelta(seconds=100))
+                print ("No turn for volatile search")
+                #self.turn(math.radians(360), timeout=timedelta(seconds=100))
             except VirtualBumperException:
                 print(self.time, "Turn Virtual Bumper!")
                 self.virtual_bumper = None
                 self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
                 self.inException = False
 
-            for loop in range(10):
+            start_time = self.time
+            while self.time - start_time < timedelta(minutes=40):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
                     self.go_straight(100.0, timeout=timedelta(seconds=120))
