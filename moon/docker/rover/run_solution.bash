@@ -5,12 +5,12 @@ while getopts hr: arg; do
 	r)
 	    case $OPTARG in
 		"1" )
-		    JSONFILE="scout1.json"
-		    ROVERSCRIPT="rospy_rover.py"
+		    JSONFILES=("scout1.json")
+		    ROVERSCRIPTS=("rospy_rover.py")
 		    ;;
 		"2" )
-		    JSONFILE="excavator1.json"
-		    ROVERSCRIPT="rospy_excavator.py"
+		    JSONFILES=("excavator1.json" "hauler1.json")
+		    ROVERSCRIPTS=("rospy_excavator.py" "rospy_hauler.py")
 		    ;;
 		"3" )
 		;;
@@ -32,11 +32,17 @@ rosservice call /gazebo/unpause_physics "{}"
 echo "wait a moment"
 sleep 5
 
+ROBOT_PIDS=()
+ROS_PIDS=()
 echo "Start robot solution"
 export OSGAR_LOGS=`pwd`
 cd osgar
-python3 -m osgar.record --duration 2700 moon/$JSONFILE --note "collect some ROS data" &
-ROBOT_PID=$!
+for s in ${JSONFILES[@]}; do
+    echo "starting recording of $s"
+    python3 -m osgar.record --duration 2700 moon/$s --note "collect some ROS data" &
+    ROBOT_PIDS+=($!)
+done
+
 cd ..
 
 # get directory where this bash script lives
@@ -49,26 +55,39 @@ export ROSCONSOLE_CONFIG_FILE="${samedir}/rosconsole.config"
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
 ## roslaunch subt_seed x1.launch --wait &
 
-python ./osgar/moon/$ROVERSCRIPT &
-ROS_PID=$!
+for s in ${ROVERSCRIPTS[@]}; do
+    echo "Starting script $s"
+    python ./osgar/moon/$s &
+    ROS_PIDS+=($!)
+done
 
 # Turn everything off in case of CTRL+C and friends.
 function shutdown {
-       kill ${ROBOT_PID}
-       kill ${ROS_PID}
-       wait
-       exit
+    for p in ${ROBOT_PIDS[@]}; do
+	kill $p
+    done
+    for p in ${ROS_PIDS[@]}; do
+	kill $p
+    done
+    
+    wait
+    exit
 }
 trap shutdown SIGHUP SIGINT SIGTERM
 
 
 # Wait for the controllers to finish.
-wait ${ROBOT_PID}
+for r in ${ROBOT_PIDS[@]}; do
+    wait $r
+done
+
 
 echo "Sleep and finish"
 sleep 30
 
 # Take robot simulation down.
-kill ${ROS_PID}
+for r in ${ROS_PIDS[@]}; do
+    wait $r
+done
 wait
 
