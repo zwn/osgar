@@ -61,6 +61,7 @@ class SpaceRoboticsChallenge(Node):
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
         self.score = 0
+        self.bucket_status = None
 
         self.last_artf = None
         
@@ -146,6 +147,9 @@ class SpaceRoboticsChallenge(Node):
     def on_score(self, timestamp, data):
         self.score = data[0]
 
+    def on_bucket_info(self, timestamp, data):
+        self.bucket_status = data
+        
     def update(self):
 
         if self.time is not None:
@@ -156,6 +160,8 @@ class SpaceRoboticsChallenge(Node):
                 x, y, z = self.xyz
                 ox, oy, oz = self.offset
                 print ("Loc: %f %f %f; Score: %d" % (x - ox, y - oy, z - oz, self.score))
+                if self.bucket_status is not None and self.bucket_status[1] > 0:
+                    print ("Bucket content: Type: %s idx: %d mass: %f" % (self.bucket_status[0], self.bucket_status[1], self.bucket_status[2]))
 
         
         channel = super().update()
@@ -168,6 +174,8 @@ class SpaceRoboticsChallenge(Node):
             self.on_artf(self.time, self.artf)
         elif channel == 'score':
             self.on_score(self.time, self.score)
+        elif channel == 'bucket_info':
+            self.on_bucket_info(self.time, self.bucket_info)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'origin':
