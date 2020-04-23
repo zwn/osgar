@@ -1,5 +1,32 @@
 #!/usr/bin/env bash
 
+while getopts hr: arg; do
+    case $arg in
+	r)
+	    case $OPTARG in
+		"1" )
+		    JSONFILE="scout1.json"
+		    ROVERSCRIPT="rospy_rover.py"
+		    ;;
+		"2" )
+		    JSONFILE="excavator1.json"
+		    ROVERSCRIPT="rospy_excavator.py"
+		    ;;
+		"3" )
+		;;
+		
+	    esac
+	    ;;
+	h)
+	    echo "Use -r [1|2|3] to choose the run to execute"
+	    exit
+	    ;;
+	*)
+	    exit
+	    ;;
+    esac
+done
+
 echo "Unpause simulation"
 rosservice call /gazebo/unpause_physics "{}"
 echo "wait a moment"
@@ -8,7 +35,7 @@ sleep 5
 echo "Start robot solution"
 export OSGAR_LOGS=`pwd`
 cd osgar
-python3 -m osgar.record --duration 2700 moon/scout1.json --note "collect some ROS data" &
+python3 -m osgar.record --duration 2700 moon/$JSONFILE --note "collect some ROS data" &
 ROBOT_PID=$!
 cd ..
 
@@ -21,7 +48,8 @@ export ROSCONSOLE_CONFIG_FILE="${samedir}/rosconsole.config"
 # Run your solution and wait for ROS master
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
 ## roslaunch subt_seed x1.launch --wait &
-python ./osgar/moon/rospy_rover.py &
+
+python ./osgar/moon/$ROVERSCRIPT &
 ROS_PID=$!
 
 # Turn everything off in case of CTRL+C and friends.
