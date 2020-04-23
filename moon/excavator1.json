@@ -56,6 +56,7 @@
               ["rosmsg.scan", "app.scan"],
 	      ["rosmsg./qual_2_score", "app.score"],
               ["rosmsg.joint_name", "rover.joint_name"],
+	      ["rosmsg./excavator_1/bucket_info", "app.bucket_info"],
               ["rosmsg.joint_position", "rover.joint_position"],
               ["rosmsg.joint_velocity", "rover.joint_velocity"],
               ["rosmsg.joint_effort", "rover.joint_effort"],

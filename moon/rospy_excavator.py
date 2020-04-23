@@ -18,7 +18,7 @@ from rosgraph_msgs.msg import Clock
 from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
-from srcp2_msgs.msg import Qual2ScoringMsg
+from srcp2_msgs.msg import (Qual2ScoringMsg, ExcavatorMsg)
 from srcp2_msgs.srv import (ToggleLightSrv, LocalizationSrv, Qual2ScoreSrv)
 
 
@@ -65,7 +65,6 @@ def callback_imu(data):
     to_send = s1.getvalue()
     header = struct.pack('<I', len(to_send))
     socket_send(header + to_send)
-
 
 def callback_odom(data):
     global g_odom_counter
@@ -151,6 +150,7 @@ def odom2zmq():
     rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
     rospy.Subscriber('/excavator_1/joint_states', JointState, callback_topic, '/excavator_1/joint_states')
+    rospy.Subscriber('/excavator_1/bucket_info', ExcavatorMsg, callback_topic, '/excavator_1/bucket_info')
     rospy.Subscriber('/excavator_1/laser/scan', LaserScan, callback)
     rospy.Subscriber('/excavator_1/imu', Imu, callback_imu)
 #    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
