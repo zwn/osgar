@@ -297,7 +297,7 @@ def odom2zmq():
 
         except zmq.error.Again:
             pass
-        r.sleep()
+        #r.sleep()
 
 
 if __name__ == '__main__':
