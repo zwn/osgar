@@ -115,7 +115,6 @@ class SpaceRoboticsChallenge(Node):
             return
 
         if self.last_artf is None:
-            print("Requesting origin over bus")
             self.bus.publish('request_origin', True)
         self.last_artf = artifact_type
         
@@ -139,7 +138,10 @@ class SpaceRoboticsChallenge(Node):
             # TODO (maybe): if not accepted, try again?
             s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax - ox, ay - oy, 0.0)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-        
+        else:
+            self.last_volatile_distance = None
+            print ("Previously visited volatile, not reporting")
+            
 
     def on_score(self, timestamp, data):
         self.score = data[0]
@@ -289,7 +291,7 @@ class SpaceRoboticsChallenge(Node):
             while self.time - start_time < timedelta(minutes=40):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    self.go_straight(100.0, timeout=timedelta(minutes=5))
+                    self.go_straight(100.0, timeout=timedelta(minutes=2))
                 except VirtualBumperException:
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
