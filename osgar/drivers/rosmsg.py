@@ -388,6 +388,15 @@ def parse_topic(topic_type, data):
         # __slots__ = ['score','calls','total_of_types']
         # _slot_types = ['int32','int32','int32[8]']        
         return struct.unpack_from('<II', data, pos)  # only score and calls
+    elif topic_type == 'srcp2_msgs/Qual2ScoringMsg':
+        assert len(data) == 139, (len(data), data)
+        # __slots__ = ['vol_type', 'points_per_type', 'num_of_dumps', 'total_score']
+        # _slot_types = ['string[8]', 'int32[8]', 'int32', 'float32']
+        # let's ignore names of volatile types
+        record = struct.unpack_from('<IIIIIIIIIf', data, len(data) - 10*4)
+        # print(record)
+        return sum(record[:8]), record[8]  # score and attempts
+
     elif topic_type == 'srcp2_msgs/Qual3ScoringMsg':
         assert len(data) == 12, (len(data), data)
         size = struct.unpack_from('<I', data)[0]
