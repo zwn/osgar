@@ -204,7 +204,7 @@ def odom2zmq():
     steering_bl_publisher = rospy.Publisher('/scout_1/bl_steering_arm_controller/command', Float64, queue_size=QSIZE)
     steering_br_publisher = rospy.Publisher('/scout_1/br_steering_arm_controller/command', Float64, queue_size=QSIZE)
 
-    r = rospy.Rate(10)
+    r = rospy.Rate(100)
     while True:
         try:
             message = ""
@@ -264,12 +264,16 @@ def odom2zmq():
                     pass  # keep steering angles as they are ...
             elif message_type == "request_origin":
                 print "Requesting true pose"
-                request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
-                p = request_origin(True)
-                s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
-                     p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
-                print(s)
-                socket_send(s)
+                try:
+                    rospy.wait_for_service("/scout_1/get_true_pose", timeout=2.0)
+                    request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
+                    p = request_origin(True)
+                    s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
+                                                                  p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
+                    print(s)
+                    socket_send(s)
+                except rospy.service.ServiceException as e:
+                    print(e)
             elif message_type == "artf":
                 s = message.split()[1:]  # ignore "artf" prefix
                 x, y, z = [float(a) for a in s[1:]]
@@ -297,7 +301,7 @@ def odom2zmq():
 
         except zmq.error.Again:
             pass
-        #r.sleep()
+        r.sleep()
 
 
 if __name__ == '__main__':
