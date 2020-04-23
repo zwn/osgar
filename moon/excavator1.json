@@ -34,8 +34,8 @@
           "init": {
             "downsample": 2,
             "topics": [
-		["/excavator_1/bucket_info", "srcp2_msgs/ExcavatorMsg"],
-		["/excavator_1/joint_states", "sensor_msgs/JointState"],
+              ["/excavator_1/bucket_info", "srcp2_msgs/ExcavatorMsg"],
+              ["/excavator_1/joint_states", "sensor_msgs/JointState"],
               ["/qual_2_score", "srcp2_msgs/Qual2ScoringMsg"],
               ["/excavator_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/excavator_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]

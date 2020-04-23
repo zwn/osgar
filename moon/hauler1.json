@@ -33,8 +33,8 @@
           "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin"],
           "init": {
             "downsample": 2,
-            "topics": [
-              ["/hauler_1/bucket_info", "srcp2_msgs/HaulerMsg"],
+          "topics": [
+	      ["/hauler_1/joint_states", "sensor_msgs/JointState"],
               ["/qual_2_score", "srcp2_msgs/Qual2ScoringMsg"],
               ["/hauler_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/hauler_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]

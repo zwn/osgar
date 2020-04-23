@@ -124,7 +124,7 @@ class SpaceRoboticsChallenge(Node):
         if self.last_volatile_distance is None:
             self.last_volatile_distance = distance_to
         elif self.last_volatile_distance > distance_to:
-            print ("Volatile detection, getting closer: %f" % distance_to)
+            print ("Volatile detection %d, getting closer: %f" % (vol_index, distance_to))
             self.last_volatile_distance = distance_to
         elif self.last_vol_index is None or vol_index != self.last_vol_index:
             self.last_vol_index = vol_index
@@ -140,7 +140,7 @@ class SpaceRoboticsChallenge(Node):
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
         else:
             self.last_volatile_distance = None
-            print ("Previously visited volatile, not reporting")
+            print ("Previously visited volatile %d, not reporting" % vol_index)
             
 
     def on_score(self, timestamp, data):

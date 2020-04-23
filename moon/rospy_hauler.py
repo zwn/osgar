@@ -150,7 +150,7 @@ def odom2zmq():
   
     rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
-    rospy.Subscriber('/hauler_1/joint_states', JointState, callback_odom)
+    rospy.Subscriber('/hauler_1/joint_states', JointState, callback_topic, '/hauler_1/joint_states')
     rospy.Subscriber('/hauler_1/laser/scan', LaserScan, callback)
     rospy.Subscriber('/hauler_1/imu', Imu, callback_imu)
 #    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
