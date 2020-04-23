@@ -374,6 +374,18 @@ def parse_volatile(data):
     vol_index, shadowed_state, distance_to = struct.unpack_from('<iBf', data, pos)
     return [vol_type.decode('ascii'), distance_to, vol_index]
 
+def parse_bucket(data):
+    # NASA Space Robotics Challenge 2
+    # __slots__ = ['vol_type','vol_index','mass_in_bucket']
+    # _slot_types = ['string','int32','float32']
+    size = struct.unpack_from('<I', data)[0]
+    pos = 4
+    assert size + 4 == len(data), (size, len(data))  # it is going to be variable -> remove the assert
+    vol_type_size = struct.unpack_from('<I', data, pos)[0]
+    vol_type = data[pos:pos+vol_type_size]  # b'methanol'
+    pos += vol_type_size
+    vol_index, mass_in_bucket = struct.unpack_from('<if', data, pos)
+    return [vol_type.decode('ascii'), vol_index, mass_in_bucket]
 
 def parse_topic(topic_type, data):
     """parse general topic"""
@@ -393,7 +405,6 @@ def parse_topic(topic_type, data):
         record = struct.unpack_from('<IIIIIIIIIf', data, len(data) - 10*4)
         # print(record)
         return sum(record[:8]), record[8]  # score and attempts
-
     elif topic_type == 'srcp2_msgs/Qual3ScoringMsg':
         assert len(data) == 12, (len(data), data)
         size = struct.unpack_from('<I', data)[0]
@@ -402,6 +413,8 @@ def parse_topic(topic_type, data):
         # __slots__ = ['score','calls']
         # _slot_types = ['int32','int32']
         return struct.unpack_from('<II', data, pos)  # score and calls
+    elif topic_type == 'srcp2_msgs/ExcavatorMsg':
+        return parse_bucket(data)
     elif topic_type == 'sensor_msgs/JointState':
         return parse_joint_state(data)
     elif topic_type == 'srcp2_msgs/VolSensorMsg':
