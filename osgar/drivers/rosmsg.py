@@ -302,7 +302,6 @@ def parse_joint_state(data):
     # float64[] velocity
     # float64[] effort
     size = struct.unpack_from('<I', data)[0]
-    assert size == 596, size  # based on first sample
     pos = 4
     seq, timestamp_sec, timestamp_nsec, frame_id_size = struct.unpack_from('<IIII', data, pos)
     pos += 4 + 4 + 4 + 4
@@ -311,14 +310,12 @@ def parse_joint_state(data):
     assert frame_id == b'', frame_id  # i.e. not filled
     if seq//2 % 50 == 0:
         print(seq)
-    size = struct.unpack_from('<I', data, pos)[0]
+    size = struct.unpack_from('<I', data, pos)[0]  # number of joints
     pos += 4
-    assert size == 13, size  # number of joints
     name = []
     for i in range(size):
         str_len = struct.unpack_from('<I', data, pos)[0]
         pos += 4
-#    assert str_len == 12, str_len
         name.append(data[pos:pos+str_len])
         pos += str_len
 
@@ -405,6 +402,8 @@ def parse_topic(topic_type, data):
         # __slots__ = ['score','calls']
         # _slot_types = ['int32','int32']
         return struct.unpack_from('<II', data, pos)  # score and calls
+    elif topic_type == 'sensor_msgs/JointState':
+        return parse_joint_state(data)
     elif topic_type == 'srcp2_msgs/VolSensorMsg':
         return parse_volatile(data)
     elif topic_type == 'sensor_msgs/CompressedImage':
@@ -528,24 +527,25 @@ class ROSMsgParser(Thread):
             if self.gas_detected != parse_bool(packet):
                 self.gas_detected = parse_bool(packet)
                 self.bus.publish('gas_detected', self.gas_detected)
-        elif frame_id == b'' and b'br_wheel_joint' in packet:
-#            assert False, parse_joint_state(packet)
-            wheels_position, name, position, velocity, effort = parse_joint_state(packet)
-
-            # publish names only on change
-            if self.joint_name != name:
-                self.bus.publish('joint_name', list(name))
-                self.joint_name = name
-
-            self.bus.publish('joint_position', list(position))
-            self.bus.publish('joint_velocity', list(velocity))
-            self.bus.publish('joint_effort', list(effort))
 
         elif b'\0' in packet[:MAX_TOPIC_NAME_LENGTH]:
             name = packet[:packet.index(b'\0')].decode('ascii')
             for n, t in self.topics:
                 if name == n:
-                    self.bus.publish(name, parse_topic(t, packet[len(name) + 1:]))
+                    result = parse_topic(t, packet[len(name) + 1:])
+                    if t == 'sensor_msgs/JointState':
+                        wheels_position, name, position, velocity, effort = result
+
+                        # publish names only on change
+                        if self.joint_name != name:
+                            self.bus.publish('joint_name', list(name))
+                            self.joint_name = name
+
+                        self.bus.publish('joint_position', list(position))
+                        self.bus.publish('joint_velocity', list(velocity))
+                        self.bus.publish('joint_effort', list(effort))
+                    else:
+                        self.bus.publish(name, result)
 
     def slot_desired_speed(self, timestamp, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
