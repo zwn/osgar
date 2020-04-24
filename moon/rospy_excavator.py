@@ -7,6 +7,7 @@ import struct
 import math
 from io import BytesIO
 from threading import RLock
+from pprint import pprint
 
 import zmq
 
@@ -19,7 +20,7 @@ from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
 from srcp2_msgs.msg import (Qual2ScoringMsg, ExcavatorMsg)
-from srcp2_msgs.srv import (ToggleLightSrv, LocalizationSrv, Qual2ScoreSrv)
+from srcp2_msgs.srv import (ToggleLightSrv, LocalizationSrv, Qual2ScoreSrv, Qual2VolatilesSrv)
 
 
 ROBOT_NAME = 'excavator_1'
@@ -160,6 +161,11 @@ def odom2zmq():
     lights_on = rospy.ServiceProxy('/excavator_1/toggle_light', ToggleLightSrv)
     lights_on('high')
 
+    print ("Volatiles locations")
+    get_vol_loc = rospy.ServiceProxy('/qual_2_services/volatile_locations', Qual2VolatilesSrv)
+    vol_loc = get_vol_loc()
+    pprint(vol_loc)
+
 
     # TODO load it from configuration
     rospy.Subscriber('/qual_2_score', Qual2ScoringMsg, callback_topic, '/qual_2_score')
@@ -198,6 +204,14 @@ def odom2zmq():
     steering_bl_publisher = rospy.Publisher('/excavator_1/bl_steering_arm_controller/command', Float64, queue_size=QSIZE)
     steering_br_publisher = rospy.Publisher('/excavator_1/br_steering_arm_controller/command', Float64, queue_size=QSIZE)
 
+    mount_joint_publisher = rospy.Publisher('/excavator_1/mount_joint_controller/command', Float64, queue_size=QSIZE)
+    basearm_joint_publisher = rospy.Publisher('/excavator_1/basearm_joint_controller/command', Float64, queue_size=QSIZE)
+    distalarm_joint_publisher = rospy.Publisher('/excavator_1/distalarm_joint_controller/command', Float64, queue_size=QSIZE)
+    bucket_joint_publisher = rospy.Publisher('/excavator_1/bucket_joint_controller/command', Float64, queue_size=QSIZE)
+
+    bucket_msg = Float64()
+    bucket_msg.data = 0
+    
     r = rospy.Rate(100)
     while True:
         try:
@@ -256,6 +270,17 @@ def odom2zmq():
                     steering_br_publisher.publish(steering_msg)
                 else:
                     pass  # keep steering angles as they are ...
+            elif message_type == "bucket_position":
+                mount = float(message.split(" ")[1])
+                basearm = float(message.split(" ")[2])
+                distalarm = float(message.split(" ")[3])
+                bucket = float(message.split(" ")[4])
+                for pub, value in zip(
+                        [mount_joint_publisher, basearm_joint_publisher, distalarm_joint_publisher, bucket_joint_publisher],
+                        (mount, basearm, distalarm, bucket)):
+                    bucket_msg.data = value
+                    pub.publish(bucket_msg)
+                
             elif message_type == "request_origin":
                 print "Requesting true pose"
                 try:
@@ -271,7 +296,7 @@ def odom2zmq():
             else:
                 if len(message_type) > 0: 
                     print ("Unhandled message type: %s" % message_type)
-
+                    
         except zmq.error.Again:
             pass
         r.sleep()

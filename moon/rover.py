@@ -83,10 +83,17 @@ class Rover(Node):
         self.verbose = False
         self.prev_position = None
         self.pose2d = 0, 0, 0
-
+        self.bucket_position_mount = 0.0
+        self.bucket_position_basearm = 0.0
+        self.bucket_position_distalarm = 0.0
+        self.bucket_position_bucket = 0.0
+        
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
+    def on_bucket_position(self, data):
+        self.bucket_position_mount, self.bucket_position_basearm, self.bucket_position_distalarm, self.bucket_position_bucket = data[0],data[1],data[2],data[3]
+        
     def on_joint_position(self, data):
         assert self.joint_name is not None
         if self.prev_position is None:
@@ -148,6 +155,10 @@ class Rover(Node):
             effort = [-e, -e, -e, -e]
         cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
         self.bus.publish('cmd', cmd)
+
+        cmd = b'bucket_position %f %f %f %f' % (self.bucket_position_mount, self.bucket_position_basearm, self.bucket_position_distalarm, self.bucket_position_bucket)
+        self.bus.publish('cmd', cmd)
+      
 
     def update(self):
         channel = super().update()

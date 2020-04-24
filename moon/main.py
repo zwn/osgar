@@ -34,7 +34,7 @@ def min_dist(laser_data):
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin")
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin", "bucket_position")
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
@@ -63,6 +63,8 @@ class SpaceRoboticsChallenge(Node):
         self.score = 0
         self.bucket_status = None
 
+        self.scoop_time = None
+        
         self.last_artf = None
         
         self.inException = False
@@ -80,6 +82,9 @@ class SpaceRoboticsChallenge(Node):
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def send_bucket_position(self, mount, basearm, distalarm, bucket):
+        self.bus.publish("bucket_position", [mount, basearm, distalarm, bucket])
+        
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
@@ -153,15 +158,38 @@ class SpaceRoboticsChallenge(Node):
     def update(self):
 
         if self.time is not None:
+            # scoop and lift
+            if self.scoop_time is None:
+                self.scoop_time = self.time
+                self.send_bucket_position(3.14, -0.3, -0.8, 1.9) # get above scooping position
+            elif self.time - self.scoop_time < timedelta(seconds=12):
+                self.send_bucket_position(3.14, 0.4, 1.0, 1.9) # lower to scooping position
+            elif self.time - self.scoop_time < timedelta(seconds=16):
+                self.send_bucket_position(3.14, 0.4, 1.0, 3.2) # scoop
+            elif self.time - self.scoop_time < timedelta(seconds=24):
+                self.send_bucket_position(3.14, -0.6, -0.8, 3.9) # lift up
+            elif self.time - self.scoop_time < timedelta(seconds=36):
+                self.send_bucket_position(0, -0.6, -0.8, 3.9) # turn towards dropping position
+            elif self.time - self.scoop_time < timedelta(seconds=40):
+                self.send_bucket_position(0, -0.3, -0.8, 3.9) # extend arm
+            elif self.time - self.scoop_time < timedelta(seconds=46):
+                self.send_bucket_position(0, -0.3, -0.8, 0) # drop 
+            else:
+                self.scoop_time = None
+                
+                
+                
+        if self.time is not None:
             if self.last_status_timestamp is None:
                 self.last_status_timestamp = self.time
-            elif self.time - self.last_status_timestamp > timedelta(seconds=4):
+            elif self.time - self.last_status_timestamp > timedelta(seconds=8):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
                 ox, oy, oz = self.offset
                 print ("Loc: %f %f %f; Score: %d" % (x - ox, y - oy, z - oz, self.score))
                 if self.bucket_status is not None and self.bucket_status[1] > 0:
                     print ("Bucket content: Type: %s idx: %d mass: %f" % (self.bucket_status[0], self.bucket_status[1], self.bucket_status[2]))
+                
 
         
         channel = super().update()
@@ -299,7 +327,8 @@ class SpaceRoboticsChallenge(Node):
             while self.time - start_time < timedelta(minutes=40):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    self.go_straight(100.0, timeout=timedelta(minutes=2))
+                    #self.go_straight(100.0, timeout=timedelta(minutes=2))
+                    self.update()
                 except VirtualBumperException:
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
@@ -312,7 +341,7 @@ class SpaceRoboticsChallenge(Node):
                     deg_angle = -deg_angle
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                    #self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
                 except VirtualBumperException:
                     print(self.time, "Turn Virtual Bumper!")
                     self.virtual_bumper = None
