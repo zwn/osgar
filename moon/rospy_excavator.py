@@ -275,6 +275,7 @@ def odom2zmq():
                 basearm = float(message.split(" ")[2])
                 distalarm = float(message.split(" ")[3])
                 bucket = float(message.split(" ")[4])
+                
                 for pub, value in zip(
                         [mount_joint_publisher, basearm_joint_publisher, distalarm_joint_publisher, bucket_joint_publisher],
                         (mount, basearm, distalarm, bucket)):

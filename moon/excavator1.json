@@ -5,7 +5,7 @@
       "app": {
           "driver": "moon.main:SpaceRoboticsChallenge",
           "in": ["pose2d"],
-          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "bucket_position"],
+          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "bucket_cmd"],
           "init": {}
       },
       "transmitter": {
@@ -63,9 +63,9 @@
               ["rosmsg.rot", "rover.rot"],
               ["app.desired_speed", "rover.desired_speed"],
               ["rover.cmd", "transmitter.raw"],
+              ["app.bucket_cmd", "transmitter.raw"],
               ["rover.pose2d", "app.pose2d"],
               ["app.request_origin", "rosmsg.request_origin"],
-              ["app.bucket_position", "rover.bucket_position"],
               ["rosmsg.origin", "app.origin"]
 	     ]
   }
