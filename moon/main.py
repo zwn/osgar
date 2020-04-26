@@ -147,7 +147,7 @@ class SpaceRoboticsChallenge(Node):
         if self.last_volatile_distance is None:
             self.last_volatile_distance = distance_to
         elif self.last_volatile_distance > distance_to:
-            print ("Volatile detection %d, getting closer: %f" % (vol_index, distance_to))
+#            print ("Volatile detection %d, getting closer: %f" % (vol_index, distance_to))
             self.last_volatile_distance = distance_to
         elif self.last_vol_index is None or vol_index != self.last_vol_index:
             self.last_vol_index = vol_index
@@ -155,15 +155,14 @@ class SpaceRoboticsChallenge(Node):
             # TODO: this must be adjusted to report the position of the sensor, not the robot (which NASA will update their code for at some point)
             # the best known distance was in reference to mutual position of the sensor and the volatile
             ax, ay, az = self.xyz
-            ox, oy, oz = self.offset
-            print ("Volatile detection, starting to go further, reporting %f %f" % (ax - ox, ay - oy))
+            print ("Volatile detection, starting to go further, reporting %f %f" % (ax, ay))
 
             # TODO (maybe): if not accepted, try again?
-            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax - ox, ay - oy, 0.0)
+            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax, ay, 0.0)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
         else:
             self.last_volatile_distance = None
-            print ("Previously visited volatile %d, not reporting" % vol_index)
+#            print ("Previously visited volatile %d, not reporting" % vol_index)
             
 
     def on_score(self, timestamp, data):
@@ -201,8 +200,7 @@ class SpaceRoboticsChallenge(Node):
             elif self.time - self.last_status_timestamp > timedelta(seconds=8):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
-                ox, oy, oz = self.offset
-                print ("Loc: %f %f %f; Score: %d" % (x - ox, y - oy, z - oz, self.score))
+                print ("Loc: %f %f %f; Score: %d" % (x, y, z, self.score))
                 if self.bucket_status is not None and self.bucket_status[1] > 0:
                     print ("Bucket content: Type: %s idx: %d mass: %f" % (self.bucket_status[0], self.bucket_status[1], self.bucket_status[2]))
                 
@@ -224,13 +222,12 @@ class SpaceRoboticsChallenge(Node):
             self.local_planner.update(self.scan)
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
-            self.origin = data[1:4]
-            sx, sy, sz = self.xyz
-            ox, oy, oz = self.origin
-            self.offset = (sx - ox, sy - oy, sz - oz)
+            self.xyz = data[1:4]
             
             qx, qy, qz, qw = data[4:]
-            self.origin_quat = qx, qy, qz, qw  # quaternion
+            self.roll = qx
+            self.pitch = qy
+            self.yaw = qz
 
             print("Origin received, internal position updated")
             # report location as fake artifact
@@ -343,7 +340,7 @@ class SpaceRoboticsChallenge(Node):
             while self.time - start_time < timedelta(minutes=40):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    #self.go_straight(100.0, timeout=timedelta(minutes=2))
+                    self.go_straight(100.0, timeout=timedelta(minutes=2))
                     self.update()
                 except VirtualBumperException:
                     print(self.time, "Virtual Bumper!")
@@ -357,7 +354,7 @@ class SpaceRoboticsChallenge(Node):
                     deg_angle = -deg_angle
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=2), 0.1)
-                    #self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
                 except VirtualBumperException:
                     print(self.time, "Turn Virtual Bumper!")
                     self.virtual_bumper = None
