@@ -295,6 +295,8 @@ def odom2zmq():
                         print ("Volatile report result: %r" % resp.result)
                     except rospy.ServiceException as exc:
                         print("/vol_detected_service exception: " + str(exc))
+                    except rospy.ROSException as exc:
+                        print("/vol_detected_service not available: " + str(exc))
             else:
                 if len(message_type) > 0: 
                     print ("Unhandled message type: %s" % message_type)
