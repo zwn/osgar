@@ -134,7 +134,8 @@ class SpaceRoboticsChallenge(Node):
         # called by incoming volatile sensor report (among other sources)
         # 0 vol_type, 1 distance_to, 2 vol_index
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
-        if artifact_type == "CubeSat" or artifact_type == "ProcessingPlant":
+        if artifact_type == "cubesat": # or artifact_type == "ProcessingPlant":
+            print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
             return
 
         if self.last_artf is None:
@@ -322,14 +323,9 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            ax, ay, az = 10, 20, 15
-            artifact_data = 'CubeSat'
-            s = '%s %.2f %.2f %.2f\n' % (artifact_data, ax, ay, az)
-            #self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-
             try:
-                print ("No turn for volatile search")
-                #self.turn(math.radians(360), timeout=timedelta(seconds=100))
+#                print ("No turn for volatile search")
+                self.turn(math.radians(360), timeout=timedelta(seconds=100))
             except VirtualBumperException:
                 print(self.time, "Turn Virtual Bumper!")
                 self.virtual_bumper = None

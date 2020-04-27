@@ -15,66 +15,6 @@ from osgar.bus import BusShutdownException
 PROCESSING_PLANT = 'ProcessingPlant'
 CUBE_SAT = 'CubeSat'
 
-
-RED_THRESHOLD = 100
-YELLOW_THRESHOLD = 100
-
-
-g_mask = None
-
-
-def count_mask(mask):
-    """Count statistics and bounding box for given image mask"""
-    count = int(mask.sum())
-    if count == 0:
-        return count, None, None, None, None
-
-    # argmax for mask finds the first True value
-    x_min = (mask.argmax(axis=0) != 0).argmax()
-    x_max = mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
-    w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax()
-            - (mask.argmax(axis=0) != 0).argmax())
-    h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax()
-            - (mask.argmax(axis=1) != 0).argmax())
-    return count, w, h, x_min, x_max
-
-
-def count_red(img, filtered=False, stdout=None):
-    # well rather "orange" of the "Processing Plant"
-    # 192 61 7
-    # 185 59 8
-    # 193 63 14
-    # TODO dark side of the Moon
-    b = img[:,:,0]
-    g = img[:,:,1]
-    r = img[:,:,2]
-    mask = np.logical_and(r > 150, np.logical_and(r/3 > g, r/10 > b))
-    not_mask = np.logical_not(mask)
-    img2 = img.copy()
-    img2[mask] = (255, 255, 255)
-    img2[not_mask] = (0, 0, 0)
-
-    global g_mask
-    g_mask = mask.copy()
-    return count_mask(mask)
-
-
-def count_yellow(img):
-    # 146 113 34
-    # 170 137 60
-    b = img[:,:,0]
-    g = img[:,:,1]
-    r = img[:,:,2]
-    mask = np.logical_and(np.logical_and(r >= 100, g > 0.7 * r), np.logical_and(r*0.5 > b, g*0.5 > b))
-    global g_mask
-    g_mask = mask.copy()
-    # debug
-#    img2 = img.copy()
-#    img2[mask] = (0, 255, 0)
-#    cv2.imwrite('artf.jpg', img2)
-    return count_mask(mask)
-
-
 class ArtifactDetector(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
@@ -90,6 +30,7 @@ class ArtifactDetector(Node):
         self.scan = None  # should laster initialize super()
         self.depth = None  # more precise definiton of depth image
         self.width = None  # detect from incoming images
+        self.cascade = cv2.CascadeClassifier('/osgar/moon/cubesat.xml')
 
     def stdout(self, *args, **kwargs):
         # maybe refactor to Node?
@@ -101,11 +42,13 @@ class ArtifactDetector(Node):
         print(contents)
 
     def waitForImage(self):
-        channel = ""
-        while channel != "left_image":  # TODO handle right image
+        self.left_image = self.right_image = None
+        while self.left_image is None or self.right_image is None:  
             self.time, channel, data = self.listen()
-            setattr(self, channel, data)
-        self.image = self.left_image
+            if channel == "left_image":
+                self.left_image = data
+            else:
+                self.right_image = data
         return self.time
 
     def run(self):
@@ -118,71 +61,36 @@ class ArtifactDetector(Node):
                 while timestamp <= now:
                     timestamp = self.waitForImage()
                     dropped += 1
-                self.detect(self.image)
+                self.detect(self.left_image, self.right_image)
         except BusShutdownException:
             pass
 
-    def detect(self, image):
-        img = cv2.imdecode(np.fromstring(image, dtype=np.uint8), 1)
+    def detect(self, left_image, right_image):
+        limg = cv2.imdecode(np.fromstring(left_image, dtype=np.uint8), 1)
+        rimg = cv2.imdecode(np.fromstring(right_image, dtype=np.uint8), 1)
+        
         if self.width is None:
-            self.stdout('Image resolution', img.shape)
-            self.width = img.shape[1]
-        assert self.width == img.shape[1], (self.width, img.shape[1])
-        rcount, w, h, x_min, x_max = count_red(img)
-        yellow_used = False
-        if rcount < 20:
-            ycount, w, h, x_min, x_max = count_yellow(img)
-            if ycount > YELLOW_THRESHOLD:
-                yellow_used = True
-                count = ycount
-            else:
-                count = rcount
-        else:
-            count = rcount
+            self.stdout('Image resolution', limg.shape)
+            self.width = limg.shape[1]
+        assert self.width == limg.shape[1], (self.width, limg.shape[1])
 
-        if self.verbose and count >= 20:
-            print(self.time, img.shape, count, w, h, x_min, x_max, w/h, count/(w*h))
-        if self.best_count > 0:
-            self.best_count -= 1
-        if count > RED_THRESHOLD or (yellow_used and count > YELLOW_THRESHOLD):
-            if self.best is None or count > self.best:
-                self.best = count
-                self.best_count = 10
-                self.best_img = self.image
-                self.best_info = w, h, x_min, x_max, (count == rcount), yellow_used  # RED used
-                self.best_scan = self.scan
-                self.best_depth = self.depth
+#        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+        limg_rgb = cv2.cvtColor(limg, cv2.COLOR_BGR2RGB) 
+        rimg_rgb = cv2.cvtColor(rimg, cv2.COLOR_BGR2RGB) 
 
-        if self.best is not None and self.best_count == 0:
-            w, h, x_min, x_max, red_used, yellow_used = self.best_info
+        lfound = self.cascade.detectMultiScale(limg_rgb,  
+                                              minSize =(5, 5), maxSize =(50, 50)) 
+        if len(lfound) > 0: 
+            for (x, y, width, height) in lfound: 
+                print("[Left camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
+                self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
 
-            deg_100th, dist_mm = 0, 500  # TODO left & right
-
-            if red_used:
-                artf = PROCESSING_PLANT  # BACKPACK
-            elif yellow_used:
-                artf = CUBE_SAT  # RESCUE_RANDY  # used to be RADIO
-            self.stdout(self.time, 'Relative position:', self.best, deg_100th, dist_mm, artf)
-
-            dx_mm, dy_mm = 0, 0  # relative offset to current robot position
-            # TODO if VALVE -> find it in scan
-            self.publish('artf', [artf, deg_100th, dist_mm])
-            self.publish('debug_artf', self.best_img)
-            if self.dump_dir is not None:
-                filename = 'artf_%s_%d.jpg' % (artf, self.time.total_seconds())
-                with open(os.path.join(self.dump_dir, filename), 'wb') as f:
-                    f.write(self.best_img)
-                if self.best_depth is not None:
-                    filename = 'artf_%s_%d.npz' % (artf, self.time.total_seconds())
-                    np.savez_compressed(os.path.join(self.dump_dir, filename), depth=self.best_depth)
-
-            # reset detector
-            self.best = None
-            self.best_count = 0
-            self.best_img = None
-            self.best_info = None
-            self.best_scan = None
-            self.best_depth = None
+        rfound = self.cascade.detectMultiScale(rimg_rgb,  
+                                              minSize =(5, 5), maxSize =(50, 50)) 
+        if len(rfound) > 0:
+            for (x, y, width, height) in rfound: 
+                print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
+                self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
 
 
 def debug2dir(filename, out_dir):
