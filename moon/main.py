@@ -63,6 +63,7 @@ class SpaceRoboticsChallenge(Node):
         self.score = 0
         self.bucket_status = None
 
+        # TODO: account for working on an incline
         self.scoop_time = None
         self.scoop_index = 0
         self.bucket_scoop_part = True # True for scoop part, False for drop part
@@ -136,6 +137,23 @@ class SpaceRoboticsChallenge(Node):
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
         if artifact_type == "cubesat": # or artifact_type == "ProcessingPlant":
             print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
+            if not self.inException: # if in exception, let the exception handling take its course
+                if data[1] < 200: # if cubesat near left edge, turn left
+                    self.send_speed_cmd(0.0, self.max_angular_speed)
+                elif data[1] > 440:
+                    self.send_speed_cmd(0.0, -self.max_angular_speed)
+                elif data[2] > 20: # still far from top edge, keep moving; perhaps calculate artificial horizon though in case we are going downhill
+                    self.send_speed_cmd(self.max_speed, 0.0)
+                else:
+                    # detection but close to top edge
+                    # probably about to leave top edge of FOV, close enough, ask for position
+                    # maybe also check for size of bounding box as small box may indicate it only is close to the edge because of incline
+                    self.bus.publish('request_origin', True)
+                    # not sure if can do back-to-back, is this locking?
+                    ax, ay, az = self.xyz
+                    s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax, ay, 0.0)
+                    self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+
             return
 
         if self.last_artf is None:
@@ -327,9 +345,13 @@ class SpaceRoboticsChallenge(Node):
 #                print ("No turn for volatile search")
                 self.turn(math.radians(360), timeout=timedelta(seconds=100))
             except VirtualBumperException:
-                print(self.time, "Turn Virtual Bumper!")
+                print(self.time, "Initial Turn Virtual Bumper!")
                 self.virtual_bumper = None
-                self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
+                deg_angle = self.rand.randrange(90, 180)
+                deg_sign = self.rand.randint(0,1)
+                if deg_sign:
+                    deg_angle = -deg_angle
+                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
                 self.inException = False
 
             start_time = self.time
