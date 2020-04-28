@@ -157,9 +157,12 @@ class Rover(Node):
             elif self.desired_angular_speed > 0:
                 # turn left
                 effort = [-e, e, -e, e]
+                steering = [-CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
             else:
                 # turn right
                 effort = [e, -e, e, -e]
+                steering = [-CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
+
         elif self.desired_speed > 0:
             is_crab = False
             if self.roll > CRAB_DRIVE_ROLL_THRESHOLD:
