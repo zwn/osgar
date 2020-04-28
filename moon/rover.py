@@ -61,6 +61,7 @@
 # /hauler_n/bin_joint_controller/command
 
 import math
+from osgar.lib.mathex import normalizeAnglePIPI
 
 from osgar.node import Node
 
@@ -71,6 +72,9 @@ WHEEL_SEPARATION_HEIGHT = 1.5748  # meters
 
 WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 
+FOUR_WHEEL_DRIVE_PITCH_THRESHOLD = 0.1
+CRAB_DRIVE_ROLL_THRESHOLD = 0.4
+CRAB_ROLL_ANGLE = 0.78
 
 class Rover(Node):
     def __init__(self, config, bus):
@@ -83,10 +87,24 @@ class Rover(Node):
         self.verbose = False
         self.prev_position = None
         self.pose2d = 0, 0, 0
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
+        self.yaw_offset = None
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
-
+        
+    def on_rot(self, data):
+        rot = data
+        rot[2] += 18000
+        (temp_yaw, self.pitch, self.roll) = [normalizeAnglePIPI(math.radians(x/100)) for x in rot]
+        
+        if self.yaw_offset is None:
+            self.yaw_offset = -temp_yaw
+        self.yaw = temp_yaw + self.yaw_offset
+        #print ("yaw: %f, pitch: %f, roll: %f" % (self.yaw, self.pitch, self.roll))
+        
     def on_joint_position(self, data):
         assert self.joint_name is not None
         if self.prev_position is None:
@@ -128,8 +146,10 @@ class Rover(Node):
         # TODO cycle through fl, fr, bl, br
         effort =  data[self.joint_name.index(b'fl_wheel_joint')]
 
+        steering = [0.0,] * 4
+
         # workaround for not existing /clock on Moon rover
-        steering = [0,] * 4
+        
         if abs(self.desired_speed) < 0.001:
             e = 80
             if abs(self.desired_angular_speed) < 0.001:
@@ -141,8 +161,18 @@ class Rover(Node):
                 # turn right
                 effort = [e, -e, e, -e]
         elif self.desired_speed > 0:
+            is_crab = False
+            if self.roll > CRAB_DRIVE_ROLL_THRESHOLD:
+                steering = [-CRAB_ROLL_ANGLE, -CRAB_ROLL_ANGLE, 0.0, 0.0 ]
+                is_crab = True
+            elif self.roll < -CRAB_DRIVE_ROLL_THRESHOLD:
+                steering = [CRAB_ROLL_ANGLE, CRAB_ROLL_ANGLE, 0.0, 0.0]
+                is_crab = True
+            else:
+                steering = [0.0,] * 4
             e = 80
-            effort = [e, e, e, e]
+            e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 0.0
+            effort = [e, e, e2, e2]
         else:
             e = 80
             effort = [-e, -e, -e, -e]
