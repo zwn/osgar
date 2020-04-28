@@ -31,6 +31,7 @@ class ArtifactDetector(Node):
         self.depth = None  # more precise definiton of depth image
         self.width = None  # detect from incoming images
         self.cascade = cv2.CascadeClassifier('/osgar/moon/cubesat.xml')
+        self.subsequent_detects = 0
 
     def stdout(self, *args, **kwargs):
         # maybe refactor to Node?
@@ -68,30 +69,42 @@ class ArtifactDetector(Node):
     def detect(self, left_image, right_image):
         limg = cv2.imdecode(np.fromstring(left_image, dtype=np.uint8), 1)
         rimg = cv2.imdecode(np.fromstring(right_image, dtype=np.uint8), 1)
-        
+
+
         if self.width is None:
             self.stdout('Image resolution', limg.shape)
             self.width = limg.shape[1]
         assert self.width == limg.shape[1], (self.width, limg.shape[1])
 
-#        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+        limg_gray = cv2.cvtColor(limg, cv2.COLOR_BGR2GRAY) 
+        rimg_gray = cv2.cvtColor(rimg, cv2.COLOR_BGR2GRAY) 
         limg_rgb = cv2.cvtColor(limg, cv2.COLOR_BGR2RGB) 
         rimg_rgb = cv2.cvtColor(rimg, cv2.COLOR_BGR2RGB) 
 
+        stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+        disparity = stereo.compute(limg_gray,rimg_gray)
+
         lfound = self.cascade.detectMultiScale(limg_rgb,  
                                               minSize =(5, 5), maxSize =(50, 50)) 
-        if len(lfound) > 0: 
-            for (x, y, width, height) in lfound: 
-                print("[Left camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
-                self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
-
         rfound = self.cascade.detectMultiScale(rimg_rgb,  
                                               minSize =(5, 5), maxSize =(50, 50)) 
-        if len(rfound) > 0:
-            for (x, y, width, height) in rfound: 
-                print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
-                self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
 
+        if len(lfound) > 0 and len(rfound) > 0: # only report if both cameras see it
+            if self.subsequent_detects < 3: # do not act until you have at least 3 detections in a row
+                self.subsequent_detects += 1
+            else:
+                for (x, y, width, height) in lfound: 
+
+                    gray = disparity[int(y + height / 2), int(x + width / 2)]
+
+                    print("[Left camera] Cubesat found at [%d %d %d %d]; Depth: %d" % (x,y,width,height, gray))
+                    self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
+
+                for (x, y, width, height) in rfound: 
+                    print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
+                    self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
+        else:
+            self.subsequent_detects = 0
 
 def debug2dir(filename, out_dir):
     from osgar.logger import LogReader, lookup_stream_names
