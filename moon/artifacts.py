@@ -84,10 +84,8 @@ class ArtifactDetector(Node):
         stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
         disparity = stereo.compute(limg_gray,rimg_gray)
 
-        lfound = self.cascade.detectMultiScale(limg_rgb,  
-                                              minSize =(5, 5), maxSize =(50, 50)) 
-        rfound = self.cascade.detectMultiScale(rimg_rgb,  
-                                              minSize =(5, 5), maxSize =(50, 50)) 
+        lfound = self.cascade.detectMultiScale(limg_rgb, minSize =(5, 5)) 
+        rfound = self.cascade.detectMultiScale(rimg_rgb, minSize =(5, 5)) 
 
         if len(lfound) > 0 and len(rfound) > 0: # only report if both cameras see it
             if self.subsequent_detects < 3: # do not act until you have at least 3 detections in a row
@@ -97,11 +95,11 @@ class ArtifactDetector(Node):
 
                     gray = disparity[int(y + height / 2), int(x + width / 2)]
 
-                    print("[Left camera] Cubesat found at [%d %d %d %d]; Depth: %d" % (x,y,width,height, gray))
+#                    print("[Left camera] Cubesat found at [%d %d %d %d]; Depth: %d" % (x,y,width,height, gray))
                     self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
 
                 for (x, y, width, height) in rfound: 
-                    print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
+#                    print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
                     self.publish('artf', ["cubesat", x.item(), y.item(), width.item(), height.item()])
         else:
             self.subsequent_detects = 0
