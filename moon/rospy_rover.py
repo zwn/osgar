@@ -158,9 +158,15 @@ def odom2zmq():
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
+    QSIZE = 10
+
     lights_on = rospy.ServiceProxy('/scout_1/toggle_light', ToggleLightSrv)
     lights_on('high')
 
+    light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
+    light_up_msg = Float64()
+    light_up_msg.data = 0.5 #0.78 is max
+    light_up_pub.publish(light_up_msg)
 
     # TODO load it from configuration
     # task 1
@@ -193,7 +199,6 @@ def odom2zmq():
     effort_msg.data = 0
 
     # /name/fl_wheel_controller/command
-    QSIZE = 10
     vel_fl_publisher = rospy.Publisher('/scout_1/fl_wheel_controller/command', Float64, queue_size=QSIZE)
     vel_fr_publisher = rospy.Publisher('/scout_1/fr_wheel_controller/command', Float64, queue_size=QSIZE)
     vel_bl_publisher = rospy.Publisher('/scout_1/bl_wheel_controller/command', Float64, queue_size=QSIZE)
@@ -279,7 +284,7 @@ def odom2zmq():
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
-                print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
+                #print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
                 if vol_type == 'CubeSat':
                     # Task 3
                     report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
@@ -296,7 +301,8 @@ def odom2zmq():
                     except rospy.ServiceException as exc:
                         print("/vol_detected_service exception: " + str(exc))
                     except rospy.ROSException as exc:
-                        print("/vol_detected_service not available: " + str(exc))
+                        if False:
+                            print("/vol_detected_service not available: " + str(exc))
             else:
                 if len(message_type) > 0: 
                     print ("Unhandled message type: %s" % message_type)
