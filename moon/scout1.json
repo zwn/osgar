@@ -4,8 +4,8 @@
     "modules": {
       "app": {
           "driver": "moon.main:SpaceRoboticsChallenge",
-          "in": ["pose2d"],
-          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin"],
+          "in": ["pose2d", "driving_control"],
+          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery"],
           "init": {}
       },
       "transmitter": {
@@ -73,9 +73,13 @@
               ["rosmsg./scout_1/camera/left/image_raw/compressed", "detector.left_image"],
               ["rosmsg./scout_1/camera/right/image_raw/compressed", "detector.right_image"],
               ["detector.artf", "app.artf"],
+              ["detector.artf", "rover.artf"],
+              ["app.driving_recovery", "rover.driving_recovery"],
               ["app.desired_speed", "rover.desired_speed"],
               ["rover.cmd", "transmitter.raw"],
               ["rover.pose2d", "app.pose2d"],
+	      ["rover.driving_control", "app.driving_control"],
+	      ["rover.object_reached", "app.object_reached"],
               ["app.request_origin", "rosmsg.request_origin"],
               ["rosmsg.origin", "app.origin"],
               ["app.artf_cmd", "transmitter.raw"]]

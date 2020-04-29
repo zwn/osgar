@@ -75,11 +75,14 @@ WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 FOUR_WHEEL_DRIVE_PITCH_THRESHOLD = 0.1
 CRAB_DRIVE_ROLL_THRESHOLD = 0.4
 CRAB_ROLL_ANGLE = 0.78
+SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
+DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = 5 # after how many seconds to give up control once object disappears
+# there could a bump on the road or glitch in the filter so give it some time to re-find 
 
 class Rover(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register('cmd', 'pose2d')
+        bus.register('cmd', 'pose2d', 'object_reached', "driving_control")
         self.desired_speed = 0.0  # m/s
         self.desired_angular_speed = 0.0
         self.joint_name = None  # updated via Node.update()
@@ -91,9 +94,57 @@ class Rover(Node):
         self.pitch = 0.0
         self.yaw = 0.0
         self.yaw_offset = None
+        self.last_artefact_time = None
+        self.in_driving_recovery = False
+        self.objects_reached = []
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
+
+    def on_driving_recovery(self, data):
+        self.in_driving_recovery = data
+        print ("Driving recovery changed to: %r" % data)
+        
+    # used to follow objects (cubesat, processing plant, other robots, etc)
+    def on_artf(self, data):
+        # 0 vol_type, 1 distance_to, 2 vol_index
+        artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
+
+        if artifact_type == "cubesat": # or artifact_type == "ProcessingPlant":
+            # only need to find cubesat once
+            if artifact_type in self.objects_reached:
+                return
+
+            #            print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
+            if not self.in_driving_recovery: # if in exception, let the exception handling take its course
+                # virtual bumper still applies while this block has control. When triggered, driving will go to recovery and main will take over driving
+                if self.last_artefact_time is None:
+                    print ("Starting to track %s" % artifact_type)
+                    self.bus.publish('driving_control', True)
+                self.last_artefact_time = self.time.total_seconds()
+            
+                # when cubesat disappears, we need to reset the steering to going straight
+                if data[1] < 200: # if cubesat near left edge, turn left
+                    self.desired_angular_speed = SPEED_ON
+                    self.desired_speed = 0.0
+                    print ("turning left")
+                elif data[1] > 440:
+                    self.desired_angular_speed = -SPEED_ON
+                    self.desired_speed = 0.0
+                    print ("turning right")
+                elif data[2] > 20: # still far from top edge, keep moving; perhaps calculate artificial horizon though in case we are going downhill
+                    self.desired_speed = SPEED_ON
+                else:
+                    # detection but close to top edge
+                    # probably about to leave top edge of FOV, close enough, report angle and distance from robot
+                    # maybe also check for size of bounding box as small box may indicate it only is close to the edge because of incline
+                    print("Reporting Cubesat at angleX=%f angleY=%f distance=%f" % (0.0, 0.0, 0.0))
+                    self.bus.publish('driving_control', False)
+                    self.last_artefact_time = None
+                    self.objects_reached.append(artifact_type)
+                    self.bus.publish('object_reached', [artifact_type, 0.0, 0.0, 0.0])
+                    
+
         
     def on_rot(self, data):
         rot = data
@@ -148,10 +199,18 @@ class Rover(Node):
 
         steering = [0.0,] * 4
 
+        # if was following an artefact but it disappeared, just go straight until another driver takes over
+        if self.last_artefact_time is not None and self.time.total_seconds() - self.last_artefact_time > DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS:
+            self.desired_speed = SPEED_ON
+            self.desired_angular_speed = 0.0
+            self.bus.publish('driving_control', False)
+            self.last_artefact_time = None
+            print ("No longer tracking an object")
+        
         # workaround for not existing /clock on Moon rover
         
         if abs(self.desired_speed) < 0.001:
-            e = 80
+            e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras
             if abs(self.desired_angular_speed) < 0.001:
                 effort = [0,] * 4
             elif self.desired_angular_speed > 0:
@@ -173,7 +232,7 @@ class Rover(Node):
                 is_crab = True
             else:
                 steering = [0.0,] * 4
-            e = 80
+            e = 80 if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 120
             e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 0.0
             effort = [e, e, e2, e2]
         else:
