@@ -151,15 +151,14 @@ class Rover(Node):
                     # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
                     self.desired_speed = 0.0
                     self.desired_angular_speed = 0.0
-                    ax = math.atan( (CAMERA_WIDTH / 2 - (data[1] + data[3])/2 ) / float(CAMERA_FOCAL_LENGTH))
-                    ay = math.atan( (CAMERA_HEIGHT / 2 - (data[2]+data[4])/2 ) / float(CAMERA_FOCAL_LENGTH))
+                    ax = math.atan( (CAMERA_WIDTH / 2 - data[1] + data[3]/2 ) / float(CAMERA_FOCAL_LENGTH))
+                    ay = math.atan( (CAMERA_HEIGHT / 2 - data[2]+data[4]/2 ) / float(CAMERA_FOCAL_LENGTH))
                     print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                    print("Reporting Cubesat at angleX=%f angleY=%f distance=%f" % (ax, ay, 0.0))
                     self.bus.publish('driving_control', False)
                     self.last_artefact_time = None
                     self.objects_reached.append(artifact_type)
-                    # cubesat disappears when it's about 18m away
-                    self.bus.publish('object_reached', [artifact_type, ax, ay, 18.0])
+                    # cubesat disappears when it's about ~20m away
+                    self.bus.publish('object_reached', [artifact_type, ax, ay, 21.0])
                     
 
         
