@@ -153,7 +153,7 @@ class Rover(Node):
                     self.desired_angular_speed = 0.0
                     ax = math.atan( (CAMERA_WIDTH / 2 - data[1] + data[3]/2 ) / float(CAMERA_FOCAL_LENGTH))
                     ay = math.atan( (CAMERA_HEIGHT / 2 - data[2]+data[4]/2 ) / float(CAMERA_FOCAL_LENGTH))
-                    print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+#                    print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
                     self.bus.publish('driving_control', False)
                     self.last_artefact_time = None
                     self.objects_reached.append(artifact_type)
@@ -247,6 +247,9 @@ class Rover(Node):
 
             # steer against slope proportionately to the steepness of the slope
             steering_angle -= self.roll
+            # dont steer more than 45 degrees
+            steering_angle = max(-math.pi/4.0, steering_angle)
+            steering_angle = min(math.pi/4.0, steering_angle)
             steering = [steering_angle, steering_angle, 0.0, 0.0]
                 
             e = 80 if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 120
