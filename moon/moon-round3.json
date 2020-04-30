@@ -5,7 +5,7 @@
       "app": {
           "driver": "moon.main_round3:SpaceRoboticsChallenge",
           "in": ["pose2d", "driving_control"],
-          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery"],
+          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery", "set_cam_angle"],
           "init": {}
       },
       "transmitter": {
@@ -60,8 +60,6 @@
               ["rosmsg.cmd", "transmitter.raw"],
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
-              ["rosmsg./scout_1/volatile_sensor", "app.artf"],
-	      ["rosmsg./qual_1_score", "app.score"],
 	      ["rosmsg./qual_3_score", "app.score"],
               ["rosmsg.joint_name", "scout.joint_name"],
               ["rosmsg.joint_position", "scout.joint_position"],
@@ -79,7 +77,8 @@
 	      ["scout.driving_control", "app.driving_control"],
 	      ["scout.object_reached", "app.object_reached"],
               ["app.request_origin", "rosmsg.request_origin"],
-              ["rosmsg.origin", "app.origin"],
-              ["app.artf_cmd", "transmitter.raw"]]
+	      ["app.set_cam_angle", "transmitter.raw"],
+              ["rosmsg.origin", "app.origin"]
+	      ]
   }
 }

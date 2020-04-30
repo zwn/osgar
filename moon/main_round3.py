@@ -34,7 +34,7 @@ def min_dist(laser_data):
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery")
+        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "set_cam_angle")
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
@@ -76,6 +76,9 @@ class SpaceRoboticsChallenge(Node):
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def set_cam_angle(self, angle):
+        self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
+        
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
@@ -165,10 +168,6 @@ class SpaceRoboticsChallenge(Node):
             self.yaw = qz
 
             print("Origin received, internal position updated")
-            # report location as fake artifact
-            artifact_data = self.last_artf
-            ax, ay, az = self.xyz
-            self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
 
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
@@ -268,6 +267,9 @@ class SpaceRoboticsChallenge(Node):
             while self.last_position is None or self.yaw is None:
                 self.update()  # define self.time
             print('done at', self.time)
+
+            # tilt camera and light up
+            self.set_cam_angle(0.5)
 
             try:
                 self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
