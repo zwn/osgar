@@ -3,7 +3,7 @@
   "robot": {
     "modules": {
       "app": {
-          "driver": "moon.main:SpaceRoboticsChallenge",
+          "driver": "moon.main_round2:SpaceRoboticsChallenge",
           "in": ["pose2d"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "bucket_cmd"],
           "init": {}
@@ -35,15 +35,25 @@
             "downsample": 2,
             "topics": [
               ["/excavator_1/bucket_info", "srcp2_msgs/ExcavatorMsg"],
+              ["/hauler_1/bin_info", "srcp2_msgs/HaulerMsg"],
               ["/excavator_1/joint_states", "sensor_msgs/JointState"],
               ["/qual_2_score", "srcp2_msgs/Qual2ScoringMsg"],
               ["/excavator_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/excavator_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
+              ["/hauler_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
+              ["/hauler_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
             ]
           }
       },
-      "rover": {
-          "driver": "moon.rover:Rover",
+      "excavator": {
+          "driver": "moon.excavator:Excavator",
+          "in": [],
+          "out": [],
+          "init": {
+          }
+      },
+      "hauler": {
+          "driver": "moon.hauler:Hauler",
           "in": [],
           "out": [],
           "init": {
@@ -55,16 +65,16 @@
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
 	      ["rosmsg./qual_2_score", "app.score"],
-              ["rosmsg.joint_name", "rover.joint_name"],
+              ["rosmsg.joint_name", "excavator.joint_name"],
 	      ["rosmsg./excavator_1/bucket_info", "app.bucket_info"],
-              ["rosmsg.joint_position", "rover.joint_position"],
-              ["rosmsg.joint_velocity", "rover.joint_velocity"],
-              ["rosmsg.joint_effort", "rover.joint_effort"],
-              ["rosmsg.rot", "rover.rot"],
-              ["app.desired_speed", "rover.desired_speed"],
-              ["rover.cmd", "transmitter.raw"],
+              ["rosmsg.joint_position", "excavator.joint_position"],
+              ["rosmsg.joint_velocity", "excavator.joint_velocity"],
+              ["rosmsg.joint_effort", "excavator.joint_effort"],
+              ["rosmsg.rot", "excavator.rot"],
+              ["app.desired_speed", "excavator.desired_speed"],
+              ["excavator.cmd", "transmitter.raw"],
               ["app.bucket_cmd", "transmitter.raw"],
-              ["rover.pose2d", "app.pose2d"],
+              ["excavator.pose2d", "app.pose2d"],
               ["app.request_origin", "rosmsg.request_origin"],
               ["rosmsg.origin", "app.origin"]
 	     ]

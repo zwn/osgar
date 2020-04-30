@@ -34,7 +34,7 @@ def min_dist(laser_data):
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin", "bucket_cmd", "driving_recovery")
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin", "driving_recovery")
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
@@ -61,26 +61,7 @@ class SpaceRoboticsChallenge(Node):
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
         self.score = 0
-        self.bucket_status = None
         self.is_someone_else_driving = False
-
-        # TODO: account for working on an incline
-        self.scoop_time = None
-        self.scoop_index = 0
-        self.bucket_scoop_part = True # True for scoop part, False for drop part
-        self.bucket_scoop_sequence = (
-            # [<seconds to execute>, [mount, base, distal, bucket]] 
-            [12, [-0.6, -0.8, 3.2]], # get above scooping position
-            [4, [ 0.4, 1.0, 1.9]], # lower to scooping position
-            [2, [ 0.4, 1.0, 3.2]], # scoop volatiles
-            [8, [ -0.6, -0.8, 3.9]] # lift up bucket with volatiles
-            )
-        self.bucket_drop_sequence = (
-            [12, [-0.6, -0.8, 3.9]], # turn towards dropping position
-            [4, [-0.3, -0.8, 3.9]], # extend arm
-            [4, [-0.3, -0.8, 0]], # drop
-            [4, [-0.6, -0.8, 3.2]] # back to neutral/travel position
-        )
         
         self.last_artf = None
         
@@ -99,11 +80,6 @@ class SpaceRoboticsChallenge(Node):
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
-    def send_bucket_position(self, bucket_params):
-        mount, basearm, distalarm, bucket = bucket_params
-        s = '%f %f %f %f\n' % (mount, basearm, distalarm, bucket)
-        self.publish('bucket_cmd', bytes('bucket_position ' + s, encoding='ascii'))
-        
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
@@ -138,75 +114,12 @@ class SpaceRoboticsChallenge(Node):
         self.is_someone_else_driving = data
         print("Someone else is driving %r" % data)
 
-    def on_object_reached(self, timestamp, data):
-        object_type, angle_x, angle_y, distance = data
-        if (object_type == "cubesat"):
-            self.bus.publish('request_origin', True)
-            print ("After origin received, this would be followed by cubesat location report")
-
-        
-    def on_artf(self, timestamp, data):
-        # called by incoming volatile sensor report (among other sources)
-        # 0 vol_type, 1 distance_to, 2 vol_index
-        artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
-
-        if self.last_artf is None:
-# disable for round 3            self.bus.publish('request_origin', True)
-            self.last_artf = artifact_type
-        
-        distance_to = data[1]
-        vol_index = data[2]
-
-        if self.last_volatile_distance is None:
-            self.last_volatile_distance = distance_to
-        elif self.last_volatile_distance > distance_to:
-#            print ("Volatile detection %d, getting closer: %f" % (vol_index, distance_to))
-            self.last_volatile_distance = distance_to
-        elif self.last_vol_index is None or vol_index != self.last_vol_index:
-            self.last_vol_index = vol_index
-            self.last_volatile_distance = None
-            # TODO: this must be adjusted to report the position of the sensor, not the robot (which NASA will update their code for at some point)
-            # the best known distance was in reference to mutual position of the sensor and the volatile
-            ax, ay, az = self.xyz
-#            print ("Volatile detection, starting to go further, reporting %f %f" % (ax, ay))
-
-            # TODO (maybe): if not accepted, try again?
-            s = '%s %.2f %.2f %.2f\n' % (artifact_type, ax, ay, 0.0)
-            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-        else:
-            self.last_volatile_distance = None
-#            print ("Previously visited volatile %d, not reporting" % vol_index)
-            
-
     def on_score(self, timestamp, data):
         self.score = data[0]
 
-    def on_bucket_info(self, timestamp, data):
-        self.bucket_status = data
-        
     def update(self):
 
-        # demo scooping and dropping material with the excavator
-        if self.time is not None:
-            if self.scoop_time is None or self.time > self.scoop_time:
-                if self.bucket_scoop_part:
-                    duration, bucket_params = self.bucket_scoop_sequence[self.scoop_index]
-                    target_angle = 3.4 # demo scooping towards the back of the vehicle
-                else:
-                    duration, bucket_params = self.bucket_drop_sequence[self.scoop_index]
-                    target_angle = 0.2 # demo dropping towards the rear of the vehicle
-#                print ("bucket_position %f %f %f " % (bucket_params[0], bucket_params[1],bucket_params[2]))
-                self.send_bucket_position([target_angle, *bucket_params])
-                self.scoop_time = self.time + timedelta(seconds=duration)
-                if self.scoop_index + 1 == len(self.bucket_scoop_sequence if self.bucket_scoop_part else self.bucket_drop_sequence):
-                    self.scoop_index = 0
-                    self.bucket_scoop_part = not self.bucket_scoop_part
-                else:
-                    self.scoop_index += 1
-                    
-                
-
-        # print status periodically - location and content of bucket if any
+        # print status periodically - location
         if self.time is not None:
             if self.last_status_timestamp is None:
                 self.last_status_timestamp = self.time
@@ -214,8 +127,6 @@ class SpaceRoboticsChallenge(Node):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
                 print ("Loc: %f %f %f; Score: %d" % (x, y, z, self.score))
-                if self.bucket_status is not None and self.bucket_status[1] > 0:
-                    print ("Bucket content: Type: %s idx: %d mass: %f" % (self.bucket_status[0], self.bucket_status[1], self.bucket_status[2]))
                 
 
         
@@ -225,16 +136,10 @@ class SpaceRoboticsChallenge(Node):
 #            handler(self.time, data)
         if channel == 'pose2d':
             self.on_pose2d(self.time, self.pose2d)
-        elif channel == 'artf':
-            self.on_artf(self.time, self.artf)
         elif channel == 'score':
             self.on_score(self.time, self.score)
-        elif channel == 'object_reached':
-            self.on_object_reached(self.time, self.object_reached)
         elif channel == 'driving_control':
             self.on_driving_control(self.time, self.driving_control)
-        elif channel == 'bucket_info':
-            self.on_bucket_info(self.time, self.bucket_info)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'origin':
@@ -258,6 +163,7 @@ class SpaceRoboticsChallenge(Node):
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
             if not self.inException and self.pitch > 0.5:
+                # TODO pitch can also go the other way if we back into an obstacle
                 self.inException = True
                 self.bus.publish('driving_recovery', True)
                 print ("Excess pitch, going back down")
@@ -334,6 +240,15 @@ class SpaceRoboticsChallenge(Node):
 
         self.send_speed_cmd(0.0, 0.0)
 
+    def try_step_around(self):
+        self.turn(math.radians(90), timeout=timedelta(seconds=10))
+
+        # recovered enough at this point to switch to another driver (in case you see cubesat while doing the 3m drive or the final turn)
+        self.bus.publish('driving_recovery', False)
+        
+        self.go_straight(3.0, timeout=timedelta(seconds=20))
+        self.turn(math.radians(-90), timeout=timedelta(seconds=10))
+        
     def run(self):
         try:
             print('Wait for definition of last_position and yaw')
@@ -341,66 +256,62 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            try:
-#                print ("No turn for volatile search")
-                self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
-            except VirtualBumperException:
-                print(self.time, "Initial Turn Virtual Bumper!")
-                self.virtual_bumper = None
-                deg_angle = self.rand.randrange(90, 180)
-                deg_sign = self.rand.randint(0,1)
-                if deg_sign:
-                    deg_angle = -deg_angle
-                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=20))
-                self.inException = False
-                self.bus.publish('driving_recovery', False)
-
             last_walk_start = 0.0
             start_time = self.time
             while self.time - start_time < timedelta(minutes=40):
-                if not self.is_someone_else_driving:
-                    additional_turn = 0
-                    try:
-                        last_walk_start = self.time
-                        self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
-                        self.go_straight(100.0, timeout=timedelta(minutes=5))
-                        self.update()
-                    except VirtualBumperException:
-                        print(self.time, "Virtual Bumper!")
-                        self.virtual_bumper = None
-                        self.go_straight(-1.0, timeout=timedelta(seconds=10))
-                        if self.time - last_walk_start > timedelta(seconds=10):
-                            self.turn(math.radians(90), timeout=timedelta(seconds=10))
-                            self.go_straight(3.0, timeout=timedelta(seconds=10))
-                            self.turn(math.radians(-90), timeout=timedelta(seconds=10))
-                            
-                        self.inException = False
+                additional_turn = 0
+                last_walk_start = self.time
+                try:
+                    self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
+                    if not self.is_someone_else_driving:
+                        self.go_straight(100.0, timeout=timedelta(minutes=2))
+                    else:
+                        self.wait(timedelta(seconds=10))   
+                    self.update()
+                except VirtualBumperException:
+                    last_walk_end = self.time
+                    print(self.time, "Virtual Bumper!")
+                    self.virtual_bumper = None
+                    self.go_straight(-2.0, timeout=timedelta(seconds=10))
+                    if last_walk_end - last_walk_start > timedelta(seconds=20): # if we went more than 20 secs, try to continue a step to the left
+                        self.try_step_around()
+                    else:
                         self.bus.publish('driving_recovery', False)
-                        if self.time - last_walk_start > timedelta(seconds=50): # could take 50 secs to try the maneuver
-                            # if last step only ran short time before bumper, time for a large random turn
-                            # if it ran long time, maybe worth trying going in the same direction
-                            continue
-                        additional_turn = 30
+
+                    self.inException = False
+
+                    print ("Time elapsed since start of previous leg: %d sec" % (last_walk_end.total_seconds()-last_walk_start.total_seconds()))
+                    if last_walk_end - last_walk_start > timedelta(seconds=20):
+                        # if last step only ran short time before bumper, time for a large random turn
+                        # if it ran long time, maybe worth trying going in the same direction
+                        continue
+                    additional_turn = 30
                         
                     # next random walk direction should be between 30 and 150 degrees
                     # (no need to go straight back or keep going forward)
                     # if part of virtual bumper handling, add 30 degrees to avoid the obstacle more forcefully
-                    deg_angle = self.rand.randrange(30 + additional_turn, 150 + additional_turn)
-                    deg_sign = self.rand.randint(0,1)
-                    if deg_sign:
-                        deg_angle = -deg_angle
-                    try:
-                        self.virtual_bumper = VirtualBumper(timedelta(seconds=10), 0.1)
-                        self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
-                    except VirtualBumperException:
-                        print(self.time, "Turn Virtual Bumper!")
-                        self.virtual_bumper = None
-                        self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
-                        self.inException = False
-                        self.bus.publish('driving_recovery', False)
-                else:
-                    self.wait(timedelta(seconds=1))    
-            self.wait(timedelta(seconds=10))
+
+                deg_angle = self.rand.randrange(30 + additional_turn, 150 + additional_turn)
+                deg_sign = self.rand.randint(0,1)
+                if deg_sign:
+                    deg_angle = -deg_angle
+                try:
+                    self.virtual_bumper = VirtualBumper(timedelta(seconds=20), 0.1)
+
+                    # when looking for satellite, do 360 each turn
+                    self.turn(math.radians(360), timeout=timedelta(seconds=40))
+
+                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                except VirtualBumperException:
+                    print(self.time, "Turn Virtual Bumper!")
+                    self.virtual_bumper = None
+                    if self.is_someone_else_driving:
+                        # probably didn't throw in previous turn but during self driving
+                        self.go_straight(-2.0, timeout=timedelta(seconds=10))
+                        self.try_step_around()
+                    self.turn(math.radians(-deg_angle), timeout=timedelta(seconds=30))
+                    self.inException = False
+                    self.bus.publish('driving_recovery', False)
         except BusShutdownException:
             pass
 

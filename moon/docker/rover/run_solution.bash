@@ -5,14 +5,16 @@ while getopts hr: arg; do
 	r)
 	    case $OPTARG in
 		"1" )
-		    JSONFILES=("scout1.json")
+		    JSONFILES=("moon-round1.json")
 		    ROVERSCRIPTS=("rospy_rover.py")
 		    ;;
 		"2" )
-		    JSONFILES=("excavator1.json" "hauler1.json")
+		    JSONFILES=("moon-round2.json")
 		    ROVERSCRIPTS=("rospy_excavator.py" "rospy_hauler.py")
 		    ;;
 		"3" )
+		    JSONFILES=("moon-round3.json")
+		    ROVERSCRIPTS=("rospy_rover.py")
 		;;
 		
 	    esac

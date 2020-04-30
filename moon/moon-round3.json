@@ -3,7 +3,7 @@
   "robot": {
     "modules": {
       "app": {
-          "driver": "moon.main:SpaceRoboticsChallenge",
+          "driver": "moon.main_round3:SpaceRoboticsChallenge",
           "in": ["pose2d", "driving_control"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery"],
           "init": {}
@@ -30,20 +30,18 @@
       "rosmsg": {
           "driver": "rosmsg",
           "in": ["slot_raw", "desired_speed", "tick", "stdout", "request_origin"],
-          "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin", "gas_detected"],
+          "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin"],
           "init": {
             "downsample": 2,
           "topics": [
               ["/scout_1/joint_states", "sensor_msgs/JointState"],
-              ["/qual_1_score", "srcp2_msgs/Qual1ScoringMsg"],
-              ["/scout_1/volatile_sensor", "srcp2_msgs/VolSensorMsg"],
               ["/qual_3_score", "srcp2_msgs/Qual3ScoringMsg"],
               ["/scout_1/camera/left/image_raw/compressed", "sensor_msgs/CompressedImage"],
               ["/scout_1/camera/right/image_raw/compressed", "sensor_msgs/CompressedImage"]
             ]
           }
       },
-      "rover": {
+      "scout": {
           "driver": "moon.rover:Rover",
           "in": [],
           "out": [],
@@ -65,21 +63,21 @@
               ["rosmsg./scout_1/volatile_sensor", "app.artf"],
 	      ["rosmsg./qual_1_score", "app.score"],
 	      ["rosmsg./qual_3_score", "app.score"],
-              ["rosmsg.joint_name", "rover.joint_name"],
-              ["rosmsg.joint_position", "rover.joint_position"],
-              ["rosmsg.joint_velocity", "rover.joint_velocity"],
-              ["rosmsg.joint_effort", "rover.joint_effort"],
-              ["rosmsg.rot", "rover.rot"],
+              ["rosmsg.joint_name", "scout.joint_name"],
+              ["rosmsg.joint_position", "scout.joint_position"],
+              ["rosmsg.joint_velocity", "scout.joint_velocity"],
+              ["rosmsg.joint_effort", "scout.joint_effort"],
+              ["rosmsg.rot", "scout.rot"],
               ["rosmsg./scout_1/camera/left/image_raw/compressed", "detector.left_image"],
               ["rosmsg./scout_1/camera/right/image_raw/compressed", "detector.right_image"],
               ["detector.artf", "app.artf"],
-              ["detector.artf", "rover.artf"],
-              ["app.driving_recovery", "rover.driving_recovery"],
-              ["app.desired_speed", "rover.desired_speed"],
-              ["rover.cmd", "transmitter.raw"],
-              ["rover.pose2d", "app.pose2d"],
-	      ["rover.driving_control", "app.driving_control"],
-	      ["rover.object_reached", "app.object_reached"],
+              ["detector.artf", "scout.artf"],
+              ["app.driving_recovery", "scout.driving_recovery"],
+              ["app.desired_speed", "scout.desired_speed"],
+              ["scout.cmd", "transmitter.raw"],
+              ["scout.pose2d", "app.pose2d"],
+	      ["scout.driving_control", "app.driving_control"],
+	      ["scout.object_reached", "app.object_reached"],
               ["app.request_origin", "rosmsg.request_origin"],
               ["rosmsg.origin", "app.origin"],
               ["app.artf_cmd", "transmitter.raw"]]
