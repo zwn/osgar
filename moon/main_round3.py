@@ -14,6 +14,9 @@ from osgar.lib.virtual_bumper import VirtualBumper
 
 from subt.local_planner import LocalPlanner
 
+CAMERA_FOCAL_LENGTH = 381
+CAMERA_WIDTH = 640
+CAMERA_HEIGHT = 480
 
 class VirtualBumperException(Exception):
     pass
@@ -64,6 +67,9 @@ class SpaceRoboticsChallenge(Node):
         self.is_someone_else_driving = False
         self.cubesat_offset = None
         self.camera_angle = 0.0
+        self.camera_change_triggered_time = None
+
+        self.object_reached_location = None
         
         self.inException = False
         
@@ -79,6 +85,7 @@ class SpaceRoboticsChallenge(Node):
 
     def set_cam_angle(self, angle):
         self.camera_angle = angle
+        self.camera_change_triggered_time = self.time
         self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
         
     def on_pose2d(self, timestamp, data):
@@ -124,6 +131,25 @@ class SpaceRoboticsChallenge(Node):
     def on_score(self, timestamp, data):
         self.score = data[0]
 
+    def on_artf(self, timestamp, data):
+        artifact_type, img_x, img_y, img_w, img_h = data
+
+        if self.object_reached_location is not None and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat":
+            print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+            angle_x = math.atan( (CAMERA_WIDTH / 2 - img_x + img_w/2 ) / float(CAMERA_FOCAL_LENGTH))
+            angle_y = math.atan( (CAMERA_HEIGHT / 2 - img_y+img_h/2 ) / float(CAMERA_FOCAL_LENGTH))
+            distance = 20 #TODO: estimate distance from bounding box size
+            ax = self.yaw + angle_x
+            ay = self.pitch + angle_y + self.camera_angle # direction of camera
+            x, y, z = self.xyz
+            ox = math.sin(ax) * distance
+            oy = math.cos(ax) * distance
+            oz = math.sin(ay) * distance
+            self.cubesat_offset = [ox, oy, oz]
+            print ("Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
+            print ("Object location estimated at: [%f %f %f]" % (x+ox, y+oy, z+oz))
+
+        
     def update(self):
 
         # print status periodically - location
@@ -143,6 +169,8 @@ class SpaceRoboticsChallenge(Node):
             self.on_pose2d(self.time, self.pose2d)
         elif channel == 'score':
             self.on_score(self.time, self.score)
+        elif channel == 'artf':
+            self.on_artf(self.time, self.artf)
         elif channel == 'object_reached':
             self.on_object_reached(self.time, self.object_reached)
         elif channel == 'driving_control':
@@ -162,17 +190,9 @@ class SpaceRoboticsChallenge(Node):
             # robot should be stopped right now (using brakes once available)
             # lift camera to max, object should be (back) in view
             # trigger recognition, get bounding box and calculate fresh angles
-            
-            angle_x, angle_y, distance = self.object_reached_location
-            ax = self.yaw + angle_x
-            ay = self.pitch + angle_y + self.camera_angle # direction of camera
-            x, y, z = self.xyz
-            ox = math.sin(ax) * distance
-            oy = math.cos(ax) * distance
-            oz = math.cos(ay) * distance
-            self.cubesat_offset = [ox, oy, oz]
-            print ("Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
-            print ("Object location estimated at: [%f %f %f]" % (x+ox, y+oy, z+oz))
+
+            # tilt camera all the way up, it should trigger a detection again
+            self.set_cam_angle(0.78)
             
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
@@ -280,6 +300,7 @@ class SpaceRoboticsChallenge(Node):
                 self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
             except VirtualBumperException:
                 print(self.time, "Initial Turn Virtual Bumper!")
+                # if detector takes over driving within initial turn, rover may be actually going straight at this moment
                 self.virtual_bumper = None
                 deg_angle = self.rand.randrange(90, 180)
                 deg_sign = self.rand.randint(0,1)
@@ -309,8 +330,9 @@ class SpaceRoboticsChallenge(Node):
                     last_walk_end = self.time
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
-                    self.go_straight(-2.0, timeout=timedelta(seconds=10))
+                    self.go_straight(-2.0, timeout=timedelta(seconds=10)) # this should be reasonably safe, we just came from there
                     if last_walk_end - last_walk_start > timedelta(seconds=20): # if we went more than 20 secs, try to continue a step to the left
+                        # TODO: this is not necessarily safe, need to protect against pitch, etc again
                         self.try_step_around()
                     else:
                         self.bus.publish('driving_recovery', False)
@@ -318,8 +340,8 @@ class SpaceRoboticsChallenge(Node):
                     self.inException = False
 
                     print ("Time elapsed since start of previous leg: %d sec" % (last_walk_end.total_seconds()-last_walk_start.total_seconds()))
-                    if last_walk_end - last_walk_start > timedelta(seconds=20):
-                        # if last step only ran short time before bumper, time for a large random turn
+                    if last_walk_end - last_walk_start > timedelta(seconds=40):
+                        # if last step only ran short time before bumper (this includes bumper timeout time), time for a large random turn
                         # if it ran long time, maybe worth trying going in the same direction
                         continue
                     additional_turn = 30
