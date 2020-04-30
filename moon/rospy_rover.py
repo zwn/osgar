@@ -165,8 +165,6 @@ def odom2zmq():
 
     light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
     light_up_msg = Float64()
-    light_up_msg.data = 0.5 #0.78 is max
-    light_up_pub.publish(light_up_msg)
 
     # TODO load it from configuration
     # task 1
@@ -234,6 +232,11 @@ def odom2zmq():
                     effort_msg.data = effort
                     pub.publish(effort_msg)
 
+            elif message_type == "set_cam_angle":
+                angle = float(message.split(" ")[1])
+                light_up_msg.data = angle
+                light_up_pub.publish(light_up_msg)
+                
             elif message_type == "cmd_vel":
                 desired_speed = float(message.split(" ")[1])
                 desired_angular_speed = float(message.split(" ")[2])
