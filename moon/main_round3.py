@@ -63,6 +63,7 @@ class SpaceRoboticsChallenge(Node):
         self.score = 0
         self.is_someone_else_driving = False
         self.cubesat_offset = None
+        self.camera_angle = 0.0
         
         self.inException = False
         
@@ -77,6 +78,7 @@ class SpaceRoboticsChallenge(Node):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
     def set_cam_angle(self, angle):
+        self.camera_angle = angle
         self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
         
     def on_pose2d(self, timestamp, data):
@@ -116,17 +118,8 @@ class SpaceRoboticsChallenge(Node):
     def on_object_reached(self, timestamp, data):
         object_type, angle_x, angle_y, distance = data
         if (object_type == "cubesat"):
+            self.object_reached_location = data[1:]
             self.bus.publish('request_origin', True)
-            print ("After origin received, this would be followed by cubesat location report")
-            # this calculation needs to occur after the pose has been received, just placeholder for now 
-            ax = self.yaw + angle_x
-            ay = self.pitch + angle_y + 0.5 # direction of camera
-            x, y, z = self.xyz
-            ox = math.sin(ax) * distance
-            oy = math.cos(ax) * distance
-            oz = math.cos(ay) * distance
-            self.cubesat_offset = [ox, oy, oz]
-            print ("Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
 
     def on_score(self, timestamp, data):
         self.score = data[0]
@@ -141,9 +134,7 @@ class SpaceRoboticsChallenge(Node):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
                 print ("Loc: %f %f %f; Score: %d" % (x, y, z, self.score))
-                
 
-        
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
 #        if handler is not None:
@@ -168,7 +159,21 @@ class SpaceRoboticsChallenge(Node):
             self.yaw = qz
 
             print("Origin received, internal position updated")
-
+            # robot should be stopped right now (using brakes once available)
+            # lift camera to max, object should be (back) in view
+            # trigger recognition, get bounding box and calculate fresh angles
+            
+            angle_x, angle_y, distance = self.object_reached_location
+            ax = self.yaw + angle_x
+            ay = self.pitch + angle_y + self.camera_angle # direction of camera
+            x, y, z = self.xyz
+            ox = math.sin(ax) * distance
+            oy = math.cos(ax) * distance
+            oz = math.cos(ay) * distance
+            self.cubesat_offset = [ox, oy, oz]
+            print ("Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
+            print ("Object location estimated at: [%f %f %f]" % (x+ox, y+oy, z+oz))
+            
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
             if self.yaw_offset is None:
@@ -287,6 +292,8 @@ class SpaceRoboticsChallenge(Node):
             last_walk_start = 0.0
             start_time = self.time
             while self.time - start_time < timedelta(minutes=40):
+                self.set_cam_angle(0.5)
+
                 if self.cubesat_offset is not None:
                     break
                 additional_turn = 0
