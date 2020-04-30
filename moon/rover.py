@@ -75,9 +75,14 @@ WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 FOUR_WHEEL_DRIVE_PITCH_THRESHOLD = 0.1
 CRAB_DRIVE_ROLL_THRESHOLD = 0.4
 CRAB_ROLL_ANGLE = 0.78
+STEER_TOWARDS_OBJECT_ANGLE = 0.3
 SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
 DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = 5 # after how many seconds to give up control once object disappears
-# there could a bump on the road or glitch in the filter so give it some time to re-find 
+# there could a bump on the road or glitch in the filter so give it some time to re-find
+
+CAMERA_FOCAL_LENGTH = 381
+CAMERA_WIDTH = 640
+CAMERA_HEIGHT = 480
 
 class Rover(Node):
     def __init__(self, config, bus):
@@ -104,7 +109,7 @@ class Rover(Node):
     def on_driving_recovery(self, data):
         self.in_driving_recovery = data
         print ("Driving recovery changed to: %r" % data)
-        
+
     # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, data):
         # 0 vol_type, 1 distance_to, 2 vol_index
@@ -126,23 +131,35 @@ class Rover(Node):
                 # when cubesat disappears, we need to reset the steering to going straight
                 if data[1] < 200: # if cubesat near left edge, turn left
                     self.desired_angular_speed = SPEED_ON
-                    self.desired_speed = 0.0
+                    self.desired_speed = SPEED_ON
                     print ("turning left")
                 elif data[1] > 440:
                     self.desired_angular_speed = -SPEED_ON
-                    self.desired_speed = 0.0
-                    print ("turning right")
-                elif data[2] > 20: # still far from top edge, keep moving; perhaps calculate artificial horizon though in case we are going downhill
                     self.desired_speed = SPEED_ON
+                    print ("turning right")
+                elif data[2] > 20 or self.pitch < -0.2: #make sure negative means down
+                    # if object is far from top edge or we are going downhil, keep going
+                    # if close to edge, the object may disappear temporarily but should reappear once on flat
+                    # perhaps calculate artificial horizon though in case we are going downhill
+                    self.desired_speed = SPEED_ON
+                    self.desired_angular_speed = 0.0
                 else:
-                    # detection but close to top edge
-                    # probably about to leave top edge of FOV, close enough, report angle and distance from robot
-                    # maybe also check for size of bounding box as small box may indicate it only is close to the edge because of incline
-                    print("Reporting Cubesat at angleX=%f angleY=%f distance=%f" % (0.0, 0.0, 0.0))
+                    # detection but close to top edge and not going downhill
+                    # probably about to leave top edge of FOV, close enough
+                    # stop and report angle and distance from robot
+                    # robot moves a little after detection so the angles do not correspond with the true pose we will receive
+                    # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
+                    self.desired_speed = 0.0
+                    self.desired_angular_speed = 0.0
+                    ax = math.atan( (CAMERA_WIDTH / 2 - (data[1] + data[3])/2 ) / float(CAMERA_FOCAL_LENGTH))
+                    ay = math.atan( (CAMERA_HEIGHT / 2 - (data[2]+data[4])/2 ) / float(CAMERA_FOCAL_LENGTH))
+                    print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                    print("Reporting Cubesat at angleX=%f angleY=%f distance=%f" % (ax, ay, 0.0))
                     self.bus.publish('driving_control', False)
                     self.last_artefact_time = None
                     self.objects_reached.append(artifact_type)
-                    self.bus.publish('object_reached', [artifact_type, 0.0, 0.0, 0.0])
+                    # cubesat disappears when it's about 18m away
+                    self.bus.publish('object_reached', [artifact_type, ax, ay, 18.0])
                     
 
         
@@ -210,7 +227,7 @@ class Rover(Node):
         # workaround for not existing /clock on Moon rover
         
         if abs(self.desired_speed) < 0.001:
-            e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras
+            e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras; this shouldn't actually happen as we steer and go together when following an object
             if abs(self.desired_angular_speed) < 0.001:
                 effort = [0,] * 4
             elif self.desired_angular_speed > 0:
@@ -223,17 +240,18 @@ class Rover(Node):
                 steering = [-CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
 
         elif self.desired_speed > 0:
-            is_crab = False
-            if self.roll > CRAB_DRIVE_ROLL_THRESHOLD:
-                steering = [-CRAB_ROLL_ANGLE, -CRAB_ROLL_ANGLE, 0.0, 0.0 ]
-                is_crab = True
-            elif self.roll < -CRAB_DRIVE_ROLL_THRESHOLD:
-                steering = [CRAB_ROLL_ANGLE, CRAB_ROLL_ANGLE, 0.0, 0.0]
-                is_crab = True
-            else:
-                steering = [0.0,] * 4
+            steering_angle = 0.0
+            if self.desired_angular_speed > 0.001: # want to go both forward and steer, this currently only happens when following an object
+                steering_angle = STEER_TOWARDS_OBJECT_ANGLE
+            elif self.desired_angular_speed < -0.001:
+                steering_angle = -STEER_TOWARDS_OBJECT_ANGLE
+
+            # steer against slope proportionately to the steepness of the slope
+            steering_angle -= self.roll
+            steering = [steering_angle, steering_angle, 0.0, 0.0]
+                
             e = 80 if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 120
-            e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 0.0
+            e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else e # 4wd all the time
             effort = [e, e, e2, e2]
         else:
             e = 80
