@@ -18,7 +18,7 @@ CAMERA_FOCAL_LENGTH = 381
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
-CAMERA_ANGLE_DRIVING = -0.1
+CAMERA_ANGLE_DRIVING = 0.5
 CAMERA_ANGLE_LOOKING = 0.6
 
 class VirtualBumperException(Exception):
@@ -96,6 +96,7 @@ class SpaceRoboticsChallenge(Node):
         self.camera_angle = CAMERA_ANGLE_DRIVING
         self.camera_change_triggered_time = None
         self.cubesat_reported = False
+        self.origin_updated = False
 
         self.object_reached_location = None
         
@@ -121,6 +122,7 @@ class SpaceRoboticsChallenge(Node):
 
     def set_cam_angle(self, angle):
         self.camera_angle = angle
+        print ("Set camera angle to: %f" % angle)
         self.camera_change_triggered_time = self.time
         self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
         
@@ -167,27 +169,50 @@ class SpaceRoboticsChallenge(Node):
     def on_score(self, timestamp, data):
         self.score = data[0]
 
+    def interpolate_distance(self, pixels):
+        # linearly interpolate in between measured values (pixels, distance)
+        # https://www.desmos.com/calculator/md6buy4efz
+        
+        observed_values = [(45, 22.0), (51, 21.0), (55, 19.2), (60, 15.0), (64, 16.2), (70, 13.0), (100, 9.4)]
+
+        t1 = None
+        
+        if pixels < observed_values[0][0]:
+            return 21 # catch-all for furthest distances outside measured range
+        else:
+            for t2 in observed_values:
+                if pixels < t2[0]:
+                    x2 = t2[0]
+                    y2 = t2[1]
+                    x1 = t1[0]
+                    y1 = t1[1]
+                    m = (y2 - y1) / (x2 - x1)
+                    return m * (pixels - x1) + y1
+                else:
+                    t1 = t2
+        return 7 # for closest objects outside measured range
+                    
+        
     def on_artf(self, timestamp, data):
         artifact_type, img_x, img_y, img_w, img_h = data
 
-        if self.object_reached_location is not None and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and not self.cubesat_reported:
+        if self.object_reached_location is not None and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_reported:
             print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
             angle_x = math.atan( (CAMERA_WIDTH / 2 - img_x + img_w/2 ) / float(CAMERA_FOCAL_LENGTH))
             angle_y = math.atan( (CAMERA_HEIGHT / 2 - img_y+img_h/2 ) / float(CAMERA_FOCAL_LENGTH))
-            m = -0.232 # https://www.desmos.com/calculator/md6buy4efz
-            distance = m * (data[3] - 100) + 9.4 # measured [100px=>9.4m; 50px=>21m] 
-            distance = max(1.0, distance) # won't be close than 1m from the robot 
+
+            distance = self.interpolate_distance(data[3]) + 2 # add 2m to account for coordinates referring to center of robot and cubesat
             ax = self.nasa_yaw + angle_x
             ay = self.nasa_pitch + angle_y + self.camera_angle # direction of camera
             x, y, z = self.nasa_xyz
             print("Using pose: xyz=[%f %f %f] orientation=[%f %f %f]" % (x, y, z, self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             print("In combination with view angle %f %f and distance %f" % (ax, ay, distance))
-            ox = math.sin(ax) * distance
-            oy = math.cos(ax) * distance
+            ox = math.cos(ax) * math.cos(ay) * distance
+            oy = math.sin(ax) * math.cos(ay) * distance
             oz = math.sin(ay) * distance
             self.cubesat_offset = [ox, oy, oz]
             print ("Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
-            print ("Reporting estimated object location at: [%f %f %f]" % (x+ox, y+oy, z+oz))
+            print ("Reporting estimated object location at: [%f,%f,%f]" % (x+ox, y+oy, z+oz))
 
             s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
@@ -249,8 +274,9 @@ class SpaceRoboticsChallenge(Node):
             siny_cosp = 2 * (qw * qz + qx * qy);
             cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
             self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
-            
+            print ("Calculated angles roll=%f, pitch=%f, yaw=%f" % (self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             # tilt camera all the way up, it should trigger a detection again
+            self.origin_updated = True
             self.set_cam_angle(0.78)
             
         elif channel == 'rot':
@@ -368,7 +394,7 @@ class SpaceRoboticsChallenge(Node):
                 deg_sign = self.rand.randint(0,1)
                 if deg_sign:
                     deg_angle = -deg_angle
-                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=20))
+                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=10))
                 self.inException = False
                 self.bus.publish('driving_recovery', False)
             finally:
@@ -427,7 +453,7 @@ class SpaceRoboticsChallenge(Node):
                     x,y,z = self.xyz
                     if z > 0: # no need to look around if in crater
                         self.set_cam_angle(CAMERA_ANGLE_LOOKING)
-                        self.turn(math.radians(360), timeout=timedelta(seconds=40))
+                        self.turn(math.radians(360), timeout=timedelta(seconds=20))
                         self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                     
                     self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
