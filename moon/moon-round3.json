@@ -78,7 +78,8 @@
 	      ["scout.object_reached", "app.object_reached"],
               ["app.request_origin", "rosmsg.request_origin"],
 	      ["app.set_cam_angle", "transmitter.raw"],
-              ["rosmsg.origin", "app.origin"]
+              ["rosmsg.origin", "app.origin"],
+	      ["app.artf_cmd", "transmitter.raw"]
 	      ]
   }
 }
