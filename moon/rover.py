@@ -75,7 +75,7 @@ WHEEL_NAMES = ['fl', 'fr', 'bl', 'br']
 FOUR_WHEEL_DRIVE_PITCH_THRESHOLD = 0.1
 CRAB_DRIVE_ROLL_THRESHOLD = 0.4
 CRAB_ROLL_ANGLE = 0.78
-STEER_TOWARDS_OBJECT_ANGLE = 0.3
+STEER_TOWARDS_OBJECT_ANGLE = 0.5
 SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
 DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = 5 # after how many seconds to give up control once object disappears
 # there could a bump on the road or glitch in the filter so give it some time to re-find
@@ -127,6 +127,9 @@ class Rover(Node):
                     print ("Starting to track %s" % artifact_type)
                     self.bus.publish('driving_control', True)
                 self.last_artefact_time = self.time.total_seconds()
+
+                m = -0.232 # https://www.desmos.com/calculator/md6buy4efz
+                distance = m * (data[3] - 100) + 9.4 # measured [100px=>9.4m; 50px=>21m] 
             
                 # when cubesat disappears, we need to reset the steering to going straight
                 if data[1] < 200: # if cubesat near left edge, turn left
@@ -135,7 +138,7 @@ class Rover(Node):
                 elif data[1] > 440:
                     self.desired_angular_speed = -SPEED_ON
                     self.desired_speed = SPEED_ON
-                elif data[2] > 20 or self.pitch < -0.2: #make sure negative means down
+                elif distance > 18: #make sure negative means down
                     # if object is far from top edge or we are going downhil, keep going
                     # if close to edge, the object may disappear temporarily but should reappear once on flat
                     # perhaps calculate artificial horizon though in case we are going downhill
