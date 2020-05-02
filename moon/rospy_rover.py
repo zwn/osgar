@@ -287,8 +287,8 @@ def odom2zmq():
                 x, y, z = [float(a) for a in s[1:]]
                 pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
-                #print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
-                if vol_type == 'CubeSat':
+                print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
+                if vol_type == 'cubesat':
                     # Task 3
                     report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
                     try:
