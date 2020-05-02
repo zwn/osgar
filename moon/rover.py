@@ -132,11 +132,9 @@ class Rover(Node):
                 if data[1] < 200: # if cubesat near left edge, turn left
                     self.desired_angular_speed = SPEED_ON
                     self.desired_speed = SPEED_ON
-                    print ("turning left")
                 elif data[1] > 440:
                     self.desired_angular_speed = -SPEED_ON
                     self.desired_speed = SPEED_ON
-                    print ("turning right")
                 elif data[2] > 20 or self.pitch < -0.2: #make sure negative means down
                     # if object is far from top edge or we are going downhil, keep going
                     # if close to edge, the object may disappear temporarily but should reappear once on flat
@@ -223,8 +221,7 @@ class Rover(Node):
             self.last_artefact_time = None
             print ("No longer tracking an object")
         
-        # workaround for not existing /clock on Moon rover
-        
+        # only turning
         if abs(self.desired_speed) < 0.001:
             e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras; this shouldn't actually happen as we steer and go together when following an object
             if abs(self.desired_angular_speed) < 0.001:
@@ -238,24 +235,38 @@ class Rover(Node):
                 effort = [e, -e, e, -e]
                 steering = [-CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
 
-        elif self.desired_speed > 0:
-            steering_angle = 0.0
-            if self.desired_angular_speed > 0.001: # want to go both forward and steer, this currently only happens when following an object
-                steering_angle = STEER_TOWARDS_OBJECT_ANGLE
-            elif self.desired_angular_speed < -0.001:
-                steering_angle = -STEER_TOWARDS_OBJECT_ANGLE
+        elif self.desired_speed > 0: # going forward
 
-            # steer against slope proportionately to the steepness of the slope
-            steering_angle -= self.roll
-            # dont steer more than 45 degrees
-            steering_angle = max(-math.pi/4.0, steering_angle)
-            steering_angle = min(math.pi/4.0, steering_angle)
-            steering = [steering_angle, steering_angle, 0.0, 0.0]
+            # if pitch too steep, turn diagonally a try to climb this way being able to handle larger pitch
+            if self.pitch > 0.3:
+                # TODO: try to maintain wheel orientation up (wheels turning straight up even if body turns)
+                if self.roll > 0:
+                    #steering = [3*-self.roll,3*-self.roll,0.0, 0.0]
+
+                    steering = [-CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
+                else:
+                    #steering = [3*-self.roll,3*-self.roll,0.0, 0.0]
+                    steering = [CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE]
+                e = e2 = 120
+            else:
+
+                steering_angle = 0.0
+                if self.desired_angular_speed > 0.001: # want to go both forward and steer, this currently only happens when following an object
+                    steering_angle = STEER_TOWARDS_OBJECT_ANGLE
+                elif self.desired_angular_speed < -0.001:
+                    steering_angle = -STEER_TOWARDS_OBJECT_ANGLE
+
+                # steer against slope proportionately to the steepness of the slope
+                steering_angle -= self.roll
+                # dont steer more than 60 degrees
+                steering_angle = max(-math.pi/2.0, steering_angle)
+                steering_angle = min(math.pi/2.0, steering_angle)
+                steering = [steering_angle, steering_angle, steering_angle / 2, steering_angle / 2]
                 
-            e = 80 if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 120
-            e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else e # 4wd all the time
+                e = 80 if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else 120
+                e2 = e if self.pitch > FOUR_WHEEL_DRIVE_PITCH_THRESHOLD else e # 4wd all the time
             effort = [e, e, e2, e2]
-        else:
+        else: # going backward
             e = 80
             effort = [-e, -e, -e, -e]
         cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
