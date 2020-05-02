@@ -84,8 +84,8 @@ class ArtifactDetector(Node):
         stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
         disparity = stereo.compute(limg_gray,rimg_gray)
 
-        lfound = self.cascade.detectMultiScale(limg_rgb, minSize =(5, 5),  maxSize =(80, 80)) 
-        rfound = self.cascade.detectMultiScale(rimg_rgb, minSize =(5, 5),  maxSize =(80, 80)) 
+        lfound = self.cascade.detectMultiScale(limg_rgb, minSize =(5, 5),  maxSize =(110, 110)) 
+        rfound = self.cascade.detectMultiScale(rimg_rgb, minSize =(5, 5),  maxSize =(110, 110)) 
 
         if len(lfound) > 0 and len(rfound) > 0: # only report if both cameras see it
             if self.subsequent_detects < 3: # do not act until you have at least 3 detections in a row
