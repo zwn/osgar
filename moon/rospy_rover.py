@@ -284,18 +284,45 @@ def odom2zmq():
                     print(e)
             elif message_type == "artf":
                 s = message.split()[1:]  # ignore "artf" prefix
-                x, y, z = [float(a) for a in s[1:]]
-                pose = geometry_msgs.msg.Point(x, y, z)
                 vol_type = s[0]
-                print ("Reporting artefact %s at position %f %f %f" % (vol_type, x, y, z))
                 if vol_type == 'cubesat':
                     # Task 3
-                    report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
+                    x, y, z = [float(a) for a in s[1:]]
+                    pose = geometry_msgs.msg.Point(x, y, z)
+                    print ("Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
+                        rospy.wait_for_service("/apriori_location_service", timeout=2.0)
+                        report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
                         print(report_artf(pose))
                     except rospy.service.ServiceException as e:
                         print(e)
+                    except rospy.ROSException as exc:
+                        print("/apriori_location_service not available: " + str(exc))
+                elif vol_type == 'homebase':
+                    # Task 3
+                    rospy.wait_for_service("/arrived_home_service", timeout=2.0)
+                    report_artf = rospy.ServiceProxy('/arrived_home_service', HomeLocationSrv)
+                    try:
+                        print(report_artf(True))
+                    except rospy.service.ServiceException as e:
+                        print(e)
+                    except rospy.ROSException as exc:
+                        print("/arrived_home_service not available: " + str(exc))
+                elif vol_type == 'homebase_alignment':
+                    # Task 3
+                    rospy.wait_for_service("/aligned_service", timeout=2.0)
+                    report_artf = rospy.ServiceProxy('/aligned_service', HomeLocationSrv)
+                    try:
+                        print(report_artf(True))
+                    except rospy.service.ServiceException as e:
+                        print(e)
+                    except rospy.ROSException as exc:
+                        print("/aligned_service not available: " + str(exc))
                 else:
+                    # Task 1
+                    x, y, z = [float(a) for a in s[1:]]
+                    pose = geometry_msgs.msg.Point(x, y, z)
+                    print ("Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
                         rospy.wait_for_service("/vol_detected_service", timeout=2.0)
                         report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
