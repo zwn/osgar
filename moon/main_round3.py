@@ -173,7 +173,7 @@ class SpaceRoboticsChallenge(Node):
         # linearly interpolate in between measured values (pixels, distance)
         # https://www.desmos.com/calculator/md6buy4efz
         
-        observed_values = [(45, 22.0), (51, 21.0), (55, 19.2), (60, 15.0), (64, 16.2), (70, 13.0), (100, 9.4)]
+        observed_values = [(25, 29.3), (45, 22.0), (51, 21.0), (55, 19.2), (60, 15.0), (64, 16.2), (70, 13.0), (100, 9.4)]
 
         t1 = None
         
@@ -284,7 +284,7 @@ class SpaceRoboticsChallenge(Node):
             if self.yaw_offset is None:
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
-            if not self.inException and self.pitch > 0.9:
+            if not self.inException and self.pitch > 0.8:
                 # TODO pitch can also go the other way if we back into an obstacle
                 # TODO: robot can also roll if it runs on a side of a rock while already on a slope
                 self.inException = True
