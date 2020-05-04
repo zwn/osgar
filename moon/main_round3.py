@@ -32,7 +32,7 @@ def distance(pose1, pose2):
 def min_dist(laser_data):
     if len(laser_data) > 0:
         # remove ultra near reflections and unlimited values == 0
-        laser_data = [x if x > 10 else 10000 for x in laser_data]
+        laser_data = [x if x > 15 else 10000 for x in laser_data]
         return min(laser_data)/1000.0
     return 0
 
@@ -90,11 +90,14 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
+        self.min_front_distance = 0.0
+        
         self.score = 0
         self.is_someone_else_driving = False
         self.cubesat_offset = None
         self.camera_angle = CAMERA_ANGLE_DRIVING
         self.camera_change_triggered_time = None
+        self.homebase_reported = False
         self.cubesat_reported = False
         self.origin_updated = False
 
@@ -167,7 +170,7 @@ class SpaceRoboticsChallenge(Node):
             self.bus.publish('request_origin', True)
         elif (object_type == "homebase"):
             if self.cubesat_reported:
-                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
+                self.homebase_reported = True
             else:
                 print("Reached reportable home base destination, need to find cubesat first though")
                 
@@ -256,6 +259,11 @@ class SpaceRoboticsChallenge(Node):
             self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
+            self.min_front_distance = min_dist(self.scan[len(self.scan)//3:2*len(self.scan)//3])
+            if self.min_front_distance < 10 and self.homebase_reported:
+                print ("Reporting homebase to NASA")
+                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
+                
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
             self.xyz = data[1:4]

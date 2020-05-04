@@ -99,7 +99,7 @@ class Rover(Node):
         self.pitch = 0.0
         self.yaw = 0.0
         self.yaw_offset = None
-
+        
         self.currently_following_object = {
             'object_type': None,
             'timestamp': None
@@ -189,18 +189,16 @@ class Rover(Node):
                         self.bus.publish('object_reached', [artifact_type, ax, ay, 21.0])
 
                 elif self.currently_following_object['object_type'] == 'homebase':
-
-                    # when artifact disappears, we need to reset the steering to going straight
                     if center_x < 200: # if cubesat near left edge, turn left
                         self.desired_angular_speed = SPEED_ON
                         self.desired_speed = SPEED_ON
                     elif center_x > 440:
                         self.desired_angular_speed = -SPEED_ON
                         self.desired_speed = SPEED_ON
-                    elif data[3] > 200: # big bbox means we are close
+                    elif data[3] > 200:
+                        # object reached, final delivery by main app
+
                         print("homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                        self.desired_angular_speed = 0.0
-                        self.desired_speed = 0.0
                         self.bus.publish('driving_control', False)
 
                         self.currently_following_object['object_type'] = None
@@ -209,8 +207,11 @@ class Rover(Node):
                         self.bus.publish('object_reached', [artifact_type])
                         self.objects_to_follow.remove(artifact_type)
                         print ("No longer looking for %s" % artifact_type)
-
-        
+                    else: # if within angle but object too small, keep going straight
+                        self.desired_angular_speed = 0.0
+                        self.desired_speed = SPEED_ON
+                        
+                        
     def on_rot(self, data):
         rot = data
         rot[2] += 18000
