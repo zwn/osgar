@@ -18,7 +18,7 @@ CAMERA_FOCAL_LENGTH = 381
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
-CAMERA_ANGLE_DRIVING = 0.5
+CAMERA_ANGLE_DRIVING = 0.1
 CAMERA_ANGLE_LOOKING = 0.6
 
 class VirtualBumperException(Exception):
@@ -63,7 +63,7 @@ class LidarCollisionMonitor:
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle")
+        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle", "follow_object")
         self.monitors = []
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
@@ -161,17 +161,23 @@ class SpaceRoboticsChallenge(Node):
         print("Someone else is driving %r" % data)
 
     def on_object_reached(self, timestamp, data):
-        object_type, angle_x, angle_y, distance = data
+        object_type = data[0]
         if (object_type == "cubesat"):
             self.object_reached_location = data[1:]
             self.bus.publish('request_origin', True)
-
+        elif (object_type == "homebase"):
+            if self.cubesat_reported:
+                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
+            else:
+                print("Reached reportable home base destination, need to find cubesat first though")
+                
     def on_score(self, timestamp, data):
         self.score = data[0]
 
     def interpolate_distance(self, pixels):
         # linearly interpolate in between measured values (pixels, distance)
-        # https://www.desmos.com/calculator/md6buy4efz
+        # line from 2 points: https://www.desmos.com/calculator/md6buy4efz
+        # plot points: https://www.desmos.com/calculator/mhq4hsncnh
         
         observed_values = [(25, 29.3), (45, 22.0), (51, 21.0), (55, 19.2), (60, 15.0), (64, 16.2), (70, 13.0), (100, 9.4)]
 
@@ -216,6 +222,11 @@ class SpaceRoboticsChallenge(Node):
 
             s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+            self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+            
+            # time to start looking for homebase
+            self.bus.publish('follow_object', ['homebase'])
+
             self.cubesat_reported = True
         
     def update(self):
@@ -254,6 +265,7 @@ class SpaceRoboticsChallenge(Node):
             self.pitch = qy
             self.yaw = qz
 
+            self.bus.publish('follow_object', ['homebase']) # stop looking for cubesat
             print("Origin received, internal position updated")
             # robot should be stopped right now (using brakes once available)
             # lift camera to max, object should be (back) in view
@@ -284,7 +296,12 @@ class SpaceRoboticsChallenge(Node):
             if self.yaw_offset is None:
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
-            if not self.inException and self.pitch > 0.8:
+
+            # maintain camera level
+            cam_angle = self.camera_angle - self.pitch 
+            self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % cam_angle, encoding='ascii'))
+            
+            if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
                 # TODO: robot can also roll if it runs on a side of a rock while already on a slope
                 self.inException = True
@@ -367,6 +384,7 @@ class SpaceRoboticsChallenge(Node):
         self.send_speed_cmd(0.0, 0.0)
 
     def try_step_around(self):
+        #TODO: possibly move sideways instead of two 90 degree turns
         self.turn(math.radians(90), timeout=timedelta(seconds=10))
 
         # recovered enough at this point to switch to another driver (in case you see cubesat while doing the 3m drive or the final turn)
@@ -382,13 +400,16 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
+            self.bus.publish('follow_object', ['cubesat', 'homebase'])
+            
             try:
                 self.set_cam_angle(CAMERA_ANGLE_LOOKING)
                 self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
             except VirtualBumperException:
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                 print(self.time, "Initial Turn Virtual Bumper!")
-                # if detector takes over driving within initial turn, rover may be actually going straight at this moment
+                # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
+                # also, it may be simple timeout, not a crash
                 self.virtual_bumper = None
                 deg_angle = self.rand.randrange(90, 180)
                 deg_sign = self.rand.randint(0,1)
@@ -404,8 +425,6 @@ class SpaceRoboticsChallenge(Node):
             last_walk_start = 0.0
             start_time = self.time
             while self.time - start_time < timedelta(minutes=40):
-                if self.cubesat_offset is not None:
-                    break
                 additional_turn = 0
                 last_walk_start = self.time
                 try:
@@ -440,8 +459,6 @@ class SpaceRoboticsChallenge(Node):
                     # (no need to go straight back or keep going forward)
                     # if part of virtual bumper handling, add 30 degrees to avoid the obstacle more forcefully
 
-                if self.cubesat_offset is not None:
-                    break;
                 deg_angle = self.rand.randrange(30 + additional_turn, 150 + additional_turn)
                 deg_sign = self.rand.randint(0,1)
                 if deg_sign:
