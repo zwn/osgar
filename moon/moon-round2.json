@@ -60,7 +60,7 @@
           }
       }
     },
-    "links": [["receiver.raw", "rosmsg.slot_raw"],
+    "links": [["receiver.raw", "rosmsg.raw"],
               ["rosmsg.cmd", "transmitter.raw"],
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
