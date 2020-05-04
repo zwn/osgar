@@ -210,7 +210,7 @@ class SpaceRoboticsChallenge(Node):
             angle_x = math.atan( (CAMERA_WIDTH / 2 - img_x + img_w/2 ) / float(CAMERA_FOCAL_LENGTH))
             angle_y = math.atan( (CAMERA_HEIGHT / 2 - img_y+img_h/2 ) / float(CAMERA_FOCAL_LENGTH))
 
-            distance = self.interpolate_distance(data[3]) + 2 # add 2m to account for coordinates referring to center of robot and cubesat
+            distance = self.interpolate_distance(data[3])
             ax = self.nasa_yaw + angle_x
             ay = self.nasa_pitch + angle_y + self.camera_angle # direction of camera
             x, y, z = self.nasa_xyz
