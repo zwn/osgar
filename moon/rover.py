@@ -99,9 +99,16 @@ class Rover(Node):
         self.pitch = 0.0
         self.yaw = 0.0
         self.yaw_offset = None
+
+        self.currently_following_object = {
+            'object_type': None,
+            'timestamp': None
+            }
         self.last_artefact_time = None
+        self.last_tracked_artefact = None
+        
         self.in_driving_recovery = False
-        self.objects_reached = []
+        self.objects_to_follow = []
 
     def on_desired_speed(self, data):
         self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
@@ -110,57 +117,98 @@ class Rover(Node):
         self.in_driving_recovery = data
         print ("Driving recovery changed to: %r" % data)
 
+    def on_follow_object(self, data):
+        self.objects_to_follow = data
+        print ("Starting to look for " + ','.join(data))
+
     # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, data):
-        # 0 vol_type, 1 distance_to, 2 vol_index
+        # vol_type, x, y, w, h
+        # coordinates are pixels of bounding box
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
 
-        if artifact_type == "cubesat": # or artifact_type == "ProcessingPlant":
-            # only need to find cubesat once
-            if artifact_type in self.objects_reached:
-                return
+        center_x = data[1] + data[3] / 2
 
-            #            print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
-            if not self.in_driving_recovery: # if in exception, let the exception handling take its course
-                # virtual bumper still applies while this block has control. When triggered, driving will go to recovery and main will take over driving
-                if self.last_artefact_time is None:
-                    print ("Starting to track %s" % artifact_type)
-                    self.bus.publish('driving_control', True)
-                self.last_artefact_time = self.time.total_seconds()
+        # TODO if detection during turning on the spot, instead of driving straight steering a little, turn back to the direction where the detection happened first
+        
+        if not self.in_driving_recovery and self.objects_to_follow and artifact_type in self.objects_to_follow: # if in exception, let the exception handling take its course
+            if self.currently_following_object['object_type'] is None:
+                self.currently_following_object['object_type'] = artifact_type
+                self.currently_following_object['timestamp'] = self.time.total_seconds()
+                print ("Starting to track %s" % artifact_type)
+                self.bus.publish('driving_control', True)
+            else:
+                for looking_for in self.objects_to_follow:
+                    if self.currently_following_object['object_type'] == looking_for: # detected artefact is top priority and it is the one being followed already, continue what you were doing
+                        break 
+                    elif looking_for == artifact_type: # we are looking for this artifact but it's not the one currently being followed, switch
+                        print ("Switching to tracking %s" % artifact_type)
+                        self.currently_following_object['object_type'] = artifact_type
 
-                m = -0.232 # https://www.desmos.com/calculator/md6buy4efz
-                distance = m * (data[3] - 100) + 9.4 # measured [100px=>9.4m; 50px=>21m] 
-            
-                # when cubesat disappears, we need to reset the steering to going straight
-                if data[1] < 200: # if cubesat near left edge, turn left
-                    self.desired_angular_speed = SPEED_ON
-                    self.desired_speed = SPEED_ON
-                elif data[1] > 440:
-                    self.desired_angular_speed = -SPEED_ON
-                    self.desired_speed = SPEED_ON
-                elif distance > 18: #make sure negative means down
-                    # if object is far from top edge or we are going downhil, keep going
-                    # if close to edge, the object may disappear temporarily but should reappear once on flat
-                    # perhaps calculate artificial horizon though in case we are going downhill
-                    self.desired_speed = SPEED_ON
-                    self.desired_angular_speed = 0.0
-                else:
-                    # detection but close to top edge and not going downhill
-                    # probably about to leave top edge of FOV, close enough
-                    # stop and report angle and distance from robot
-                    # robot moves a little after detection so the angles do not correspond with the true pose we will receive
-                    # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
-                    self.desired_speed = 0.0
-                    self.desired_angular_speed = 0.0
-                    ax = math.atan( (CAMERA_WIDTH / 2 - data[1] + data[3]/2 ) / float(CAMERA_FOCAL_LENGTH))
-                    ay = math.atan( (CAMERA_HEIGHT / 2 - data[2]+data[4]/2 ) / float(CAMERA_FOCAL_LENGTH))
-#                    print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                    self.bus.publish('driving_control', False)
-                    self.last_artefact_time = None
-                    self.objects_reached.append(artifact_type)
-                    # cubesat disappears when it's about ~20m away
-                    self.bus.publish('object_reached', [artifact_type, ax, ay, 21.0])
-                    
+            if self.currently_following_object['object_type'] == artifact_type:
+                self.currently_following_object['timestamp'] = self.time.total_seconds()
+
+                if self.currently_following_object['object_type'] == 'cubesat':
+                    #            print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
+                    # virtual bumper still applies while this block has control. When triggered, driving will go to recovery and main will take over driving
+
+                    m = -0.232 # https://www.desmos.com/calculator/md6buy4efz
+                    distance = m * (data[3] - 100) + 9.4 # measured [100px=>9.4m; 50px=>21m] 
+
+                    # when cubesat disappears, we need to reset the steering to going straight
+                    if center_x < 200: # if cubesat near left edge, turn left
+                        self.desired_angular_speed = SPEED_ON
+                        self.desired_speed = SPEED_ON
+                    elif center_x > 440:
+                        self.desired_angular_speed = -SPEED_ON
+                        self.desired_speed = SPEED_ON
+                    elif distance > 18: #make sure negative means down
+                        # if object is far from top edge or we are going downhil, keep going
+                        # if close to edge, the object may disappear temporarily but should reappear once on flat
+                        # perhaps calculate artificial horizon though in case we are going downhill
+                        self.desired_speed = SPEED_ON
+                        self.desired_angular_speed = 0.0
+                    else:
+                        # detection but close to top edge and not going downhill
+                        # probably about to leave top edge of FOV, close enough
+                        # stop and report angle and distance from robot
+                        # robot moves a little after detection so the angles do not correspond with the true pose we will receive
+                        # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
+                        self.desired_speed = 0.0
+                        self.desired_angular_speed = 0.0
+                        ax = math.atan( (CAMERA_WIDTH / 2 - data[1] + data[3]/2 ) / float(CAMERA_FOCAL_LENGTH))
+                        ay = math.atan( (CAMERA_HEIGHT / 2 - data[2]+data[4]/2 ) / float(CAMERA_FOCAL_LENGTH))
+                        #                    print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                        self.bus.publish('driving_control', False)
+
+                        self.currently_following_object['object_type'] = None
+                        self.currently_following_object['timestamp'] = None
+
+                        print ("Reporting object %s" % artifact_type)
+#                        self.objects_to_follow.remove(artifact_type) due to losing the request origin call, we may keep trying this
+                        self.bus.publish('object_reached', [artifact_type, ax, ay, 21.0])
+
+                elif self.currently_following_object['object_type'] == 'homebase':
+
+                    # when artifact disappears, we need to reset the steering to going straight
+                    if center_x < 200: # if cubesat near left edge, turn left
+                        self.desired_angular_speed = SPEED_ON
+                        self.desired_speed = SPEED_ON
+                    elif center_x > 440:
+                        self.desired_angular_speed = -SPEED_ON
+                        self.desired_speed = SPEED_ON
+                    elif data[3] > 200: # big bbox means we are close
+                        print("homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                        self.desired_angular_speed = 0.0
+                        self.desired_speed = 0.0
+                        self.bus.publish('driving_control', False)
+
+                        self.currently_following_object['object_type'] = None
+                        self.currently_following_object['timestamp'] = None
+
+                        self.bus.publish('object_reached', [artifact_type])
+                        self.objects_to_follow.remove(artifact_type)
+                        print ("No longer looking for %s" % artifact_type)
 
         
     def on_rot(self, data):
@@ -217,12 +265,13 @@ class Rover(Node):
         steering = [0.0,] * 4
 
         # if was following an artefact but it disappeared, just go straight until another driver takes over
-        if self.last_artefact_time is not None and self.time.total_seconds() - self.last_artefact_time > DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS:
+        if self.currently_following_object['timestamp'] is not None and self.time.total_seconds() - self.currently_following_object['timestamp'] > DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS:
             self.desired_speed = SPEED_ON
             self.desired_angular_speed = 0.0
             self.bus.publish('driving_control', False)
-            self.last_artefact_time = None
-            print ("No longer tracking an object")
+            print ("No longer tracking %s" % self.currently_following_object['object_type'])
+            self.currently_following_object['timestamp'] = None
+            self.currently_following_object['object_type'] = None
         
         # only turning
         if abs(self.desired_speed) < 0.001:

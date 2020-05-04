@@ -70,6 +70,7 @@
               ["rosmsg./scout_1/camera/right/image_raw/compressed", "detector.right_image"],
               ["detector.artf", "app.artf"],
               ["detector.artf", "scout.artf"],
+	      ["app.follow_object", "scout.follow_object"],
               ["app.driving_recovery", "scout.driving_recovery"],
               ["app.desired_speed", "scout.desired_speed"],
               ["scout.cmd", "transmitter.raw"],
