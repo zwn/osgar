@@ -318,7 +318,7 @@ def odom2zmq():
                         print(e)
                     except rospy.ROSException as exc:
                         print("/aligned_service not available: " + str(exc))
-                else:
+                elif vol_type in ['ice', 'ethene', 'methane', 'methanol', 'carbon_dio', 'ammonia', 'hydrogen_sul', 'sulfur_dio']:
                     # Task 1
                     x, y, z = [float(a) for a in s[1:]]
                     pose = geometry_msgs.msg.Point(x, y, z)
