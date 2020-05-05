@@ -63,7 +63,7 @@ class LidarCollisionMonitor:
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle", "follow_object")
+        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle", "set_brakes", "follow_object")
         self.monitors = []
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
@@ -131,7 +131,11 @@ class SpaceRoboticsChallenge(Node):
         print ("Set camera angle to: %f" % angle)
         self.camera_change_triggered_time = self.time
         self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
-        
+
+    def set_brakes(self, on):
+        print ("Setting brakes to: %s" % on)
+        self.publish('set_brakes', bytes('set_brakes %s\n' % 'on' if on else 'off', encoding='ascii'))
+            
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
@@ -179,6 +183,7 @@ class SpaceRoboticsChallenge(Node):
     def on_object_reached(self, timestamp, data):
         object_type = data
         if (object_type == "cubesat"):
+            self.set_brakes(True)
             self.cubesat_reached = True
             self.bus.publish('request_origin', True)
         elif (object_type == "homebase"):
@@ -238,6 +243,8 @@ class SpaceRoboticsChallenge(Node):
 
             s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
             self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+            self.set_brakes(False)
+
             self.set_cam_angle(CAMERA_ANGLE_DRIVING)
             
             # time to start looking for homebase

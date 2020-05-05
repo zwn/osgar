@@ -19,7 +19,7 @@ from geometry_msgs.msg import Twist, Point
 
 # SRCP2 specific
 from srcp2_msgs.msg import Qual1ScoringMsg, VolSensorMsg, Qual3ScoringMsg
-from srcp2_msgs.srv import (ToggleLightSrv, LocalizationSrv, Qual1ScoreSrv,
+from srcp2_msgs.srv import (ToggleLightSrv, BrakeRoverSrv, LocalizationSrv, Qual1ScoreSrv,
                             AprioriLocationSrv, HomeLocationSrv, HomeAlignedSrv)
 
 
@@ -166,6 +166,8 @@ def odom2zmq():
     light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
     light_up_msg = Float64()
 
+    brakes = rospy.ServiceProxy('/scout_1/brake_rover', BrakeRoverSrv)
+    
     # TODO load it from configuration
     # task 1
     rospy.Subscriber('/qual_1_score', Qual1ScoringMsg, callback_topic, '/qual_1_score')
@@ -237,6 +239,11 @@ def odom2zmq():
                 light_up_msg.data = angle
                 light_up_pub.publish(light_up_msg)
                 
+            elif message_type == "set_brakes":
+                is_on = message.split(" ")[1].startswith("on")
+                print ("Setting brakes to: %r" % is_on)
+                brakes(is_on)
+
             elif message_type == "cmd_vel":
                 desired_speed = float(message.split(" ")[1])
                 desired_angular_speed = float(message.split(" ")[2])

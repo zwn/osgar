@@ -5,7 +5,7 @@
       "app": {
           "driver": "moon.main_round3:SpaceRoboticsChallenge",
           "in": ["pose2d", "driving_control"],
-          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery", "set_cam_angle"],
+          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery", "set_cam_angle", "set_brakes"],
           "init": {}
       },
       "transmitter": {
@@ -79,6 +79,7 @@
 	      ["scout.object_reached", "app.object_reached"],
               ["app.request_origin", "rosmsg.request_origin"],
 	      ["app.set_cam_angle", "transmitter.raw"],
+	      ["app.set_brakes", "transmitter.raw"],
               ["rosmsg.origin", "app.origin"],
 	      ["app.artf_cmd", "transmitter.raw"]
 	      ]
