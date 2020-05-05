@@ -101,13 +101,11 @@ class ArtifactDetector(Node):
                 if c['subsequent_detects'] < 3: # do not act until you have at least 3 detections in a row
                     c['subsequent_detects'] += 1
                 else:
-                    for (x, y, width, height) in lfound: 
-                        #print("[Left camera] %s found at [%d %d %d %d]; Depth: %d" % (c['artefact_name'], x,y,width,height, gray))
-                        self.publish('artf', [c['artefact_name'], x.item(), y.item(), width.item(), height.item()])
-
-                    for (x, y, width, height) in rfound: 
-                        # print("[Right camera] Cubesat found at %d %d %d %d" % (x,y,width,height))
-                        self.publish('artf', [c['artefact_name'], x.item(), y.item(), width.item(), height.item()])
+                    x = (lfound[0][0] + rfound[0][0]) / 2
+                    y = (lfound[0][1] + rfound[0][1]) / 2
+                    width = (lfound[0][2] + rfound[0][2]) / 2
+                    height = (lfound[0][3] + rfound[0][3]) / 2
+                    self.publish('artf', [c['artefact_name'], x, y, width, height])
             else:
                 c['subsequent_detects'] = 0
 
