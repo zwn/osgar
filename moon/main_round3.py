@@ -93,15 +93,18 @@ class SpaceRoboticsChallenge(Node):
         self.min_front_distance = 0.0
         
         self.score = 0
-        self.is_someone_else_driving = False
+        self.current_driver = None
         self.cubesat_offset = None
         self.camera_angle = CAMERA_ANGLE_DRIVING
         self.camera_change_triggered_time = None
-        self.homebase_reported = False
-        self.cubesat_reported = False
+
         self.origin_updated = False
 
-        self.object_reached_location = None
+        self.homebase_reached = False
+        self.homebase_reported = False
+
+        self.cubesat_reached = False
+        self.cubesat_reported = False
         
         self.inException = False
         
@@ -159,18 +162,28 @@ class SpaceRoboticsChallenge(Node):
                 raise VirtualBumperException()
 
     def on_driving_control(self, timestamp, data):
-        # true if someone else took over driving
-        self.is_someone_else_driving = data
-        print("Someone else is driving %r" % data)
+        # someone else took over driving
+        self.current_driver = data
+        if data is None:
+            self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+            print("Driving returned to main")
+        else:
+            print("Current driver: %s" % self.current_driver)
+            if self.current_driver == "cubesat":
+                self.set_cam_angle(CAMERA_ANGLE_LOOKING)
+            elif self.current_driver == "homebase":
+                self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+            else:
+                self.set_cam_angle(CAMERA_ANGLE_DRIVING)
 
     def on_object_reached(self, timestamp, data):
-        object_type = data[0]
+        object_type = data
         if (object_type == "cubesat"):
-            self.object_reached_location = data[1:]
+            self.cubesat_reached = True
             self.bus.publish('request_origin', True)
         elif (object_type == "homebase"):
             if self.cubesat_reported:
-                self.homebase_reported = True
+                self.homebase_reached = True
             else:
                 print("Reached reportable home base destination, need to find cubesat first though")
                 
@@ -205,7 +218,7 @@ class SpaceRoboticsChallenge(Node):
     def on_artf(self, timestamp, data):
         artifact_type, img_x, img_y, img_w, img_h = data
 
-        if self.object_reached_location is not None and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_reported:
+        if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_reported:
             print("Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
             angle_x = math.atan( (CAMERA_WIDTH / 2 - img_x + img_w/2 ) / float(CAMERA_FOCAL_LENGTH))
             angle_y = math.atan( (CAMERA_HEIGHT / 2 - img_y+img_h/2 ) / float(CAMERA_FOCAL_LENGTH))
@@ -260,9 +273,10 @@ class SpaceRoboticsChallenge(Node):
         elif channel == 'scan':
             self.local_planner.update(self.scan)
             self.min_front_distance = min_dist(self.scan[len(self.scan)//3:2*len(self.scan)//3])
-            if self.min_front_distance < 10 and self.homebase_reported:
-                print ("Reporting homebase to NASA")
+            if self.min_front_distance < 10 and not self.homebase_reported and self.homebase_reached:
+                print ("Reporting homebase reached to server, distance %f: " % self.min_front_distance)
                 self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
+                self.homebase_reported = True
                 
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
@@ -438,7 +452,7 @@ class SpaceRoboticsChallenge(Node):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
                     with LidarCollisionMonitor(self):
-                        if not self.is_someone_else_driving:
+                        if self.current_driver is None:
                             self.go_straight(100.0, timeout=timedelta(minutes=2))
                         else:
                             self.wait(timedelta(seconds=10))   
@@ -486,7 +500,7 @@ class SpaceRoboticsChallenge(Node):
                     self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                     print(self.time, "Turn Virtual Bumper!")
                     self.virtual_bumper = None
-                    if self.is_someone_else_driving:
+                    if self.current_driver is not None:
                         # probably didn't throw in previous turn but during self driving
                         self.go_straight(-2.0, timeout=timedelta(seconds=10))
                         self.try_step_around()
