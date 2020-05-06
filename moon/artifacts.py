@@ -101,11 +101,17 @@ class ArtifactDetector(Node):
                 if c['subsequent_detects'] < 3: # do not act until you have at least 3 detections in a row
                     c['subsequent_detects'] += 1
                 else:
-                    x = (lfound[0][0] + rfound[0][0]) / 2
-                    y = (lfound[0][1] + rfound[0][1]) / 2
-                    width = (lfound[0][2] + rfound[0][2]) / 2
-                    height = (lfound[0][3] + rfound[0][3]) / 2
-                    self.publish('artf', [c['artefact_name'], x, y, width, height])
+
+                    x,y,width,height = lfound[0]
+#                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
+                    gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
+                    blur = cv2.blur(gray,(3,3)) # some frames have noise, need to blur otherwise threshold doesn't work
+                    th, threshed = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+                    coords = cv2.findNonZero(threshed)
+                    nx, ny, nw, nh = cv2.boundingRect(coords)
+#                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
+
+                    self.publish('artf', [c['artefact_name'], int(x+nx), int(y+ny), int(nw), int(nh)])
             else:
                 c['subsequent_detects'] = 0
 

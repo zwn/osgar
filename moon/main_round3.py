@@ -200,12 +200,12 @@ class SpaceRoboticsChallenge(Node):
         # line from 2 points: https://www.desmos.com/calculator/md6buy4efz
         # plot points: https://www.desmos.com/calculator/mhq4hsncnh
         
-        observed_values = [(25, 29.3), (45, 22.0), (51, 21.0), (55, 19.2), (60, 15.0), (64, 16.2), (70, 13.0), (100, 9.4)]
+        observed_values = [(28,24.5),(45,15.5)]
 
         t1 = None
         
         if pixels < observed_values[0][0]:
-            return 21 # catch-all for furthest distances outside measured range
+            return 25 # catch-all for furthest distances outside measured range
         else:
             for t2 in observed_values:
                 if pixels < t2[0]:

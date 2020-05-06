@@ -129,6 +129,7 @@ class Rover(Node):
         artifact_type = data[0]  # meters ... TODO distinguish CubeSat, volatiles, ProcessingPlant
 
         center_x = data[1] + data[3] / 2
+        center_y = data[2] + data[4] / 2
         bbox_size = (data[3] + data[4]) / 2 # calculate avegage in case of substantially non square matches
 
         # TODO if detection during turning on the spot, instead of driving straight steering a little, turn back to the direction where the detection happened first
@@ -162,8 +163,8 @@ class Rover(Node):
                     elif center_x > 440:
                         self.desired_angular_speed = -SPEED_ON
                         self.desired_speed = SPEED_ON
-                    elif bbox_size < 60:
-                        # if bbox is still small enough, continue straight
+                    elif bbox_size < 25 or data[2] > 30:
+                        # if bbox is still too small or not near the edge, continue straight
                         self.desired_speed = SPEED_ON
                         self.desired_angular_speed = 0.0
                     else:
