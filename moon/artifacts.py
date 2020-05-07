@@ -105,7 +105,7 @@ class ArtifactDetector(Node):
                     x,y,width,height = lfound[0]
 #                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
                     gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
-                    blur = cv2.blur(gray,(3,3)) # some frames have noise, need to blur otherwise threshold doesn't work
+                    blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
                     th, threshed = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
                     coords = cv2.findNonZero(threshed)
                     nx, ny, nw, nh = cv2.boundingRect(coords)
