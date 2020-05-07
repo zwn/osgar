@@ -157,33 +157,36 @@ class Rover(Node):
                     # virtual bumper still applies while this block has control. When triggered, driving will go to recovery and main will take over driving
 
                     # when cubesat disappears, we need to reset the steering to going straight
-                    if center_x < 200: # if cubesat near left edge, turn left
-                        self.desired_angular_speed = SPEED_ON
-                        self.desired_speed = SPEED_ON
-                    elif center_x > 440:
-                        self.desired_angular_speed = -SPEED_ON
-                        self.desired_speed = SPEED_ON
-                    elif bbox_size < 25 or data[2] > 30:
-                        # if bbox is still too small or not near the edge, continue straight
-                        self.desired_speed = SPEED_ON
-                        self.desired_angular_speed = 0.0
-                    else:
+                    # NOTE: light does not shine in corners of viewport, need to report sooner or turn first
+                    if bbox_size > 25 and data[2] < 40: # box is big enough to report on and close to the edge, report
+                         # box 25 pixels represents distance about 27m which is as close as we can possibly get for cubesats with high altitude 
                         # object in center (x axis) and close enough (bbox size)
                         # stop and report angle and distance from robot
                         # robot moves a little after detection so the angles do not correspond with the true pose we will receive
                         # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
                         self.desired_speed = 0.0
                         self.desired_angular_speed = 0.0
-                        print("cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                        self.bus.publish('driving_control', None)
+                        print("rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
                         self.currently_following_object['object_type'] = None
                         self.currently_following_object['timestamp'] = None
 
-                        print ("Reporting object %s" % artifact_type)
+                        print ("rover: Reporting object %s" % artifact_type)
 #                        self.objects_to_follow.remove(artifact_type) due to losing the request origin call, we may keep trying this
                         self.bus.publish('object_reached', artifact_type)
+                        self.bus.publish('driving_control', None)
+                    elif center_x < 200: # if cubesat near left edge, turn left; if far enough from top, go straight too, otherwise turn in place
+                        self.desired_angular_speed = SPEED_ON
+                        self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
+                    elif center_x > 440:
+                        self.desired_angular_speed = -SPEED_ON
+                        self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
+                    else:
+                        # bbox is ahead but too small or position not near the edge, continue straight
+                        self.desired_speed = SPEED_ON
+                        self.desired_angular_speed = 0.0
 
+                        
                 elif self.currently_following_object['object_type'] == 'homebase':
                     if center_x < 300: # if homebase to the left, steer left
                         self.desired_angular_speed = SPEED_ON
