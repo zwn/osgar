@@ -283,9 +283,9 @@ def odom2zmq():
                     rospy.wait_for_service("/scout_1/get_true_pose", timeout=2.0)
                     request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
                     p = request_origin(True)
+                    print("rospy_rover: true pose [%f, %f, %f]  [%f, %f, %f, %f]" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w))
                     s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                                                                   p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
-                    print(s)
                     socket_send(s)
                 except rospy.service.ServiceException as e:
                     print(e)
@@ -296,7 +296,7 @@ def odom2zmq():
                     # Task 3
                     x, y, z = [float(a) for a in s[1:]]
                     pose = geometry_msgs.msg.Point(x, y, z)
-                    print ("Reporting %s at position %f %f %f" % (vol_type, x, y, z))
+                    print ("rospy_rover: Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
                         rospy.wait_for_service("/apriori_location_service", timeout=2.0)
                         report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
@@ -307,6 +307,7 @@ def odom2zmq():
                         print("/apriori_location_service not available: " + str(exc))
                 elif vol_type == 'homebase':
                     # Task 3
+                    print("rospy_rover: reporting homebase arrival")
                     rospy.wait_for_service("/arrived_home_service", timeout=2.0)
                     report_artf = rospy.ServiceProxy('/arrived_home_service', HomeLocationSrv)
                     try:
