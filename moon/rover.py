@@ -116,11 +116,11 @@ class Rover(Node):
 
     def on_driving_recovery(self, data):
         self.in_driving_recovery = data
-        print ("Driving recovery changed to: %r" % data)
+        print (self.time, "Driving recovery changed to: %r" % data)
 
     def on_follow_object(self, data):
         self.objects_to_follow = data
-        print ("Starting to look for " + ','.join(data))
+        print (self.time, "Starting to look for " + ','.join(data))
 
     # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, data):
@@ -138,14 +138,14 @@ class Rover(Node):
             if self.currently_following_object['object_type'] is None:
                 self.currently_following_object['object_type'] = artifact_type
                 self.currently_following_object['timestamp'] = self.time
-                print ("Starting to track %s" % artifact_type)
+                print (self.time, "Starting to track %s" % artifact_type)
                 self.bus.publish('driving_control', artifact_type)
             else:
                 for looking_for in self.objects_to_follow:
                     if self.currently_following_object['object_type'] == looking_for: # detected artefact is top priority and it is the one being followed already, continue what you were doing
                         break 
                     elif looking_for == artifact_type: # we are looking for this artifact but it's not the one currently being followed, switch
-                        print ("Switching to tracking %s" % artifact_type)
+                        print (self.time, "Switching to tracking %s" % artifact_type)
                         self.currently_following_object['object_type'] = artifact_type
                         self.bus.publish('driving_control', artifact_type)
 
@@ -166,15 +166,14 @@ class Rover(Node):
                         # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
                         self.desired_speed = 0.0
                         self.desired_angular_speed = 0.0
-                        print("rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                        print(self.time, "rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
                         self.currently_following_object['object_type'] = None
                         self.currently_following_object['timestamp'] = None
 
-                        print ("rover: Reporting object %s" % artifact_type)
-#                        self.objects_to_follow.remove(artifact_type) due to losing the request origin call, we may keep trying this
+                        print (self.time, "rover: Reporting object %s" % artifact_type)
+#                        self.objects_to_follow.remove(artifact_type) due to losing the request origin call, we may keep trying this #TODO: get rid of this
                         self.bus.publish('object_reached', artifact_type)
-                        self.bus.publish('driving_control', None)
                     elif center_x < 200: # if cubesat near left edge, turn left; if far enough from top, go straight too, otherwise turn in place
                         self.desired_angular_speed = SPEED_ON
                         self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
@@ -199,15 +198,14 @@ class Rover(Node):
                         self.desired_angular_speed = 0.0
                         self.desired_speed = SPEED_ON
                         
-                        print("homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                        self.bus.publish('driving_control', None)
+                        print(self.time, "homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
                         self.currently_following_object['object_type'] = None
                         self.currently_following_object['timestamp'] = None
 
                         self.bus.publish('object_reached', artifact_type)
                         self.objects_to_follow.remove(artifact_type)
-                        print ("No longer looking for %s" % artifact_type)
+                        print (self.time, "No longer looking for %s" % artifact_type)
                         
                     else: # if within angle but object too small, keep going straight
                         self.desired_angular_speed = 0.0
@@ -272,7 +270,7 @@ class Rover(Node):
             self.desired_speed = SPEED_ON
             self.desired_angular_speed = 0.0
             self.bus.publish('driving_control', None)
-            print ("No longer tracking %s" % self.currently_following_object['object_type'])
+            print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
             self.currently_following_object['timestamp'] = None
             self.currently_following_object['object_type'] = None
         
