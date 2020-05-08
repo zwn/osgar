@@ -19,7 +19,9 @@ CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
 CAMERA_ANGLE_DRIVING = 0.1
-CAMERA_ANGLE_LOOKING = 0.6
+CAMERA_ANGLE_LOOKING = 0.5
+CAMERA_ANGLE_CUBESAT = 0.78
+CAMERA_ANGLE_HOMEBASE = 0.3
 
 class ChangeDriverException(Exception):
     pass
@@ -36,7 +38,7 @@ def distance(pose1, pose2):
 def min_dist(laser_data):
     if len(laser_data) > 0:
         # remove ultra near reflections and unlimited values == 0
-        laser_data = [x if x > 15 else 10000 for x in laser_data]
+        laser_data = [x if x > 10 else 10000 for x in laser_data]
         return min(laser_data)/1000.0
     return 0
 
@@ -51,8 +53,9 @@ class LidarCollisionMonitor:
     def update(self, robot, channel):
         if channel == 'scan':
             size = len(robot.scan)
-            # measure distance only in 1/3 of 270deg = 90deg
-            if min_dist(robot.scan[75:195]) < 1.0:
+            # measure distance only in 160 degree angle
+            # robot is ~2.21m wide (~1.2m x 2 with wiggle room), with 160 angle need to have 1.2m clearance (x = 1.2 / sin(160/2))
+            if min_dist(robot.scan[55:215]) < 1.2 and not robot.inException:
                 raise LidarCollisionException()
 
     # context manager functions
@@ -140,7 +143,7 @@ class SpaceRoboticsChallenge(Node):
     def set_brakes(self, on):
         self.brakes_on = on
         print ("Setting brakes to: %s" % on)
-        self.publish('set_brakes', bytes('set_brakes %s\n' % 'on' if on else 'off', encoding='ascii'))
+        self.publish('set_brakes', bytes('set_brakes %s\n' % ('on' if on else 'off'), encoding='ascii'))
             
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
@@ -167,7 +170,6 @@ class SpaceRoboticsChallenge(Node):
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_pose(self.time, pose)
             if not self.inException and self.virtual_bumper.collision():
-                self.inException = True
                 self.bus.publish('driving_recovery', True)
                 raise VirtualBumperException()
 
@@ -185,16 +187,21 @@ class SpaceRoboticsChallenge(Node):
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
             else:
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
-        raise ChangeDriverException(data)
+        if not self.inException: # do not interrupt driving if processing an exception
+            raise ChangeDriverException(data)
 
     def on_object_reached(self, timestamp, data):
         object_type = data
         if (object_type == "cubesat"):
+            self.current_driver = "cubesat-finish"
             self.set_brakes(True)
+            self.set_cam_angle(CAMERA_ANGLE_CUBESAT)
             self.cubesat_reached = True
-            self.bus.publish('request_origin', True) # response to this is required, if none, rover will be stopped forever
-        elif (object_type == "homebase"):
+            self.publish('request_origin', True) # response to this is required, if none, rover will be stopped forever
+        elif (object_type == "homebase"): # upon handover, robot should be moving straight
             if self.cubesat_reported:
+                self.set_cam_angle(CAMERA_ANGLE_HOMEBASE) # look somewhat up in case we are approaching on a downhill slope
+                self.current_driver = "homebase-finish"
                 self.homebase_reached = True
             else:
                 print("Reached reportable home base destination, need to find cubesat first though")
@@ -205,9 +212,10 @@ class SpaceRoboticsChallenge(Node):
     def interpolate_distance(self, pixels):
         # linearly interpolate in between measured values (pixels, distance)
         # line from 2 points: https://www.desmos.com/calculator/md6buy4efz
-        # plot points: https://www.desmos.com/calculator/mhq4hsncnh
+        # plot 2D points: https://www.desmos.com/calculator/mhq4hsncnh
+        # plot 3D points: https://technology.cpm.org/general/3dgraph/
         
-        observed_values = [(28,24.5), (41,18.3), (45,15.5), (62, 11.9)]
+        observed_values = [(27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (60, 13.5), (62, 11.9)]
 
         t1 = None
         
@@ -242,12 +250,12 @@ class SpaceRoboticsChallenge(Node):
         
         if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_reported:
             print(self.time, "app: Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-            angle_x = math.atan( (CAMERA_WIDTH / 2 - img_x + img_w/2 ) / float(CAMERA_FOCAL_LENGTH))
-            angle_y = math.atan( (CAMERA_HEIGHT / 2 - img_y+img_h/2 ) / float(CAMERA_FOCAL_LENGTH))
+            angle_x = math.atan( (CAMERA_WIDTH / 2 - (img_x + img_w/2) ) / float(CAMERA_FOCAL_LENGTH))
+            angle_y = math.atan( (CAMERA_HEIGHT / 2 - (img_y + img_h/2) ) / float(CAMERA_FOCAL_LENGTH))
 
-            distance = self.interpolate_distance(data[3])
+            distance = self.interpolate_distance((img_w + img_h) / 2)
             ax = self.nasa_yaw + angle_x
-            ay = self.nasa_pitch + angle_y + self.camera_angle # direction of camera
+            ay = self.nasa_pitch + angle_y + self.camera_angle - self.nasa_pitch # direction of camera; NOTE: gimbal changes the actual angle dynamically so pitch should be offset
             x, y, z = self.nasa_xyz
             print("Using pose: xyz=[%f %f %f] orientation=[%f %f %f]" % (x, y, z, self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             print("In combination with view angle %f %f and distance %f" % (ax, ay, distance))
@@ -263,10 +271,12 @@ class SpaceRoboticsChallenge(Node):
 
             self.cubesat_reported = True
             self.set_brakes(False)
-            raise ChangeDriverException(None) # give control back to main
-            
             # time to start looking for homebase
             self.bus.publish('follow_object', ['homebase'])
+            self.current_driver = None
+            if not self.inException:
+                raise ChangeDriverException(None) # interrupt main wait, give driving back
+            
         
     def update(self):
 
@@ -277,12 +287,15 @@ class SpaceRoboticsChallenge(Node):
             elif self.time - self.last_status_timestamp > timedelta(seconds=8):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
-                print (self.time, "Loc: [%f %f %f] [%f %f %f]; Score: %d" % (x, y, z, self.roll, self.pitch, self.yaw, self.score))
+                print (self.time, "Loc: [%f %f %f] [%f %f %f]; Driver: %s; Score: %d" % (x, y, z, self.roll, self.pitch, self.yaw, self.current_driver, self.score))
 
                 # keep sending TODO: get rid of this
+                self.set_brakes(self.brakes_on)
                 if self.cubesat_location is not None:
                     s = '%s %.2f %.2f %.2f\n' % ('cubesat', self.cubesat_location[0], self.cubesat_location[1], self.cubesat_location[2], )
                     self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
+                if self.homebase_reported:
+                    self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
 
 
         channel = super().update()
@@ -302,11 +315,13 @@ class SpaceRoboticsChallenge(Node):
         elif channel == 'scan':
             self.local_planner.update(self.scan)
             self.min_front_distance = min_dist(self.scan[len(self.scan)//3:2*len(self.scan)//3])
-            if self.min_front_distance < 6 and not self.homebase_reported and self.homebase_reached:
+            if self.min_front_distance < 5 and not self.homebase_reported and self.homebase_reached:
                 print ("app: Reporting homebase reached to server, distance %f: " % self.min_front_distance)
                 self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
                 self.homebase_reported = True
                 self.set_brakes(True)
+                #self.current_driver = None
+                #raise ChangeDriverException(None)
                 # THIS IS THE END OF THE RUN FOR NOW
                 
         elif channel == 'origin':
@@ -342,7 +357,6 @@ class SpaceRoboticsChallenge(Node):
             print (self.time, "True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (data[1],data[2],data[3],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             # tilt camera all the way up, it should trigger a detection again
             self.origin_updated = True
-            self.set_cam_angle(0.78)
             
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
@@ -357,9 +371,8 @@ class SpaceRoboticsChallenge(Node):
             if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
                 # TODO: robot can also roll if it runs on a side of a rock while already on a slope
-                self.inException = True
                 self.bus.publish('driving_recovery', True)
-                print ("Excess pitch, going back down")
+                print (self.time, "app: Excess pitch or roll, going back")
                 raise VirtualBumperException()
 
         for m in self.monitors:
@@ -459,9 +472,10 @@ class SpaceRoboticsChallenge(Node):
             try:
                 self.set_cam_angle(CAMERA_ANGLE_LOOKING)
                 self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
-            except ChangeDriverException:
-                print("Initial turn interrupted by other driver")
+            except ChangeDriverException as e:
+                print(self.time, "Initial turn interrupted by driver: %s" % e)
             except VirtualBumperException:
+                self.inException = True
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                 print(self.time, "Initial Turn Virtual Bumper!")
                 # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
@@ -493,6 +507,8 @@ class SpaceRoboticsChallenge(Node):
                     continue
 
                 except (VirtualBumperException, LidarCollisionException) as e:
+                    self.inException = True
+# TODO: crashes if an exception (e.g., excess pitch) occurs while handling an exception (e.g., virtual/lidar bump)
                     print(self.time, repr(e))
                     last_walk_end = self.time
                     self.virtual_bumper = None
@@ -535,6 +551,7 @@ class SpaceRoboticsChallenge(Node):
                     continue
                     
                 except VirtualBumperException:
+                    self.inException = True
                     self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                     print(self.time, "Turn Virtual Bumper!")
                     self.virtual_bumper = None
