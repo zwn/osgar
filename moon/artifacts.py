@@ -11,9 +11,39 @@ import numpy as np
 from osgar.node import Node
 from osgar.bus import BusShutdownException
 
+g_mask = None
+MIN_CYAN_COUNT = 600
 
-PROCESSING_PLANT = 'ProcessingPlant'
-CUBE_SAT = 'CubeSat'
+def count_mask(mask):
+    """Count statistics and bounding box for given image mask"""
+    count = int(mask.sum())
+    if count == 0:
+        return count, None, None, None, None
+
+    # argmax for mask finds the first True value
+    x_min = (mask.argmax(axis=0) != 0).argmax()
+    x_max = mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax() - 1
+    w = (mask.shape[1] - np.flip((mask.argmax(axis=0) != 0), axis=0).argmax()
+            - (mask.argmax(axis=0) != 0).argmax())
+    h = (mask.shape[0] - np.flip((mask.argmax(axis=1) != 0), axis=0).argmax()
+            - (mask.argmax(axis=1) != 0).argmax())
+    return count, w, h, x_min, x_max
+
+
+def count_cyan(img, filtered=False, stdout=None):
+    b = img[:,:,0]
+    g = img[:,:,1]
+    r = img[:,:,2]
+    mask = np.logical_and(r < 160, np.logical_and(g > 190, b > 230))
+    not_mask = np.logical_not(mask)
+    img2 = img.copy()
+    img2[mask] = (255, 255, 255)
+    img2[not_mask] = (0, 0, 0)
+
+    global g_mask
+    g_mask = mask.copy()
+    return count_mask(mask)
+
 
 class ArtifactDetector(Node):
     def __init__(self, config, bus):
@@ -46,14 +76,6 @@ class ArtifactDetector(Node):
                 'max_size': 300,
                 'subsequent_detects': 0,
                 'filter_out_black_background': True
-            },
-            {
-                'artefact_name': 'basemarker',
-                'classifier': cv2.CascadeClassifier('/osgar/moon/basemarker.xml'),
-                'min_size': 30,
-                'max_size': 400,
-                'subsequent_detects': 0,
-                'filter_out_black_background': False
             }
         ]
 
@@ -100,6 +122,11 @@ class ArtifactDetector(Node):
             self.width = limg.shape[1]
         assert self.width == limg.shape[1], (self.width, limg.shape[1])
 
+
+        ccount, w, h, x_min, x_max = count_cyan(limg[0:479,300:340])
+        if ccount > MIN_CYAN_COUNT: 
+            self.publish('artf', ['basemarker', 300, 0, 60, 480])
+        
         limg_rgb = cv2.cvtColor(limg, cv2.COLOR_BGR2RGB) 
         rimg_rgb = cv2.cvtColor(rimg, cv2.COLOR_BGR2RGB) 
 
