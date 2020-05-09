@@ -241,7 +241,7 @@ def odom2zmq():
                 
             elif message_type == "set_brakes":
                 is_on = message.split(" ")[1].startswith("on")
-                print ("Setting brakes to: %r" % is_on)
+                print ("rospy_rover: Setting brakes to: %r" % is_on)
                 brakes(is_on)
 
             elif message_type == "cmd_vel":
@@ -311,39 +311,38 @@ def odom2zmq():
                     rospy.wait_for_service("/arrived_home_service", timeout=2.0)
                     report_artf = rospy.ServiceProxy('/arrived_home_service', HomeLocationSrv)
                     try:
-                        print(report_artf(True))
+                        print("rospy_rover: Homebase arrival service response: %r" % report_artf(True))
                     except rospy.service.ServiceException as e:
-                        print(e)
+                        print("rospy_rover: Homebase arrival service response: Incorrect")
                     except rospy.ROSException as exc:
-                        print("/arrived_home_service not available: " + str(exc))
+                        print("rospy_rover: /arrived_home_service not available: " + str(exc))
                 elif vol_type == 'homebase_alignment':
                     # Task 3
                     rospy.wait_for_service("/aligned_service", timeout=2.0)
                     report_artf = rospy.ServiceProxy('/aligned_service', HomeLocationSrv)
                     try:
-                        print(report_artf(True))
+                        print("rospy_rover: Aligned service response: %r" % report_artf(True))
                     except rospy.service.ServiceException as e:
-                        print(e)
+                        print("rospy_rover: Aligned service response: Incorrect")
                     except rospy.ROSException as exc:
-                        print("/aligned_service not available: " + str(exc))
+                        print("rospy_rover: /aligned_service not available: " + str(exc))
                 elif vol_type in ['ice', 'ethene', 'methane', 'methanol', 'carbon_dio', 'ammonia', 'hydrogen_sul', 'sulfur_dio']:
                     # Task 1
                     x, y, z = [float(a) for a in s[1:]]
                     pose = geometry_msgs.msg.Point(x, y, z)
-                    print ("Reporting %s at position %f %f %f" % (vol_type, x, y, z))
+                    print ("rospy_rover: Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
                         rospy.wait_for_service("/vol_detected_service", timeout=2.0)
                         report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
                         resp = report_artf(pose=pose, vol_type=vol_type)
-                        print ("Volatile report result: %r" % resp.result)
+                        print ("rospy_rover: Volatile report result: %r" % resp.result)
                     except rospy.ServiceException as exc:
-                        print("/vol_detected_service exception: " + str(exc))
+                        print("rospy_rover: /vol_detected_service exception: " + str(exc))
                     except rospy.ROSException as exc:
-                        if False:
-                            print("/vol_detected_service not available: " + str(exc))
+                        print("rospy_rover: /vol_detected_service not available: " + str(exc))
             else:
                 if len(message_type) > 0: 
-                    print ("Unhandled message type: %s" % message_type)
+                    print ("rospy_rover: Unhandled message type: %s" % message_type)
 
         except zmq.error.Again:
             pass
