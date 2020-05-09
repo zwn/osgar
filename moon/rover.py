@@ -61,11 +61,19 @@
 # /hauler_n/bin_joint_controller/command
 
 import math
+from statistics import median
 from datetime import timedelta
 
 from osgar.lib.mathex import normalizeAnglePIPI
 from osgar.node import Node
 
+
+def min_dist(laser_data):
+    if len(laser_data) > 0:
+        # remove ultra near reflections and unlimited values == 0
+        laser_data = [x if x > 10 else 10000 for x in laser_data]
+        return min(laser_data)/1000.0
+    return 0
 
 WHEEL_RADIUS = 0.275  # meters
 WHEEL_SEPARATION_WIDTH = 1.87325  # meters
@@ -100,6 +108,10 @@ class Rover(Node):
         self.pitch = 0.0
         self.yaw = 0.0
         self.yaw_offset = None
+
+        self.started_turning_for_basemarker_timestamp = None
+        self.basemarker_starting_distance = None
+        self.basemarker_centered = False
         
         self.currently_following_object = {
             'object_type': None,
@@ -210,6 +222,29 @@ class Rover(Node):
                     else: # if within angle but object too small, keep going straight
                         self.desired_angular_speed = 0.0
                         self.desired_speed = SPEED_ON
+
+                elif self.currently_following_object['object_type'] == 'basemarker':
+                    print("basemarker identified")
+                    e = 80
+
+                    if center_x < 300: # if marker to the left, move right
+                        self.basemarker_centered = False
+                        effort = [e, -e, e, -e]
+                        steering = [math.pi/2, -math.pi/2, math.pi/2, -math.pi/2]
+                        cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
+#                        self.bus.publish('cmd', cmd)
+
+                    elif center_x > 340:
+                        self.basemarker_centered = False
+                        effort = [-e, e, -e, e]
+                        steering = [math.pi/2, -math.pi/2, math.pi/2, -math.pi/2]
+                        cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
+#                        self.bus.publish('cmd', cmd)
+
+                    else:
+                        cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+#                        self.bus.publish('cmd', cmd)
+                        self.basemarker_centered = True
                         
                         
     def on_rot(self, data):
@@ -258,8 +293,66 @@ class Rover(Node):
         if self.verbose:
             self.debug_arr.append([self.time.total_seconds(),] + speed)
 
+    def on_scan(self, data):
+        assert len(data) == 180
+        # NASA sends 100 samples over 150 degrees
+        # OSGAR sends 180 points, first and last 40 are zeros
+
+        # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
+        
+        if 'basemarker' in self.objects_to_follow:
+            midindex = len(data) // 2
+            # 10 degrees left and right is 6-7 samples before and after the array midpoint
+            straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
+            right_dist = median(data[midindex-8:midindex-6]) / 1000.0 
+            left_dist = median(data[midindex+6:midindex+8]) / 1000.0
+            print ("Min dist front: %f, Avg dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+
+            if self.basemarker_starting_distance is None:
+                self.basemarker_starting_distance = 5 #straight_ahead_dist
+            
+            e = 80
+            if self.started_turning_for_basemarker_timestamp == None:
+                self.started_turning_for_basemarker_timestamp = self.time
+            elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
+                e = 0
+
+            if self.basemarker_centered and abs(left_dist - right_dist) < 0.5:
+                print("CENTERED")
+                cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                self.bus.publish('cmd', cmd)
+                self.bus.publish('object_reached', 'basemarker')
+
+
+
+                
+            effort = [e, -e, e, -e]
+            
+            # estimated radius of homebase is 4m
+            # rover width is 2.2m
+            steering_angle_left = steering_angle_right = math.atan((4 + self.basemarker_starting_distance) / 1.1)
+
+            if straight_ahead_dist >  1.1 * self.basemarker_starting_distance:
+                    steering_angle_left -= 0.1
+                    steering_angle_right += 0.1
+            elif straight_ahead_dist <  0.9 * self.basemarker_starting_distance:
+                    steering_angle_left += 0.1
+                    steering_angle_right -= 0.1
+            elif left_dist > 0.01 and right_dist > 0.01:
+                if left_dist < 0.9 * right_dist:
+                    steering_angle_left -= 0.1
+                    steering_angle_right += 0.1
+                elif left_dist * 0.9 > right_dist:
+                    steering_angle_left += 0.1
+                    steering_angle_right -= 0.1
+                
+            steering = [steering_angle_left, -steering_angle_right, steering_angle_left, -steering_angle_right]
+            cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
+            self.bus.publish('cmd', cmd)
+            
     def on_joint_effort(self, data):
         assert self.joint_name is not None
+
         # TODO cycle through fl, fr, bl, br
         effort =  data[self.joint_name.index(b'fl_wheel_joint')]
 
@@ -273,7 +366,11 @@ class Rover(Node):
             print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
             self.currently_following_object['timestamp'] = None
             self.currently_following_object['object_type'] = None
-        
+
+        # do not control wheels if driven via basemarker search
+        if 'basemarker' in self.objects_to_follow: 
+            return
+            
         # only turning
         if abs(self.desired_speed) < 0.001:
             e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras; this shouldn't actually happen as we steer and go together when following an object
