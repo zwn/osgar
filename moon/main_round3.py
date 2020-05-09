@@ -54,8 +54,9 @@ class LidarCollisionMonitor:
         if channel == 'scan':
             size = len(robot.scan)
             # measure distance only in 160 degree angle
-            # robot is ~2.21m wide (~1.2m x 2 with wiggle room), with 160 angle need to have 1.2m clearance (x = 1.2 / sin(160/2))
-            if min_dist(robot.scan[55:215]) < 1.2 and not robot.inException:
+            # NASA Lidar 150degrees wide, 50 samples
+            # robot is ~2.21m wide (~1.2m x 2 with wiggle room), with 150 angle need to have 1.2m clearance (x = 1.2 / sin(150/2))
+            if min_dist(robot.scan[60:210]) < 1.2 and not robot.inException:
                 raise LidarCollisionException()
 
     # context manager functions
@@ -192,20 +193,24 @@ class SpaceRoboticsChallenge(Node):
 
     def on_object_reached(self, timestamp, data):
         object_type = data
-        if (object_type == "cubesat"):
+        if object_type == "cubesat":
             self.current_driver = "cubesat-finish"
             self.set_brakes(True)
             self.set_cam_angle(CAMERA_ANGLE_CUBESAT)
             self.cubesat_reached = True
             self.publish('request_origin', True) # response to this is required, if none, rover will be stopped forever
-        elif (object_type == "homebase"): # upon handover, robot should be moving straight
-            if self.cubesat_reported:
+        elif object_type == "homebase": # upon handover, robot should be moving straight
+            if True or self.cubesat_reported: # temporarily ignore cubesat to practice with reaching homebase and alignment
                 self.set_cam_angle(CAMERA_ANGLE_HOMEBASE) # look somewhat up in case we are approaching on a downhill slope
                 self.current_driver = "homebase-finish"
                 self.homebase_reached = True
             else:
                 print("Reached reportable home base destination, need to find cubesat first though")
-                
+        elif object_type == 'basemarker':
+            print (self.time, "app: Reporting alignment to server")
+            self.publish('artf_cmd', bytes('artf homebase_alignment\n', encoding='ascii'))
+
+            
     def on_score(self, timestamp, data):
         self.score = data[0]
 
@@ -245,6 +250,9 @@ class SpaceRoboticsChallenge(Node):
     def on_artf(self, timestamp, data):
         artifact_type, img_x, img_y, img_w, img_h = data
 
+        if artifact_type == 'basemarker':
+            print("BASEMARKER FOUND")
+        
         if self.cubesat_reached and not self.origin_updated:
             self.bus.publish('request_origin', True) # keep requesting origin TODO: get rid of this
         
@@ -315,11 +323,16 @@ class SpaceRoboticsChallenge(Node):
         elif channel == 'scan':
             self.local_planner.update(self.scan)
             self.min_front_distance = min_dist(self.scan[len(self.scan)//3:2*len(self.scan)//3])
+            # only look at view 90 degrees wide
             if self.min_front_distance < 5 and not self.homebase_reported and self.homebase_reached:
                 print ("app: Reporting homebase reached to server, distance %f: " % self.min_front_distance)
                 self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
                 self.homebase_reported = True
-                self.set_brakes(True)
+#                self.set_brakes(True)
+
+                self.bus.publish('follow_object', ['basemarker'])
+                self.current_driver = 'basemarker'
+
                 #self.current_driver = None
                 #raise ChangeDriverException(None)
                 # THIS IS THE END OF THE RUN FOR NOW
@@ -468,26 +481,35 @@ class SpaceRoboticsChallenge(Node):
 
             self.bus.publish('follow_object', ['cubesat', 'homebase'])
 
+            # some random manual starting moves to choose from
+#            self.turn(math.radians(15), timeout=timedelta(seconds=10))
+#            self.go_straight(-5.0, timeout=timedelta(seconds=20))
+#            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+#            self.bus.publish('follow_object', ['basemarker'])
+#            self.current_driver = 'basemarker'
+#            self.set_cam_angle(0.1)
+
             
-            try:
-                self.set_cam_angle(CAMERA_ANGLE_LOOKING)
-                self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
-            except ChangeDriverException as e:
-                print(self.time, "Initial turn interrupted by driver: %s" % e)
-            except VirtualBumperException:
-                self.inException = True
-                self.set_cam_angle(CAMERA_ANGLE_DRIVING)
-                print(self.time, "Initial Turn Virtual Bumper!")
-                # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
-                # also, it may be simple timeout, not a crash
-                self.virtual_bumper = None
-                deg_angle = self.rand.randrange(90, 180)
-                deg_sign = self.rand.randint(0,1)
-                if deg_sign:
-                    deg_angle = -deg_angle
-                self.turn(math.radians(deg_angle), timeout=timedelta(seconds=10))
-                self.inException = False
-                self.bus.publish('driving_recovery', False)
+            if self.current_driver is None and not self.brakes_on:
+                try:
+                    self.set_cam_angle(CAMERA_ANGLE_LOOKING)
+                    self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
+                except ChangeDriverException as e:
+                    print(self.time, "Initial turn interrupted by driver: %s" % e)
+                except VirtualBumperException:
+                    self.inException = True
+                    self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+                    print(self.time, "Initial Turn Virtual Bumper!")
+                    # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
+                    # also, it may be simple timeout, not a crash
+                    self.virtual_bumper = None
+                    deg_angle = self.rand.randrange(90, 180)
+                    deg_sign = self.rand.randint(0,1)
+                    if deg_sign:
+                        deg_angle = -deg_angle
+                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=10))
+                    self.inException = False
+                    self.bus.publish('driving_recovery', False)
                 
             last_walk_start = 0.0
             start_time = self.time
