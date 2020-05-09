@@ -21,7 +21,7 @@ CAMERA_HEIGHT = 480
 CAMERA_ANGLE_DRIVING = 0.1
 CAMERA_ANGLE_LOOKING = 0.5
 CAMERA_ANGLE_CUBESAT = 0.78
-CAMERA_ANGLE_HOMEBASE = 0.3
+CAMERA_ANGLE_HOMEBASE = 0.0
 
 class ChangeDriverException(Exception):
     pass
@@ -109,9 +109,6 @@ class SpaceRoboticsChallenge(Node):
         
         self.origin_updated = False
 
-        self.homebase_reached = False
-        self.homebase_reported = False
-
         self.cubesat_reached = False
         self.cubesat_reported = False
         
@@ -193,6 +190,7 @@ class SpaceRoboticsChallenge(Node):
 
     def on_object_reached(self, timestamp, data):
         object_type = data
+        print(self.time, "app: Object %s reached" % object_type)
         if object_type == "cubesat":
             self.current_driver = "cubesat-finish"
             self.set_brakes(True)
@@ -201,11 +199,12 @@ class SpaceRoboticsChallenge(Node):
             self.publish('request_origin', True) # response to this is required, if none, rover will be stopped forever
         elif object_type == "homebase": # upon handover, robot should be moving straight
             if True or self.cubesat_reported: # temporarily ignore cubesat to practice with reaching homebase and alignment
-                self.set_cam_angle(CAMERA_ANGLE_HOMEBASE) # look somewhat up in case we are approaching on a downhill slope
-                self.current_driver = "homebase-finish"
-                self.homebase_reached = True
+                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
+                self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+                self.current_driver = "baseamarker"
+                self.bus.publish('follow_object', ['basemarker'])
             else:
-                print("Reached reportable home base destination, need to find cubesat first though")
+                print(self.time, "app: Reached reportable home base destination, need to find cubesat first though")
         elif object_type == 'basemarker':
             print (self.time, "app: Reporting alignment to server")
             self.publish('artf_cmd', bytes('artf homebase_alignment\n', encoding='ascii'))
@@ -250,9 +249,6 @@ class SpaceRoboticsChallenge(Node):
     def on_artf(self, timestamp, data):
         artifact_type, img_x, img_y, img_w, img_h = data
 
-        if artifact_type == 'basemarker':
-            print("BASEMARKER FOUND")
-        
         if self.cubesat_reached and not self.origin_updated:
             self.bus.publish('request_origin', True) # keep requesting origin TODO: get rid of this
         
@@ -302,7 +298,7 @@ class SpaceRoboticsChallenge(Node):
                 if self.cubesat_location is not None:
                     s = '%s %.2f %.2f %.2f\n' % ('cubesat', self.cubesat_location[0], self.cubesat_location[1], self.cubesat_location[2], )
                     self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-                if self.homebase_reported:
+                if self.current_driver == 'basemarker':
                     self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
 
 
@@ -322,21 +318,6 @@ class SpaceRoboticsChallenge(Node):
             self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
-            self.min_front_distance = min_dist(self.scan[len(self.scan)//3:2*len(self.scan)//3])
-            # only look at view 90 degrees wide
-            if self.min_front_distance < 5 and not self.homebase_reported and self.homebase_reached:
-                print ("app: Reporting homebase reached to server, distance %f: " % self.min_front_distance)
-                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
-                self.homebase_reported = True
-#                self.set_brakes(True)
-
-                self.bus.publish('follow_object', ['basemarker'])
-                self.current_driver = 'basemarker'
-
-                #self.current_driver = None
-                #raise ChangeDriverException(None)
-                # THIS IS THE END OF THE RUN FOR NOW
-                
         elif channel == 'origin':
             data = self.origin[:]  # the same name is used for message as internal data
             self.xyz = data[1:4]
@@ -367,7 +348,7 @@ class SpaceRoboticsChallenge(Node):
             siny_cosp = 2 * (qw * qz + qx * qy);
             cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
             self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
-            print (self.time, "True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (data[1],data[2],data[3],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
+            print (self.time, "app: True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (data[1],data[2],data[3],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             # tilt camera all the way up, it should trigger a detection again
             self.origin_updated = True
             
@@ -479,16 +460,17 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            self.bus.publish('follow_object', ['cubesat', 'homebase'])
 
             # some random manual starting moves to choose from
-#            self.turn(math.radians(15), timeout=timedelta(seconds=10))
-#            self.go_straight(-5.0, timeout=timedelta(seconds=20))
-#            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
-#            self.bus.publish('follow_object', ['basemarker'])
-#            self.current_driver = 'basemarker'
-#            self.set_cam_angle(0.1)
+            #            self.go_straight(-1.0, timeout=timedelta(seconds=20))
+            #            self.turn(math.radians(45), timeout=timedelta(seconds=10))
+            #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+            #            self.bus.publish('follow_object', ['basemarker'])
+            #            self.current_driver = 'basemarker'
+            #            self.set_cam_angle(0.1)
 
+            self.bus.publish('follow_object', ['cubesat', 'homebase'])
+            #            self.bus.publish('follow_object', ['homebase'])
             
             if self.current_driver is None and not self.brakes_on:
                 try:

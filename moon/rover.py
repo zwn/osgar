@@ -71,7 +71,7 @@ from osgar.node import Node
 def min_dist(laser_data):
     if len(laser_data) > 0:
         # remove ultra near reflections and unlimited values == 0
-        laser_data = [x if x > 10 else 10000 for x in laser_data]
+        laser_data = [x if x > 10 else 20000 for x in laser_data] # NASA scanner goes up to 15m of valid measurement
         return min(laser_data)/1000.0
     return 0
 
@@ -88,6 +88,8 @@ STEER_TOWARDS_OBJECT_ANGLE = 0.5
 SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
 DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = timedelta(seconds=5) # after how long to give up control once object disappears
 # there could a bump on the road or glitch in the filter so give it some time to re-find
+
+HOMEBASE_KEEP_DISTANCE = 2 # maintain this distance from home base while approaching and going around
 
 CAMERA_FOCAL_LENGTH = 381
 CAMERA_WIDTH = 640
@@ -110,8 +112,8 @@ class Rover(Node):
         self.yaw_offset = None
 
         self.started_turning_for_basemarker_timestamp = None
-        self.basemarker_starting_distance = None
         self.basemarker_centered = False
+        self.homebase_final_approach = False
         
         self.currently_following_object = {
             'object_type': None,
@@ -134,6 +136,15 @@ class Rover(Node):
         self.objects_to_follow = data
         print (self.time, "Starting to look for " + ','.join(data))
 
+    def object_reached(self, object_type):
+        self.currently_following_object['object_type'] = None
+        self.currently_following_object['timestamp'] = None
+
+        self.objects_to_follow.remove(object_type)
+        print (self.time, "rover: Reached and no longer looking for %s, reporting to main" % object_type)
+        self.bus.publish('object_reached', object_type)
+            
+        
     # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, data):
         # vol_type, x, y, w, h
@@ -180,12 +191,8 @@ class Rover(Node):
                         self.desired_angular_speed = 0.0
                         print(self.time, "rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
-                        self.currently_following_object['object_type'] = None
-                        self.currently_following_object['timestamp'] = None
-
-                        print (self.time, "rover: Reporting object %s" % artifact_type)
-#                        self.objects_to_follow.remove(artifact_type) due to losing the request origin call, we may keep trying this #TODO: get rid of this
-                        self.bus.publish('object_reached', artifact_type)
+                        self.object_reached(artifact_type)
+                        
                     elif center_x < 200: # if cubesat near left edge, turn left; if far enough from top, go straight too, otherwise turn in place
                         self.desired_angular_speed = SPEED_ON
                         self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
@@ -211,20 +218,14 @@ class Rover(Node):
                         self.desired_speed = SPEED_ON
                         
                         print(self.time, "homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-
-                        self.currently_following_object['object_type'] = None
-                        self.currently_following_object['timestamp'] = None
-
-                        self.bus.publish('object_reached', artifact_type)
-                        self.objects_to_follow.remove(artifact_type)
-                        print (self.time, "No longer looking for %s" % artifact_type)
+                        self.homebase_final_approach = True
                         
                     else: # if within angle but object too small, keep going straight
                         self.desired_angular_speed = 0.0
                         self.desired_speed = SPEED_ON
 
                 elif self.currently_following_object['object_type'] == 'basemarker':
-                    print("basemarker identified")
+                    print(self.time, "rover: basemarker identified")
                     e = 80
 
                     if center_x < 300: # if marker to the left, move right
@@ -298,44 +299,54 @@ class Rover(Node):
         # NASA sends 100 samples over 150 degrees
         # OSGAR sends 180 points, first and last 40 are zeros
 
+# TODO: if too far from anything, revert to looking for homebase
+        
+        midindex = len(data) // 2
+        # 10 degrees left and right is 6-7 samples before and after the array midpoint
+        straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
+
+        if 'homebase' in self.objects_to_follow and self.homebase_final_approach:
+            if straight_ahead_dist < HOMEBASE_KEEP_DISTANCE:
+                cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                self.bus.publish('cmd', cmd)
+
+                print ("rover: homebase distance %f: " % straight_ahead_dist)
+                self.object_reached('homebase')
+            else:
+                # keep going straight; for now this means do nothing, keep speed from previous step
+                print("rover: Keeping going")
+        
         # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
         
         if 'basemarker' in self.objects_to_follow:
-            midindex = len(data) // 2
-            # 10 degrees left and right is 6-7 samples before and after the array midpoint
-            straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
-            right_dist = median(data[midindex-8:midindex-6]) / 1000.0 
-            left_dist = median(data[midindex+6:midindex+8]) / 1000.0
-            print ("Min dist front: %f, Avg dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+            right_dist = min_dist(data[midindex-8:midindex-6])
+            left_dist = min_dist(data[midindex+6:midindex+8])
+            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
 
-            if self.basemarker_starting_distance is None:
-                self.basemarker_starting_distance = 5 #straight_ahead_dist
-            
             e = 80
             if self.started_turning_for_basemarker_timestamp == None:
                 self.started_turning_for_basemarker_timestamp = self.time
             elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
                 e = 0
 
-            if self.basemarker_centered and abs(left_dist - right_dist) < 0.5:
-                print("CENTERED")
+            if left_dist < 9:
+                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
+            if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
                 cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
                 self.bus.publish('cmd', cmd)
-                self.bus.publish('object_reached', 'basemarker')
-
-
-
+                self.object_reached('basemarker')
+                return
                 
             effort = [e, -e, e, -e]
             
             # estimated radius of homebase is 4m
             # rover width is 2.2m
-            steering_angle_left = steering_angle_right = math.atan((4 + self.basemarker_starting_distance) / 1.1)
+            steering_angle_left = steering_angle_right = math.atan((4 + HOMEBASE_KEEP_DISTANCE) / 1.1)
 
-            if straight_ahead_dist >  1.1 * self.basemarker_starting_distance:
+            if straight_ahead_dist >  1.1 * HOMEBASE_KEEP_DISTANCE:
                     steering_angle_left -= 0.1
                     steering_angle_right += 0.1
-            elif straight_ahead_dist <  0.9 * self.basemarker_starting_distance:
+            elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
                     steering_angle_left += 0.1
                     steering_angle_right -= 0.1
             elif left_dist > 0.01 and right_dist > 0.01:
