@@ -36,14 +36,24 @@ class ArtifactDetector(Node):
                 'classifier': cv2.CascadeClassifier('/osgar/moon/cubesat.xml'),
                 'min_size': 5,
                 'max_size': 110,
-                'subsequent_detects': 0
+                'subsequent_detects': 0,
+                'filter_out_black_background': True
                 },
             {
                 'artefact_name': 'homebase',
                 'classifier': cv2.CascadeClassifier('/osgar/moon/homebase.xml'),
                 'min_size': 50,
                 'max_size': 300,
-                'subsequent_detects': 0
+                'subsequent_detects': 0,
+                'filter_out_black_background': True
+            },
+            {
+                'artefact_name': 'basemarker',
+                'classifier': cv2.CascadeClassifier('/osgar/moon/basemarker.xml'),
+                'min_size': 30,
+                'max_size': 400,
+                'subsequent_detects': 0,
+                'filter_out_black_background': False
             }
         ]
 
@@ -103,15 +113,19 @@ class ArtifactDetector(Node):
                 else:
 
                     x,y,width,height = lfound[0]
-#                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
-                    gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
-                    blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
-                    th, threshed = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
-                    coords = cv2.findNonZero(threshed)
-                    nx, ny, nw, nh = cv2.boundingRect(coords)
-#                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
+                    if c['filter_out_black_background']:
+    #                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
+                        gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
+                        blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
+                        th, threshed = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+                        coords = cv2.findNonZero(threshed)
+                        nx, ny, nw, nh = cv2.boundingRect(coords)
+    #                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
 
-                    self.publish('artf', [c['artefact_name'], int(x+nx), int(y+ny), int(nw), int(nh)])
+                        self.publish('artf', [c['artefact_name'], int(x+nx), int(y+ny), int(nw), int(nh)])
+                    else:
+                        self.publish('artf', [c['artefact_name'], int(x), int(y), int(width), int(height)])
+                        
             else:
                 c['subsequent_detects'] = 0
 
