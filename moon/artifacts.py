@@ -123,7 +123,7 @@ class ArtifactDetector(Node):
         assert self.width == limg.shape[1], (self.width, limg.shape[1])
 
 
-        ccount, w, h, x_min, x_max = count_cyan(limg[0:479,300:340])
+        ccount, w, h, x_min, x_max = count_cyan(limg[0:480,300:340])
         if ccount > MIN_CYAN_COUNT: 
             self.publish('artf', ['basemarker', 300, 0, 60, 480])
         
