@@ -75,6 +75,13 @@ def min_dist(laser_data):
         return min(laser_data)/1000.0
     return 0
 
+def median_dist(laser_data):
+    if len(laser_data) > 0:
+        # remove ultra near reflections and unlimited values == 0
+        laser_data = [x if x > 10 else 20000 for x in laser_data] # NASA scanner goes up to 15m of valid measurement
+        return median(laser_data)/1000.0
+    return 0
+
 WHEEL_RADIUS = 0.275  # meters
 WHEEL_SEPARATION_WIDTH = 1.87325  # meters
 WHEEL_SEPARATION_HEIGHT = 1.5748  # meters
@@ -226,25 +233,12 @@ class Rover(Node):
 
                 elif self.currently_following_object['object_type'] == 'basemarker':
                     print(self.time, "rover: basemarker identified")
-                    e = 80
 
-                    if center_x < 300: # if marker to the left, move right
+                    if center_x < 300: # if marker to the left
                         self.basemarker_centered = False
-                        effort = [e, -e, e, -e]
-                        steering = [math.pi/2, -math.pi/2, math.pi/2, -math.pi/2]
-                        cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
-#                        self.bus.publish('cmd', cmd)
-
                     elif center_x > 340:
                         self.basemarker_centered = False
-                        effort = [-e, e, -e, e]
-                        steering = [math.pi/2, -math.pi/2, math.pi/2, -math.pi/2]
-                        cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
-#                        self.bus.publish('cmd', cmd)
-
                     else:
-                        cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
-#                        self.bus.publish('cmd', cmd)
                         self.basemarker_centered = True
                         
                         
@@ -300,68 +294,70 @@ class Rover(Node):
         # OSGAR sends 180 points, first and last 40 are zeros
 
 # TODO: if too far from anything, revert to looking for homebase
-        
-        midindex = len(data) // 2
-        # 10 degrees left and right is 6-7 samples before and after the array midpoint
-        straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
+        if not self.in_driving_recovery:
 
-        if 'homebase' in self.objects_to_follow and self.homebase_final_approach:
-            if straight_ahead_dist < HOMEBASE_KEEP_DISTANCE:
-                cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+            midindex = len(data) // 2
+            # 10 degrees left and right is 6-7 samples before and after the array midpoint
+            straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
+
+            if 'homebase' in self.objects_to_follow and self.homebase_final_approach:
+                if straight_ahead_dist < HOMEBASE_KEEP_DISTANCE:
+                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                    self.bus.publish('cmd', cmd)
+
+                    print ("rover: homebase distance %f: " % straight_ahead_dist)
+                    self.homebase_final_approach = False
+                    self.object_reached('homebase')
+                #else:
+                    # keep going straight; for now this means do nothing, keep speed from previous step
+                    # if it misses the base, will keep going until it hits something, then it will quit claiming it found the base
+                    # print("rover: Keeping going")
+
+            # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
+
+            if 'basemarker' in self.objects_to_follow:
+                right_dist = median_dist(data[midindex-8:midindex-6])
+                left_dist = median_dist(data[midindex+6:midindex+8])
+    #            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+
+                e = 80
+                if self.started_turning_for_basemarker_timestamp == None:
+                    self.started_turning_for_basemarker_timestamp = self.time
+                elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
+                    e = 0
+
+    #            if left_dist < 9:
+    #                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
+                if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
+                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                    self.bus.publish('cmd', cmd)
+                    self.started_turning_for_basemarker_timestamp = None
+                    self.object_reached('basemarker')
+                    return
+
+                effort = [e, -e, e, -e]
+
+                # estimated radius of homebase is 4m
+                # rover width is 2.2m
+                steering_angle_left = steering_angle_right = math.atan((4 + HOMEBASE_KEEP_DISTANCE) / 1.1)
+
+                if straight_ahead_dist >  1.1 * HOMEBASE_KEEP_DISTANCE:
+                        steering_angle_left -= 0.1
+                        steering_angle_right += 0.1
+                elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
+                elif left_dist > 0.01 and right_dist > 0.01:
+                    if left_dist < 0.9 * right_dist:
+                        steering_angle_left -= 0.1
+                        steering_angle_right += 0.1
+                    elif left_dist * 0.9 > right_dist:
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
+
+                steering = [steering_angle_left, -steering_angle_right, steering_angle_left, -steering_angle_right]
+                cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
                 self.bus.publish('cmd', cmd)
-
-                print ("rover: homebase distance %f: " % straight_ahead_dist)
-                self.homebase_final_approach = False
-                self.object_reached('homebase')
-            #else:
-                # keep going straight; for now this means do nothing, keep speed from previous step
-                # if it misses the base, will keep going until it hits something, then it will quit claiming it found the base
-                # print("rover: Keeping going")
-        
-        # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
-        
-        if 'basemarker' in self.objects_to_follow:
-            right_dist = min_dist(data[midindex-8:midindex-6])
-            left_dist = min_dist(data[midindex+6:midindex+8])
-#            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
-
-            e = 80
-            if self.started_turning_for_basemarker_timestamp == None:
-                self.started_turning_for_basemarker_timestamp = self.time
-            elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
-                e = 0
-
-#            if left_dist < 9:
-#                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
-            if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
-                cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
-                self.bus.publish('cmd', cmd)
-                self.object_reached('basemarker')
-                return
-                
-            effort = [e, -e, e, -e]
-            
-            # estimated radius of homebase is 4m
-            # rover width is 2.2m
-            steering_angle_left = steering_angle_right = math.atan((4 + HOMEBASE_KEEP_DISTANCE) / 1.1)
-
-            if straight_ahead_dist >  1.1 * HOMEBASE_KEEP_DISTANCE:
-                    steering_angle_left -= 0.1
-                    steering_angle_right += 0.1
-            elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
-                    steering_angle_left += 0.1
-                    steering_angle_right -= 0.1
-            elif left_dist > 0.01 and right_dist > 0.01:
-                if left_dist < 0.9 * right_dist:
-                    steering_angle_left -= 0.1
-                    steering_angle_right += 0.1
-                elif left_dist * 0.9 > right_dist:
-                    steering_angle_left += 0.1
-                    steering_angle_right -= 0.1
-                
-            steering = [steering_angle_left, -steering_angle_right, steering_angle_left, -steering_angle_right]
-            cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
-            self.bus.publish('cmd', cmd)
             
     def on_joint_effort(self, data):
         assert self.joint_name is not None
