@@ -1,6 +1,7 @@
 """
   Space Robotics Challenge 2
 """
+import zmq
 
 import math
 from random import Random
@@ -72,6 +73,13 @@ class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
         bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle", "set_brakes", "follow_object")
+
+
+        context = zmq.Context()
+        print ("Connecting to ROS REQ/REP server...")
+        self.socket_out = context.socket(zmq.REQ)
+        self.socket_out.connect ("tcp://localhost:6556")
+
         self.monitors = []
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
@@ -106,11 +114,13 @@ class SpaceRoboticsChallenge(Node):
         self.camera_angle = CAMERA_ANGLE_DRIVING
         self.camera_change_triggered_time = None
         self.brakes_on = False
-        
+        self.homebase_arrival_success = False        
         self.origin_updated = False
+        
 
         self.cubesat_reached = False
-        self.cubesat_reported = False
+        self.cubesat_success = False
+        self.last_cubesat_attempt = None
         
         self.inException = False
         
@@ -136,12 +146,16 @@ class SpaceRoboticsChallenge(Node):
         self.camera_angle = angle
         print ("Set camera angle to: %f" % angle)
         self.camera_change_triggered_time = self.time
-        self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
+        #        self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
 
+        self.socket_out.send_string('set_cam_angle %f\n' % angle)
+        self.socket_out.recv()
+        
     def set_brakes(self, on):
         self.brakes_on = on
+        self.socket_out.send_string('set_brakes %s\n' % ('on' if on else 'off'))
+        self.socket_out.recv()
         print ("Setting brakes to: %s" % on)
-        self.publish('set_brakes', bytes('set_brakes %s\n' % ('on' if on else 'off'), encoding='ascii'))
             
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
@@ -196,18 +210,73 @@ class SpaceRoboticsChallenge(Node):
             self.set_brakes(True)
             self.set_cam_angle(CAMERA_ANGLE_CUBESAT)
             self.cubesat_reached = True
-            self.publish('request_origin', True) # response to this is required, if none, rover will be stopped forever
+            self.socket_out.send_string('request_origin') # response to this is required, if none, rover will be stopped forever
+            message = self.socket_out.recv()
+            if message.split()[0] == b'origin':
+                origin = [float(x) for x in message.split()[1:]]
+                self.xyz = origin[:3]
+
+                qx, qy, qz, qw = origin[3:]
+
+                print(self.time, "Origin received, internal position updated")
+                # robot should be stopped right now (using brakes once available)
+                # lift camera to max, object should be (back) in view
+                # trigger recognition, get bounding box and calculate fresh angles
+
+                # TODO: this separate storage of reported numbers is temporary, need OSGAR to accept true values and update its own data
+                self.nasa_xyz = self.xyz
+                sinr_cosp = 2 * (qw * qx + qy * qz);
+                cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
+                self.nasa_roll = math.atan2(sinr_cosp, cosr_cosp);
+
+                sinp = 2 * (qw * qy - qz * qx);
+                if abs(sinp) >= 1:
+                    self.nasa_pitch = math.copysign(math.pi / 2, sinp);
+                else:
+                    self.nasa_pitch = math.asin(sinp);
+
+                siny_cosp = 2 * (qw * qz + qx * qy);
+                cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
+                self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
+                print (self.time, "app: True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (origin[0],origin[1],origin[2],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
+                # once origin is marked as update, next artefact will trigger report
+                self.origin_updated = True
+            
         elif object_type == "homebase": # upon handover, robot should be moving straight
-            if True or self.cubesat_reported: # temporarily ignore cubesat to practice with reaching homebase and alignment
-                self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
-                self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
-                self.current_driver = "baseamarker"
-                self.bus.publish('follow_object', ['basemarker'])
+            if self.cubesat_success:
+                if not self.homebase_arrival_success:
+                    self.socket_out.send_string('artf homebase\n')
+                    response = self.socket_out.recv().decode("ascii") 
+                    print(self.time, "app: Homebase response: %s" % response)
+
+                    if response == 'ok':
+                        self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+                        self.current_driver = "basemarker"
+                        self.homebase_arrival_success = True
+                        self.bus.publish('follow_object', ['basemarker'])
+                    else:
+                        # homebase arrival not accepted, try again
+                        self.bus.publish('follow_object', ['homebase'])
+
+                else:
+                    # homebase found (again), does not need reporting, just start basemarker search
+                    self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+                    self.current_driver = "basemarker"
+                    self.bus.publish('follow_object', ['basemarker'])
+                    
             else:
                 print(self.time, "app: Reached reportable home base destination, need to find cubesat first though")
         elif object_type == 'basemarker':
             print (self.time, "app: Reporting alignment to server")
-            self.publish('artf_cmd', bytes('artf homebase_alignment\n', encoding='ascii'))
+            self.socket_out.send_string('artf homebase_alignment\n')
+            response = self.socket_out.recv().decode("ascii") 
+            print(self.time, "app: Alignment response: %s" % response)
+            if response == 'ok':
+                # all done, exiting
+                exit
+            else:
+                # do nothing, ie keep going around and try to match the view
+                pass
 
             
     def on_score(self, timestamp, data):
@@ -219,7 +288,7 @@ class SpaceRoboticsChallenge(Node):
         # plot 2D points: https://www.desmos.com/calculator/mhq4hsncnh
         # plot 3D points: https://technology.cpm.org/general/3dgraph/
         
-        observed_values = [(27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (60, 13.5), (62, 11.9)]
+        observed_values = [(27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (60, 13.5), (62, 11.9), (64, 10.8)]
 
         t1 = None
         
@@ -238,10 +307,10 @@ class SpaceRoboticsChallenge(Node):
                     t1 = t2
 
         i = len(observed_values) - 2
-        x2 = t2[i]
-        y2 = t2[i+1]
-        x1 = t1[i]
-        y1 = t1[i+1]
+        x2 = observed_values[i+1][0]
+        y2 = observed_values[i+1][1]
+        x1 = observed_values[i][0]
+        y1 = observed_values[i][1]
         m = (y2 - y1) / (x2 - x1)
         return m * (pixels - x1) + y1
                     
@@ -249,10 +318,7 @@ class SpaceRoboticsChallenge(Node):
     def on_artf(self, timestamp, data):
         artifact_type, img_x, img_y, img_w, img_h = data
 
-        if self.cubesat_reached and not self.origin_updated:
-            self.bus.publish('request_origin', True) # keep requesting origin TODO: get rid of this
-        
-        if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_reported:
+        if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_success and (self.last_cubesat_attempt is None or self.time - self.last_cubesat_attempt > timedelta(minutes=3)):
             print(self.time, "app: Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
             angle_x = math.atan( (CAMERA_WIDTH / 2 - (img_x + img_w/2) ) / float(CAMERA_FOCAL_LENGTH))
             angle_y = math.atan( (CAMERA_HEIGHT / 2 - (img_y + img_h/2) ) / float(CAMERA_FOCAL_LENGTH))
@@ -271,12 +337,18 @@ class SpaceRoboticsChallenge(Node):
             print (self.time, "app: Reporting estimated object location at: [%f,%f,%f]" % (x+ox, y+oy, z+oz))
 
             s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
-            self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-
-            self.cubesat_reported = True
+            self.socket_out.send(bytes('artf ' + s, encoding='ascii'))
+            response = self.socket_out.recv().decode("ascii") 
             self.set_brakes(False)
-            # time to start looking for homebase
-            self.bus.publish('follow_object', ['homebase'])
+
+            if response == 'ok':
+                print("app: Apriori object reported correctly")    
+                self.cubesat_success = True
+                # time to start looking for homebase
+                self.bus.publish('follow_object', ['homebase'])
+            else:
+                print("app: Estimated object location incorrect, wait before continuing task")
+                self.last_cubesat_attempt = self.time
             self.current_driver = None
             if not self.inException:
                 raise ChangeDriverException(None) # interrupt main wait, give driving back
@@ -292,15 +364,6 @@ class SpaceRoboticsChallenge(Node):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
                 print (self.time, "Loc: [%f %f %f] [%f %f %f]; Driver: %s; Score: %d" % (x, y, z, self.roll, self.pitch, self.yaw, self.current_driver, self.score))
-
-                # keep sending TODO: get rid of this
-                self.set_brakes(self.brakes_on)
-                if self.cubesat_location is not None:
-                    s = '%s %.2f %.2f %.2f\n' % ('cubesat', self.cubesat_location[0], self.cubesat_location[1], self.cubesat_location[2], )
-                    self.publish('artf_cmd', bytes('artf ' + s, encoding='ascii'))
-                if self.current_driver == 'basemarker':
-                    self.publish('artf_cmd', bytes('artf homebase\n', encoding='ascii'))
-
 
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
@@ -318,40 +381,6 @@ class SpaceRoboticsChallenge(Node):
             self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
-        elif channel == 'origin':
-            data = self.origin[:]  # the same name is used for message as internal data
-            self.xyz = data[1:4]
-            
-            qx, qy, qz, qw = data[4:]
-            self.roll = qx
-            self.pitch = qy
-            self.yaw = qz
-
-            self.bus.publish('follow_object', ['homebase']) # stop looking for cubesat
-            print(self.time, "Origin received, internal position updated")
-            # robot should be stopped right now (using brakes once available)
-            # lift camera to max, object should be (back) in view
-            # trigger recognition, get bounding box and calculate fresh angles
-
-            # TODO: this separate storage of reported numbers is temporary, need OSGAR to accept true values and update its own data
-            self.nasa_xyz = self.xyz
-            sinr_cosp = 2 * (qw * qx + qy * qz);
-            cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
-            self.nasa_roll = math.atan2(sinr_cosp, cosr_cosp);
-
-            sinp = 2 * (qw * qy - qz * qx);
-            if abs(sinp) >= 1:
-                self.nasa_pitch = math.copysign(math.pi / 2, sinp);
-            else:
-                self.nasa_pitch = math.asin(sinp);
-
-            siny_cosp = 2 * (qw * qz + qx * qy);
-            cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
-            self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
-            print (self.time, "app: True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (data[1],data[2],data[3],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
-            # tilt camera all the way up, it should trigger a detection again
-            self.origin_updated = True
-            
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
             if self.yaw_offset is None:
@@ -359,8 +388,8 @@ class SpaceRoboticsChallenge(Node):
             self.yaw = temp_yaw + self.yaw_offset
 
             # maintain camera level
-            cam_angle = self.camera_angle - self.pitch 
-            self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % cam_angle, encoding='ascii'))
+#            cam_angle = self.camera_angle - self.pitch 
+#            self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % cam_angle, encoding='ascii'))
             
             if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
@@ -460,17 +489,16 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-
+            self.set_brakes(False)
             # some random manual starting moves to choose from
-            #            self.go_straight(-1.0, timeout=timedelta(seconds=20))
-            #            self.turn(math.radians(45), timeout=timedelta(seconds=10))
-            #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
-            #            self.bus.publish('follow_object', ['basemarker'])
-            #            self.current_driver = 'basemarker'
-            #            self.set_cam_angle(0.1)
+#            self.go_straight(-3.0, timeout=timedelta(seconds=20))
+#            self.turn(math.radians(30), timeout=timedelta(seconds=20))
+#            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
+#            self.bus.publish('follow_object', ['basemarker'])
+#            self.current_driver = 'basemarker'
 
             self.bus.publish('follow_object', ['cubesat', 'homebase'])
-            #            self.bus.publish('follow_object', ['homebase'])
+#            self.bus.publish('follow_object', ['homebase'])
             
             if self.current_driver is None and not self.brakes_on:
                 try:
@@ -503,7 +531,7 @@ class SpaceRoboticsChallenge(Node):
                     with LidarCollisionMonitor(self):
                         if self.current_driver is None and not self.brakes_on:
                             self.set_cam_angle(CAMERA_ANGLE_DRIVING)
-                            self.go_straight(100.0, timeout=timedelta(minutes=2))
+                            self.go_straight(50.0, timeout=timedelta(minutes=2))
                         else:
                             self.wait(timedelta(minutes=2)) # allow for self driving, then timeout   
                     self.update()

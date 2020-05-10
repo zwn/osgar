@@ -6,6 +6,7 @@ import time
 import struct
 import math
 from io import BytesIO
+import threading
 from threading import RLock
 
 import zmq
@@ -135,21 +136,21 @@ def callback_topic(data, topic_name):
     socket_send(topic_name + '\0' + header + to_send)
 
 
-def odom2zmq():
+def pushpull(context=None):
     global g_socket, g_lock
 
     with g_lock:
-        context = zmq.Context()
+        context = context or zmq.Context()
         g_socket = context.socket(zmq.PUSH)
         g_socket.setsockopt(zmq.LINGER, 100)  # milliseconds
         g_socket.bind('tcp://*:5555')
 
-    context2 = zmq.Context()
+    context2 = context or zmq.Context()
     g_socket2 = context2.socket(zmq.PULL)
     g_socket2.RCVTIMEO = 5000 # in milliseconds
     g_socket2.bind('tcp://*:5556')
   
-    rospy.init_node('listener', anonymous=True)
+#    rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
     rospy.Subscriber('/scout_1/joint_states', JointState, callback_topic, '/scout_1/joint_states')
     rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
@@ -234,16 +235,6 @@ def odom2zmq():
                     effort_msg.data = effort
                     pub.publish(effort_msg)
 
-            elif message_type == "set_cam_angle":
-                angle = float(message.split(" ")[1])
-                light_up_msg.data = angle
-                light_up_pub.publish(light_up_msg)
-                
-            elif message_type == "set_brakes":
-                is_on = message.split(" ")[1].startswith("on")
-                print ("rospy_rover: Setting brakes to: %r" % is_on)
-                brakes(is_on)
-
             elif message_type == "cmd_vel":
                 desired_speed = float(message.split(" ")[1])
                 desired_angular_speed = float(message.split(" ")[2])
@@ -277,18 +268,71 @@ def odom2zmq():
                     steering_br_publisher.publish(steering_msg)
                 else:
                     pass  # keep steering angles as they are ...
+            else:
+                if len(message_type) > 0: 
+                    print ("rospy_rover:push/pull: Unhandled message type: %s" % message_type)
+
+        except zmq.error.Again:
+            pass
+        r.sleep()
+
+
+def reqrep(context=None):
+
+    context2 = context or zmq.Context().instance()
+    g_socket2 = context2.socket(zmq.REP)
+    g_socket2.bind('tcp://127.0.0.1:6556')
+  
+    QSIZE = 10
+
+    lights_on = rospy.ServiceProxy('/scout_1/toggle_light', ToggleLightSrv)
+    lights_on('high')
+
+    light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
+    light_up_msg = Float64()
+
+    brakes = rospy.ServiceProxy('/scout_1/brake_rover', BrakeRoverSrv)
+    
+
+    r = rospy.Rate(100)
+    while True:
+        try:
+            message = ""
+
+            #            message = g_socket2.recv()
+            try:
+                while 1:
+                    message = g_socket2.recv(zmq.NOBLOCK)
+            except:
+                pass
+
+            #            print("OSGAR:" + message)
+            message_type = message.split(" ")[0]
+            if message_type == "set_cam_angle":
+                angle = float(message.split(" ")[1])
+                light_up_msg.data = angle
+                light_up_pub.publish(light_up_msg)
+                g_socket2.send_string('OK')
+                
+            elif message_type == "set_brakes":
+                is_on = message.split(" ")[1].startswith("on")
+                print ("rospy_rover: Setting brakes to: %r" % is_on)
+                brakes(is_on)
+                g_socket2.send_string('OK')
+
             elif message_type == "request_origin":
-                print "Requesting true pose"
+                print "rospy_rover: Requesting true pose"
                 try:
                     rospy.wait_for_service("/scout_1/get_true_pose", timeout=2.0)
                     request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
                     p = request_origin(True)
                     print("rospy_rover: true pose [%f, %f, %f]  [%f, %f, %f, %f]" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w))
-                    s = "origin scout_1 %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
+                    s = b"origin %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
                                                                   p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
-                    socket_send(s)
+                    g_socket2.send(s)
                 except rospy.service.ServiceException as e:
                     print(e)
+                    g_socket2.send(str(e))
             elif message_type == "artf":
                 s = message.split()[1:]  # ignore "artf" prefix
                 vol_type = s[0]
@@ -300,32 +344,43 @@ def odom2zmq():
                     try:
                         rospy.wait_for_service("/apriori_location_service", timeout=2.0)
                         report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
-                        print(report_artf(pose))
+                        result = report_artf(pose)
+                        g_socket2.send_string('ok')
                     except rospy.service.ServiceException as e:
-                        print(e)
+                        print("rospy_rover: Apriori position response: %s" % str(e))
+                        g_socket2.send(str(e))
                     except rospy.ROSException as exc:
                         print("/apriori_location_service not available: " + str(exc))
+                        g_socket2.send(str(exc))
                 elif vol_type == 'homebase':
                     # Task 3
                     print("rospy_rover: reporting homebase arrival")
                     rospy.wait_for_service("/arrived_home_service", timeout=2.0)
                     report_artf = rospy.ServiceProxy('/arrived_home_service', HomeLocationSrv)
                     try:
-                        print("rospy_rover: Homebase arrival service response: %r" % report_artf(True))
+                        result = report_artf(True)
+                        g_socket2.send_string('ok')
+                        print("rospy_rover: Homebase arrival service response: %r" % result)
                     except rospy.service.ServiceException as e:
                         print("rospy_rover: Homebase arrival service response: Incorrect")
+                        g_socket2.send_string(str(e))
                     except rospy.ROSException as exc:
                         print("rospy_rover: /arrived_home_service not available: " + str(exc))
+                        g_socket2.send_string(str(exc))
                 elif vol_type == 'homebase_alignment':
                     # Task 3
                     rospy.wait_for_service("/aligned_service", timeout=2.0)
                     report_artf = rospy.ServiceProxy('/aligned_service', HomeLocationSrv)
                     try:
-                        print("rospy_rover: Aligned service response: %r" % report_artf(True))
+                        result = report_artf(True)
+                        print("rospy_rover: Aligned service response: %r" % result)
+                        g_socket2.send_string('ok')
                     except rospy.service.ServiceException as e:
                         print("rospy_rover: Aligned service response: Incorrect")
+                        g_socket2.send_string(str(e))
                     except rospy.ROSException as exc:
                         print("rospy_rover: /aligned_service not available: " + str(exc))
+                        g_socket2.send_string(str(exc))
                 elif vol_type in ['ice', 'ethene', 'methane', 'methanol', 'carbon_dio', 'ammonia', 'hydrogen_sul', 'sulfur_dio']:
                     # Task 1
                     x, y, z = [float(a) for a in s[1:]]
@@ -336,20 +391,39 @@ def odom2zmq():
                         report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
                         resp = report_artf(pose=pose, vol_type=vol_type)
                         print ("rospy_rover: Volatile report result: %r" % resp.result)
+                        g_socket2.send_string(str(resp))
                     except rospy.ServiceException as exc:
                         print("rospy_rover: /vol_detected_service exception: " + str(exc))
+                        g_socket2.send_string(str(exc))
                     except rospy.ROSException as exc:
                         print("rospy_rover: /vol_detected_service not available: " + str(exc))
+                        g_socket2.send_string(str(exc))
             else:
                 if len(message_type) > 0: 
-                    print ("rospy_rover: Unhandled message type: %s" % message_type)
-
+                    print ("rospy_rover:req/rep: Unhandled message type: %s" % message_type)
+                    g_socket2.send_string("Unknown command")
         except zmq.error.Again:
             pass
+        except KeyboardInterrupt:
+            print("rospy_rover_reqrep: Keyboard Interrupt")
+            g_socket2.close()
+            break
         r.sleep()
 
-
+        
 if __name__ == '__main__':
-    odom2zmq()
+    rospy.init_node('listener', anonymous=True)
+    context = zmq.Context.instance()
+    thread = threading.Thread(target=pushpull, args=(context,))
+    thread.start()
+    thread2 = threading.Thread(target=reqrep, args=(context,))
+    thread2.start()
+
+    thread.join()
+    thread2.join()
+
+    context2.term()
+    
+
 
 # vim: expandtab sw=4 ts=4
