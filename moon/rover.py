@@ -205,7 +205,7 @@ class Rover(Node):
                         self.desired_angular_speed = 0.0
 
                         
-                elif self.currently_following_object['object_type'] == 'homebase':
+                elif not self.homebase_final_approach and self.currently_following_object['object_type'] == 'homebase':
                     if center_x < 300: # if homebase to the left, steer left
                         self.desired_angular_speed = SPEED_ON
                         self.desired_speed = SPEED_ON
@@ -213,7 +213,7 @@ class Rover(Node):
                         self.desired_angular_speed = -SPEED_ON
                         self.desired_speed = SPEED_ON
                     elif bbox_size > 200:
-                        # object reached, keep moving forward, final delivery by main app
+                        # object reached visually, keep moving forward
                         self.desired_angular_speed = 0.0
                         self.desired_speed = SPEED_ON
                         
@@ -311,17 +311,19 @@ class Rover(Node):
                 self.bus.publish('cmd', cmd)
 
                 print ("rover: homebase distance %f: " % straight_ahead_dist)
+                self.homebase_final_approach = False
                 self.object_reached('homebase')
-            else:
+            #else:
                 # keep going straight; for now this means do nothing, keep speed from previous step
-                print("rover: Keeping going")
+                # if it misses the base, will keep going until it hits something, then it will quit claiming it found the base
+                # print("rover: Keeping going")
         
         # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
         
         if 'basemarker' in self.objects_to_follow:
             right_dist = min_dist(data[midindex-8:midindex-6])
             left_dist = min_dist(data[midindex+6:midindex+8])
-            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+#            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
 
             e = 80
             if self.started_turning_for_basemarker_timestamp == None:
@@ -329,8 +331,8 @@ class Rover(Node):
             elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
                 e = 0
 
-            if left_dist < 9:
-                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
+#            if left_dist < 9:
+#                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
             if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
                 cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
                 self.bus.publish('cmd', cmd)
