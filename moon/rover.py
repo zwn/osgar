@@ -213,23 +213,29 @@ class Rover(Node):
 
                         
                 elif not self.homebase_final_approach and self.currently_following_object['object_type'] == 'homebase':
-                    if center_x < 300: # if homebase to the left, steer left
-                        self.desired_angular_speed = SPEED_ON
-                        self.desired_speed = SPEED_ON
-                    elif center_x > 340:
-                        self.desired_angular_speed = -SPEED_ON
-                        self.desired_speed = SPEED_ON
-                    elif bbox_size > 200:
-                        # object reached visually, keep moving forward
-                        self.desired_angular_speed = 0.0
-                        self.desired_speed = SPEED_ON
-                        
-                        print(self.time, "homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
-                        self.homebase_final_approach = True
-                        
-                    else: # if within angle but object too small, keep going straight
-                        self.desired_angular_speed = 0.0
-                        self.desired_speed = SPEED_ON
+                    if bbox_size > 200:
+                        if center_x >= 300 and center_x <= 340:
+                            # object reached visually, keep moving forward
+                            self.desired_angular_speed = 0.0
+                            self.desired_speed = SPEED_ON
+                            print(self.time, "homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                            self.homebase_final_approach = True
+                        elif center_x < 300: # close but wrong angle, turn in place left
+                            self.desired_angular_speed = SPEED_ON
+                            self.desired_speed = 0.0
+                        elif center_x > 340: # close but wrong angle, turn in place right
+                            self.desired_angular_speed = -SPEED_ON
+                            self.desired_speed = 0.0
+                    else:
+                        if center_x < 300: # if homebase to the left, steer left
+                            self.desired_angular_speed = SPEED_ON
+                            self.desired_speed = SPEED_ON
+                        elif center_x > 340:
+                            self.desired_angular_speed = -SPEED_ON
+                            self.desired_speed = SPEED_ON
+                        else: # if within angle but object too small, keep going straight
+                            self.desired_angular_speed = 0.0
+                            self.desired_speed = SPEED_ON
 
                 elif self.currently_following_object['object_type'] == 'basemarker':
                     print(self.time, "rover: basemarker identified")
