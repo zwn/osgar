@@ -96,7 +96,7 @@ SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
 DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = timedelta(seconds=5) # after how long to give up control once object disappears
 # there could a bump on the road or glitch in the filter so give it some time to re-find
 
-HOMEBASE_KEEP_DISTANCE = 2 # maintain this distance from home base while approaching and going around
+HOMEBASE_KEEP_DISTANCE = 2.5 # maintain this distance from home base while approaching and going around
 
 CAMERA_FOCAL_LENGTH = 381
 CAMERA_WIDTH = 640
@@ -308,7 +308,7 @@ class Rover(Node):
 
             if 'homebase' in self.objects_to_follow and self.homebase_final_approach:
                 if straight_ahead_dist < HOMEBASE_KEEP_DISTANCE:
-                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
                     self.bus.publish('cmd', cmd)
 
                     print ("rover: homebase distance %f: " % straight_ahead_dist)
@@ -324,7 +324,7 @@ class Rover(Node):
             if 'basemarker' in self.objects_to_follow:
                 right_dist = median_dist(data[midindex-8:midindex-6])
                 left_dist = median_dist(data[midindex+6:midindex+8])
-    #            print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+                print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
 
                 e = 80
                 if self.started_turning_for_basemarker_timestamp == None:
@@ -335,7 +335,7 @@ class Rover(Node):
     #            if left_dist < 9:
     #                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
                 if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
-                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0'
+                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
                     self.bus.publish('cmd', cmd)
                     self.started_turning_for_basemarker_timestamp = None
                     self.object_reached('basemarker')
@@ -353,11 +353,14 @@ class Rover(Node):
                 elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
                         steering_angle_left += 0.1
                         steering_angle_right -= 0.1
+                elif right_dist > 15.0: # overshot turn, right view is past homebase
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
                 elif left_dist > 0.01 and right_dist > 0.01:
-                    if left_dist < 0.9 * right_dist:
+                    if left_dist < 0.9 * right_dist:  # tighten turn
                         steering_angle_left -= 0.1
                         steering_angle_right += 0.1
-                    elif left_dist * 0.9 > right_dist:
+                    elif left_dist * 0.9 > right_dist: # loosen turn
                         steering_angle_left += 0.1
                         steering_angle_right -= 0.1
 
