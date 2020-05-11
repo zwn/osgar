@@ -139,12 +139,13 @@ class ArtifactDetector(Node):
                     c['subsequent_detects'] += 1
                 else:
 
+                    # TODO: tweak the filtering (blur and threshold), sometimes not all background is filtered out and the bbox looks bigger than it should be
                     x,y,width,height = lfound[0]
                     if c['filter_out_black_background']:
     #                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
                         gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
                         blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
-                        th, threshed = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+                        th, threshed = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY)
                         coords = cv2.findNonZero(threshed)
                         nx, ny, nw, nh = cv2.boundingRect(coords)
     #                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
