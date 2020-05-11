@@ -8,8 +8,10 @@ import math
 from io import BytesIO
 import threading
 from threading import RLock
+import signal
 
 import zmq
+import sys, getopt
 
 import rospy
 from std_msgs.msg import *  # Float64, JointState
@@ -24,7 +26,7 @@ from srcp2_msgs.srv import (ToggleLightSrv, BrakeRoverSrv, LocalizationSrv, Qual
                             AprioriLocationSrv, HomeLocationSrv, HomeAlignedSrv)
 
 
-ROBOT_NAME = 'scout_1'
+global ROBOT_NAME
 
 WHEEL_SEPARATION_WIDTH = 1.87325  # meters
 WHEEL_SEPARATION_HEIGHT = 1.5748  # meters
@@ -41,7 +43,12 @@ g_camera_counter = 0
 g_socket = None
 g_lock = RLock()
 
+interrupted = False
 
+def signal_handler(signum, frame):
+    global interrupted
+    interrupted = True
+    
 def socket_send(data):
     global g_socket, g_lock
     assert g_socket is not None
@@ -142,45 +149,46 @@ def pushpull(context=None):
     with g_lock:
         context = context or zmq.Context()
         g_socket = context.socket(zmq.PUSH)
-        g_socket.setsockopt(zmq.LINGER, 100)  # milliseconds
+        g_socket.setsockopt(zmq.LINGER, 0)  # milliseconds
         g_socket.bind('tcp://*:5555')
 
     context2 = context or zmq.Context()
     g_socket2 = context2.socket(zmq.PULL)
-    g_socket2.RCVTIMEO = 5000 # in milliseconds
+    g_socket2.setsockopt(zmq.LINGER, 0)  # milliseconds
+    g_socket2.RCVTIMEO = 2000 
     g_socket2.bind('tcp://*:5556')
   
 #    rospy.init_node('listener', anonymous=True)
 #    rospy.Subscriber('/odom', Odometry, callback_odom)
-    rospy.Subscriber('/scout_1/joint_states', JointState, callback_topic, '/scout_1/joint_states')
-    rospy.Subscriber('/scout_1/laser/scan', LaserScan, callback)
-    rospy.Subscriber('/scout_1/imu', Imu, callback_imu)
-#    rospy.Subscriber('/scout_1/camera/left/image_raw', Image, callback_depth)
+    rospy.Subscriber('/' + ROBOT_NAME + '/joint_states', JointState, callback_topic, '/' + ROBOT_NAME + '/joint_states')
+    rospy.Subscriber('/' + ROBOT_NAME + '/laser/scan', LaserScan, callback)
+    rospy.Subscriber('/' + ROBOT_NAME + '/imu', Imu, callback_imu)
+#    rospy.Subscriber('/' + ROBOT_NAME + '/camera/left/image_raw', Image, callback_depth)
 #    rospy.Subscriber('/image', CompressedImage, callback_camera)
 #    rospy.Subscriber('/clock', Clock, callback_clock)
 
     QSIZE = 10
 
-    lights_on = rospy.ServiceProxy('/scout_1/toggle_light', ToggleLightSrv)
+    lights_on = rospy.ServiceProxy('/' + ROBOT_NAME + '/toggle_light', ToggleLightSrv)
     lights_on('high')
 
-    light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
+    light_up_pub = rospy.Publisher('/' + ROBOT_NAME + '/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
     light_up_msg = Float64()
 
-    brakes = rospy.ServiceProxy('/scout_1/brake_rover', BrakeRoverSrv)
+    brakes = rospy.ServiceProxy('/' + ROBOT_NAME + '/brake_rover', BrakeRoverSrv)
     
     # TODO load it from configuration
     # task 1
     rospy.Subscriber('/qual_1_score', Qual1ScoringMsg, callback_topic, '/qual_1_score')
-    rospy.Subscriber('/scout_1/volatile_sensor', VolSensorMsg, callback_topic, '/scout_1/volatile_sensor')
+    rospy.Subscriber('/' + ROBOT_NAME + '/volatile_sensor', VolSensorMsg, callback_topic, '/' + ROBOT_NAME + '/volatile_sensor')
 
     # task 3
     rospy.Subscriber('/qual_3_score', Qual3ScoringMsg, callback_topic, '/qual_3_score')
 
-    rospy.Subscriber('/scout_1/camera/left/image_raw/compressed', CompressedImage, callback_topic, 
-                     '/scout_1/camera/left/image_raw/compressed')
-    rospy.Subscriber('/scout_1/camera/right/image_raw/compressed', CompressedImage, callback_topic, 
-                     '/scout_1/camera/right/image_raw/compressed')
+    rospy.Subscriber('/' + ROBOT_NAME + '/camera/left/image_raw/compressed', CompressedImage, callback_topic, 
+                     '/' + ROBOT_NAME + '/camera/left/image_raw/compressed')
+    rospy.Subscriber('/' + ROBOT_NAME + '/camera/right/image_raw/compressed', CompressedImage, callback_topic, 
+                     '/' + ROBOT_NAME + '/camera/right/image_raw/compressed')
 
 #    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     vel_msg = Twist()
@@ -200,25 +208,19 @@ def pushpull(context=None):
     effort_msg.data = 0
 
     # /name/fl_wheel_controller/command
-    vel_fl_publisher = rospy.Publisher('/scout_1/fl_wheel_controller/command', Float64, queue_size=QSIZE)
-    vel_fr_publisher = rospy.Publisher('/scout_1/fr_wheel_controller/command', Float64, queue_size=QSIZE)
-    vel_bl_publisher = rospy.Publisher('/scout_1/bl_wheel_controller/command', Float64, queue_size=QSIZE)
-    vel_br_publisher = rospy.Publisher('/scout_1/br_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_fl_publisher = rospy.Publisher('/' + ROBOT_NAME + '/fl_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_fr_publisher = rospy.Publisher('/' + ROBOT_NAME + '/fr_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_bl_publisher = rospy.Publisher('/' + ROBOT_NAME + '/bl_wheel_controller/command', Float64, queue_size=QSIZE)
+    vel_br_publisher = rospy.Publisher('/' + ROBOT_NAME + '/br_wheel_controller/command', Float64, queue_size=QSIZE)
 
-    steering_fl_publisher = rospy.Publisher('/scout_1/fl_steering_arm_controller/command', Float64, queue_size=QSIZE)
-    steering_fr_publisher = rospy.Publisher('/scout_1/fr_steering_arm_controller/command', Float64, queue_size=QSIZE)
-    steering_bl_publisher = rospy.Publisher('/scout_1/bl_steering_arm_controller/command', Float64, queue_size=QSIZE)
-    steering_br_publisher = rospy.Publisher('/scout_1/br_steering_arm_controller/command', Float64, queue_size=QSIZE)
+    steering_fl_publisher = rospy.Publisher('/' + ROBOT_NAME + '/fl_steering_arm_controller/command', Float64, queue_size=QSIZE)
+    steering_fr_publisher = rospy.Publisher('/' + ROBOT_NAME + '/fr_steering_arm_controller/command', Float64, queue_size=QSIZE)
+    steering_bl_publisher = rospy.Publisher('/' + ROBOT_NAME + '/bl_steering_arm_controller/command', Float64, queue_size=QSIZE)
+    steering_br_publisher = rospy.Publisher('/' + ROBOT_NAME + '/br_steering_arm_controller/command', Float64, queue_size=QSIZE)
 
-    r = rospy.Rate(100)
     while True:
         try:
-            message = ""
-            try:
-                while 1:
-                    message = g_socket2.recv(zmq.NOBLOCK)
-            except:
-                pass
+            message = g_socket2.recv()
             #print("OSGAR:" + message)
             message_type = message.split(" ")[0]
             if message_type == "cmd_rover":
@@ -271,41 +273,35 @@ def pushpull(context=None):
             else:
                 if len(message_type) > 0: 
                     print ("rospy_rover:push/pull: Unhandled message type: %s" % message_type)
-
-        except zmq.error.Again:
+        except:
             pass
-        r.sleep()
-
+                    
+        if interrupted:
+            g_socket2.close()
+            g_socket.close()
+            break
 
 def reqrep(context=None):
 
     context2 = context or zmq.Context().instance()
     g_socket2 = context2.socket(zmq.REP)
+    g_socket2.setsockopt(zmq.LINGER, 0)  # milliseconds
+    g_socket2.RCVTIMEO = 2000 
     g_socket2.bind('tcp://127.0.0.1:6556')
   
     QSIZE = 10
 
-    lights_on = rospy.ServiceProxy('/scout_1/toggle_light', ToggleLightSrv)
+    lights_on = rospy.ServiceProxy('/' + ROBOT_NAME + '/toggle_light', ToggleLightSrv)
     lights_on('high')
 
-    light_up_pub = rospy.Publisher('/scout_1/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
+    light_up_pub = rospy.Publisher('/' + ROBOT_NAME + '/sensor_controller/command', Float64, queue_size=QSIZE, latch=True)
     light_up_msg = Float64()
 
-    brakes = rospy.ServiceProxy('/scout_1/brake_rover', BrakeRoverSrv)
+    brakes = rospy.ServiceProxy('/' + ROBOT_NAME + '/brake_rover', BrakeRoverSrv)
     
-
-    r = rospy.Rate(100)
     while True:
         try:
-            message = ""
-
-            #            message = g_socket2.recv()
-            try:
-                while 1:
-                    message = g_socket2.recv(zmq.NOBLOCK)
-            except:
-                pass
-
+            message = g_socket2.recv()
             #            print("OSGAR:" + message)
             message_type = message.split(" ")[0]
             if message_type == "set_cam_angle":
@@ -313,7 +309,7 @@ def reqrep(context=None):
                 light_up_msg.data = angle
                 light_up_pub.publish(light_up_msg)
                 g_socket2.send_string('OK')
-                
+
             elif message_type == "set_brakes":
                 is_on = message.split(" ")[1].startswith("on")
                 print ("rospy_rover: Setting brakes to: %r" % is_on)
@@ -323,8 +319,8 @@ def reqrep(context=None):
             elif message_type == "request_origin":
                 print "rospy_rover: Requesting true pose"
                 try:
-                    rospy.wait_for_service("/scout_1/get_true_pose", timeout=2.0)
-                    request_origin = rospy.ServiceProxy('/scout_1/get_true_pose', LocalizationSrv)
+                    rospy.wait_for_service('/' + ROBOT_NAME + '/get_true_pose', timeout=2.0)
+                    request_origin = rospy.ServiceProxy('/' + ROBOT_NAME + '/get_true_pose', LocalizationSrv)
                     p = request_origin(True)
                     print("rospy_rover: true pose [%f, %f, %f]  [%f, %f, %f, %f]" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w))
                     s = b"origin %f %f %f  %f %f %f %f" % (p.pose.position.x, p.pose.position.y, p.pose.position.z, 
@@ -342,7 +338,7 @@ def reqrep(context=None):
                     pose = geometry_msgs.msg.Point(x, y, z)
                     print ("rospy_rover: Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
-                        rospy.wait_for_service("/apriori_location_service", timeout=2.0)
+                        rospy.wait_for_service('/apriori_location_service', timeout=2.0)
                         report_artf = rospy.ServiceProxy('/apriori_location_service', AprioriLocationSrv)
                         result = report_artf(pose)
                         g_socket2.send_string('ok')
@@ -402,28 +398,46 @@ def reqrep(context=None):
                 if len(message_type) > 0: 
                     print ("rospy_rover:req/rep: Unhandled message type: %s" % message_type)
                     g_socket2.send_string("Unknown command")
-        except zmq.error.Again:
+        except:
             pass
-        except KeyboardInterrupt:
-            print("rospy_rover_reqrep: Keyboard Interrupt")
+        if interrupted:
             g_socket2.close()
             break
-        r.sleep()
 
         
-if __name__ == '__main__':
+def main(argv):
+    global ROBOT_NAME
+
+    try:
+        opts, args = getopt.getopt(argv, 'r:')
+    except getopt.GetoptError:
+        print ("rospy_rover.py -r <robot name>")
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-r':
+            ROBOT_NAME = arg
+    
+    signal.signal(signal.SIGTERM, signal_handler) #SIGTERM - kill
+    signal.signal(signal.SIGINT, signal_handler) #SIGINT - ctrl-c
     rospy.init_node('listener', anonymous=True)
     context = zmq.Context.instance()
-    thread = threading.Thread(target=pushpull, args=(context,))
-    thread.start()
-    thread2 = threading.Thread(target=reqrep, args=(context,))
-    thread2.start()
+    ppt = threading.Thread(target=pushpull, args=(context,))
+    ppt.start()
+    rrt = threading.Thread(target=reqrep, args=(context,))
+    rrt.start()
 
-    thread.join()
-    thread2.join()
+    while True:
+        time.sleep(100) # gives room to signal capture
+        if interrupted:
+            break
 
-    context2.term()
-    
+    ppt.join()
+    rrt.join()
 
+    context.term()
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
 
 # vim: expandtab sw=4 ts=4

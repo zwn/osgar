@@ -6,7 +6,7 @@ while getopts hr: arg; do
 	    case $OPTARG in
 		"1" )
 		    JSONFILES=("moon-round1.json")
-		    ROVERSCRIPTS=("rospy_rover.py")
+		    ROVERSCRIPTS=("rospy_rover.py -r scout_1")
 		    ;;
 		"2" )
 		    JSONFILES=("moon-round2.json")
@@ -14,7 +14,7 @@ while getopts hr: arg; do
 		    ;;
 		"3" )
 		    JSONFILES=("moon-round3.json")
-		    ROVERSCRIPTS=("rospy_rover.py")
+		    ROVERSCRIPTS=("rospy_rover.py -r scout_1")
 		;;
 		
 	    esac
@@ -57,9 +57,9 @@ export ROSCONSOLE_CONFIG_FILE="${samedir}/rosconsole.config"
 # http://wiki.ros.org/roslaunch/Commandline%20Tools#line-45
 ## roslaunch subt_seed x1.launch --wait &
 
-for s in ${ROVERSCRIPTS[@]}; do
-    echo "Starting script $s"
-    python ./osgar/moon/$s &
+for ((i=0; i < ${#ROVERSCRIPTS[@]}; i++)) do
+    echo "Starting script '${ROVERSCRIPTS[$i]}'"
+    python ./osgar/moon/${ROVERSCRIPTS[$i]} &
     ROS_PIDS+=($!)
 done
 
