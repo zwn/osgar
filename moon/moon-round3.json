@@ -5,7 +5,7 @@
       "app": {
           "driver": "moon.main_round3:SpaceRoboticsChallenge",
           "in": ["pose2d", "driving_control"],
-          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin", "driving_recovery", "set_cam_angle", "set_brakes"],
+          "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "driving_recovery"],
           "init": {}
       },
       "transmitter": {
@@ -29,8 +29,8 @@
       },
       "rosmsg": {
           "driver": "rosmsg",
-          "in": ["slot_raw", "desired_speed", "tick", "stdout", "request_origin"],
-          "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd", "origin"],
+          "in": ["slot_raw", "desired_speed", "tick", "stdout"],
+          "out": ["rot", "acc", "scan", "image", "pose2d", "sim_time_sec", "cmd"],
           "init": {
             "downsample": 2,
           "topics": [
@@ -77,12 +77,7 @@
               ["scout.cmd", "transmitter.raw"],
               ["scout.pose2d", "app.pose2d"],
 	      ["scout.driving_control", "app.driving_control"],
-	      ["scout.object_reached", "app.object_reached"],
-              ["app.request_origin", "rosmsg.request_origin"],
-	      ["app.set_cam_angle", "transmitter.raw"],
-	      ["app.set_brakes", "transmitter.raw"],
-              ["rosmsg.origin", "app.origin"],
-	      ["app.artf_cmd", "transmitter.raw"]
+	      ["scout.object_reached", "app.object_reached"]
 	      ]
   }
 }
