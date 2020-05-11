@@ -24,6 +24,8 @@ CAMERA_ANGLE_LOOKING = 0.5
 CAMERA_ANGLE_CUBESAT = 0.78
 CAMERA_ANGLE_HOMEBASE = 0.0
 
+USE_GIMBAL = False
+
 class ChangeDriverException(Exception):
     pass
 
@@ -72,7 +74,7 @@ class LidarCollisionMonitor:
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "pose2d", "pose3d", "request_origin", "driving_recovery", "artf_cmd", "set_cam_angle", "set_brakes", "follow_object")
+        bus.register("desired_speed", "pose2d", "pose3d", "driving_recovery", "follow_object")
 
 
         context = zmq.Context()
@@ -146,8 +148,6 @@ class SpaceRoboticsChallenge(Node):
         self.camera_angle = angle
         print ("Set camera angle to: %f" % angle)
         self.camera_change_triggered_time = self.time
-        #        self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % angle, encoding='ascii'))
-
         self.socket_out.send_string('set_cam_angle %f\n' % angle)
         self.socket_out.recv()
         
@@ -325,7 +325,11 @@ class SpaceRoboticsChallenge(Node):
 
             distance = self.interpolate_distance((img_w + img_h) / 2)
             ax = self.nasa_yaw + angle_x
-            ay = self.nasa_pitch + angle_y + self.camera_angle - self.nasa_pitch # direction of camera; NOTE: gimbal changes the actual angle dynamically so pitch should be offset
+            ay = self.nasa_pitch + angle_y + self.camera_angle
+            if USE_GIMBAL:
+                # gimbal changes the actual angle dynamically so pitch needs to be offset
+                ay -= self.nasa_pitch
+                
             x, y, z = self.nasa_xyz
             print("Using pose: xyz=[%f %f %f] orientation=[%f %f %f]" % (x, y, z, self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
             print("In combination with view angle %f %f and distance %f" % (ax, ay, distance))
@@ -387,9 +391,11 @@ class SpaceRoboticsChallenge(Node):
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
 
-            # maintain camera level
-#            cam_angle = self.camera_angle - self.pitch 
-#            self.publish('set_cam_angle', bytes('set_cam_angle %f\n' % cam_angle, encoding='ascii'))
+            if USE_GIMBAL:
+                # maintain camera level
+                cam_angle = self.camera_angle - self.pitch
+                self.socket_out.send_string('set_cam_angle %f\n' % cam_angle)
+                self.socket_out.recv()
             
             if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
@@ -491,12 +497,12 @@ class SpaceRoboticsChallenge(Node):
 
             self.set_brakes(False)
             # some random manual starting moves to choose from
-#            self.go_straight(-3.0, timeout=timedelta(seconds=20))
-#            self.turn(math.radians(30), timeout=timedelta(seconds=20))
+#            self.go_straight(2.0, timeout=timedelta(seconds=20))
+#            self.turn(math.radians(90), timeout=timedelta(seconds=20))
 #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
 #            self.bus.publish('follow_object', ['basemarker'])
 #            self.current_driver = 'basemarker'
-
+#            self.cubesat_success = True
             self.bus.publish('follow_object', ['cubesat', 'homebase'])
 #            self.bus.publish('follow_object', ['homebase'])
             
