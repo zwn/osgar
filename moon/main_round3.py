@@ -288,12 +288,18 @@ class SpaceRoboticsChallenge(Node):
         # plot 2D points: https://www.desmos.com/calculator/mhq4hsncnh
         # plot 3D points: https://technology.cpm.org/general/3dgraph/
         
-        observed_values = [(27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (60, 13.5), (62, 11.9), (64, 10.8)]
+        observed_values = [(23.5, 30.7), (27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (58.5, 12), (62, 11.9), (64, 10.8)]
 
         t1 = None
         
         if pixels < observed_values[0][0]:
-            return 25 # catch-all for furthest distances outside measured range
+            x2 = observed_values[1][0]
+            y2 = observed_values[1][1]
+            x1 = observed_values[0][0]
+            y1 = observed_values[0][1]
+            m = (y2 - y1) / (x2 - x1)
+            return m * (pixels - x1) + y1
+
         else:
             for t2 in observed_values:
                 if pixels < t2[0]:
@@ -348,7 +354,7 @@ class SpaceRoboticsChallenge(Node):
             if response == 'ok':
                 print("app: Apriori object reported correctly")    
                 self.cubesat_success = True
-                # time to start looking for homebase
+                # time to start looking for homebase; TODO queue 360 look around as base is somewhere near
                 self.bus.publish('follow_object', ['homebase'])
             else:
                 print("app: Estimated object location incorrect, wait before continuing task")
