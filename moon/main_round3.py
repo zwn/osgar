@@ -80,7 +80,7 @@ class SpaceRoboticsChallenge(Node):
         context = zmq.Context()
         print ("Connecting to ROS REQ/REP server...")
         self.socket_out = context.socket(zmq.REQ)
-        self.socket_out.connect ("tcp://localhost:6556")
+        self.socket_out.connect ("tcp://localhost:" + str(config["reqrep_port"]))
 
         self.monitors = []
         self.last_position = None

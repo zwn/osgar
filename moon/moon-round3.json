@@ -6,7 +6,7 @@
           "driver": "moon.main_round3:SpaceRoboticsChallenge",
           "in": ["pose2d", "driving_control"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "driving_recovery"],
-          "init": {}
+          "init": {"reqrep_port": 6556}
       },
       "transmitter": {
           "driver": "zeromq",
