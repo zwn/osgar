@@ -93,10 +93,10 @@ CRAB_DRIVE_ROLL_THRESHOLD = 0.4
 CRAB_ROLL_ANGLE = 0.78
 STEER_TOWARDS_OBJECT_ANGLE = 0.5
 SPEED_ON = 10 #triggers movement when not zero, actual value does not matter
-DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS = timedelta(seconds=5) # after how long to give up control once object disappears
+
 # there could a bump on the road or glitch in the filter so give it some time to re-find
 
-HOMEBASE_KEEP_DISTANCE = 2.5 # maintain this distance from home base while approaching and going around
+HOMEBASE_KEEP_DISTANCE = 3 # maintain this distance from home base while approaching and going around
 
 CAMERA_FOCAL_LENGTH = 381
 CAMERA_WIDTH = 640
@@ -126,6 +126,14 @@ class Rover(Node):
             'object_type': None,
             'timestamp': None
             }
+
+        self.object_timeouts = { # in miliseconds
+            'homebase': timedelta(seconds=5),
+            'cubesat': timedelta(seconds=5),
+            'basemarker': timedelta(milliseconds=200)
+            }
+
+        
         self.last_artefact_time = None
         self.last_tracked_artefact = None
         
@@ -316,10 +324,11 @@ class Rover(Node):
                     print ("rover: homebase distance %f: " % straight_ahead_dist)
                     self.homebase_final_approach = False
                     self.object_reached('homebase')
-                #else:
+                else:
                     # keep going straight; for now this means do nothing, keep speed from previous step
                     # if it misses the base, will keep going until it hits something, then it will quit claiming it found the base
                     # print("rover: Keeping going")
+                    self.currently_following_object['timestamp'] = self.time # freshen up timer as we are still following homebase
 
             # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
 
@@ -336,7 +345,7 @@ class Rover(Node):
 
     #            if left_dist < 9:
     #                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
-                if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.06: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
+                if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.04: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
                     cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
                     self.bus.publish('cmd', cmd)
                     self.started_turning_for_basemarker_timestamp = None
@@ -379,13 +388,15 @@ class Rover(Node):
         steering = [0.0,] * 4
 
         # if was following an artefact but it disappeared, just go straight until another driver takes over
-        if self.currently_following_object['timestamp'] is not None and self.time - self.currently_following_object['timestamp'] > DISABLE_TRACKING_AFTER_OBJECT_DISAPPEARS:
+        if self.currently_following_object['timestamp'] is not None and self.time - self.currently_following_object['timestamp'] > self.object_timeouts[self.currently_following_object['object_type']]:
             self.desired_speed = SPEED_ON
             self.desired_angular_speed = 0.0
             self.bus.publish('driving_control', None)
             print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
             self.currently_following_object['timestamp'] = None
             self.currently_following_object['object_type'] = None
+            self.basemarker_centered = False
+
 
         # do not control wheels if driven via basemarker search
         if 'basemarker' in self.objects_to_follow: 
