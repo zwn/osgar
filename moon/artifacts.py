@@ -12,7 +12,7 @@ from osgar.node import Node
 from osgar.bus import BusShutdownException
 
 g_mask = None
-MIN_CYAN_COUNT = 600
+MIN_CYAN_COUNT = 300
 
 def count_mask(mask):
     """Count statistics and bounding box for given image mask"""
@@ -29,12 +29,20 @@ def count_mask(mask):
             - (mask.argmax(axis=1) != 0).argmax())
     return count, w, h, x_min, x_max
 
-
 def count_cyan(img, filtered=False, stdout=None):
+    # NASA SRC logo color is #007DBD or (0,125,189)
+    # assume valid colors are between that and lighter #E5F2F8 (229, 242, 248) (given the illumination)
+    # valid rgb: ratios for r,g,b must be similar, ie for any given pixel, each r,g,b must in the same place between both end rgb values
+    
+#    r ratio = (r - 0) / (229 - 0)
+#    g ratio = (g - 125) / (242 - 125)
+#    b ratio = (b - 189) / (248 - 189)
+    
     b = img[:,:,0]
     g = img[:,:,1]
     r = img[:,:,2]
-    mask = np.logical_and(r < 160, np.logical_and(g > 190, b > 230))
+    
+    mask = np.logical_and((r - 0) / (229 - 0) < 1, np.logical_and(abs(((r - 0) / (229 - 0)) - ((g - 125) / (242 - 125))) < 0.2 , abs(((b - 189) / (248 - 189)) - ((g - 125) / (242 - 125))) < 0.2))
     not_mask = np.logical_not(mask)
     img2 = img.copy()
     img2[mask] = (255, 255, 255)
@@ -66,16 +74,14 @@ class ArtifactDetector(Node):
                 'classifier': cv2.CascadeClassifier('/osgar/moon/cubesat.xml'),
                 'min_size': 5,
                 'max_size': 110,
-                'subsequent_detects': 0,
-                'filter_out_black_background': True
+                'subsequent_detects': 0
                 },
             {
                 'artefact_name': 'homebase',
                 'classifier': cv2.CascadeClassifier('/osgar/moon/homebase.xml'),
                 'min_size': 50,
                 'max_size': 300,
-                'subsequent_detects': 0,
-                'filter_out_black_background': True
+                'subsequent_detects': 0
             }
         ]
 
@@ -125,7 +131,7 @@ class ArtifactDetector(Node):
 
         ccount, w, h, x_min, x_max = count_cyan(limg[0:480,300:340])
         if ccount > MIN_CYAN_COUNT: 
-            self.publish('artf', ['basemarker', 300, 0, 60, 480])
+            self.publish('artf', ['basemarker', 300, 0, 60, 480, ccount])
         
         limg_rgb = cv2.cvtColor(limg, cv2.COLOR_BGR2RGB) 
         rimg_rgb = cv2.cvtColor(rimg, cv2.COLOR_BGR2RGB) 
@@ -141,18 +147,16 @@ class ArtifactDetector(Node):
 
                     # TODO: tweak the filtering (blur and threshold), sometimes not all background is filtered out and the bbox looks bigger than it should be
                     x,y,width,height = lfound[0]
-                    if c['filter_out_black_background']:
-    #                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
-                        gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
-                        blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
-                        th, threshed = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY)
-                        coords = cv2.findNonZero(threshed)
-                        nx, ny, nw, nh = cv2.boundingRect(coords)
-    #                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
+#                    print(self.time, "Pre: %d %d %d %d" % (x,y,width,height))
+                    gray = cv2.cvtColor(limg_rgb[y:y+height, x:x+width], cv2.COLOR_BGR2GRAY)
+                    blur = cv2.medianBlur(gray,3) # some frames have noise, need to blur otherwise threshold doesn't work
+                    th, threshed = cv2.threshold(blur, 30, 255, cv2.THRESH_BINARY)
+                    coords = cv2.findNonZero(threshed)
+                    nonzerocount = cv2.countNonZero(threshed)
+                    nx, ny, nw, nh = cv2.boundingRect(coords)
+#                    print(self.time, "Post: %d %d %d %d" % (x+nx,y+ny,nw,nh))
 
-                        self.publish('artf', [c['artefact_name'], int(x+nx), int(y+ny), int(nw), int(nh)])
-                    else:
-                        self.publish('artf', [c['artefact_name'], int(x), int(y), int(width), int(height)])
+                    self.publish('artf', [c['artefact_name'], int(x+nx), int(y+ny), int(nw), int(nh), int(nonzerocount)])
                         
             else:
                 c['subsequent_detects'] = 0
