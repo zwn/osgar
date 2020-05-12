@@ -145,17 +145,19 @@ class SpaceRoboticsChallenge(Node):
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
     def set_cam_angle(self, angle):
-        self.camera_angle = angle
-        print ("Set camera angle to: %f" % angle)
-        self.camera_change_triggered_time = self.time
         self.socket_out.send_string('set_cam_angle %f\n' % angle)
         self.socket_out.recv()
+        self.camera_angle = angle
+        print (self.time, "app: Camera angle set to: %f" % angle)
+        self.camera_change_triggered_time = self.time
+
         
     def set_brakes(self, on):
+        assert type(on) is bool, on
         self.brakes_on = on
         self.socket_out.send_string('set_brakes %s\n' % ('on' if on else 'off'))
         self.socket_out.recv()
-        print ("Setting brakes to: %s" % on)
+        print (self.time, "app: Brakes set to: %s" % on)
             
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
@@ -235,6 +237,8 @@ class SpaceRoboticsChallenge(Node):
                 else:
                     self.nasa_pitch = math.asin(sinp);
 
+                self.nasa_pitch = - self.nasa_pitch # for subsequent calculations, up is positive and down is negative
+                    
                 siny_cosp = 2 * (qw * qz + qx * qy);
                 cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
                 self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
@@ -288,7 +292,7 @@ class SpaceRoboticsChallenge(Node):
         # plot 2D points: https://www.desmos.com/calculator/mhq4hsncnh
         # plot 3D points: https://technology.cpm.org/general/3dgraph/
         
-        observed_values = [(23.5, 30.7), (27.5, 24.5), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (58.5, 12), (62, 11.9), (64, 10.8)]
+        observed_values = [(23.5, 30.7), (27.5, 24.5), (28, 21.35), (29.5, 20.5), (41,18.3), (45,15.5), (51, 15.1), (58.5, 12), (62, 11.9)]
 
         t1 = None
         
@@ -322,10 +326,12 @@ class SpaceRoboticsChallenge(Node):
                     
         
     def on_artf(self, timestamp, data):
-        artifact_type, img_x, img_y, img_w, img_h = data
+        artifact_type = data[0]
+        img_x, img_y, img_w, img_h = data[1:5]
+        nr_of_black = data[4]
 
         if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_success and (self.last_cubesat_attempt is None or self.time - self.last_cubesat_attempt > timedelta(minutes=3)):
-            print(self.time, "app: Final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+            print(self.time, "app: Final frame x=%d y=%d w=%d h=%d, nonblack=%d" % (data[1], data[2], data[3], data[4], data[5]))
             angle_x = math.atan( (CAMERA_WIDTH / 2 - (img_x + img_w/2) ) / float(CAMERA_FOCAL_LENGTH))
             angle_y = math.atan( (CAMERA_HEIGHT / 2 - (img_y + img_h/2) ) / float(CAMERA_FOCAL_LENGTH))
 
@@ -503,8 +509,9 @@ class SpaceRoboticsChallenge(Node):
 
             self.set_brakes(False)
             # some random manual starting moves to choose from
-#            self.go_straight(2.0, timeout=timedelta(seconds=20))
-#            self.turn(math.radians(90), timeout=timedelta(seconds=20))
+#            self.go_straight(-0.1, timeout=timedelta(seconds=20))
+#            self.go_straight(-2, timeout=timedelta(seconds=20))
+#            self.turn(math.radians(45), timeout=timedelta(seconds=20))
 #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
 #            self.bus.publish('follow_object', ['basemarker'])
 #            self.current_driver = 'basemarker'
