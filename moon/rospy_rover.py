@@ -306,6 +306,7 @@ def reqrep(context=None):
             message_type = message.split(" ")[0]
             if message_type == "set_cam_angle":
                 angle = float(message.split(" ")[1])
+                print ("rospy_rover: Setting cam angle to: %f" % angle)
                 light_up_msg.data = angle
                 light_up_pub.publish(light_up_msg)
                 g_socket2.send_string('OK')
