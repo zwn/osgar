@@ -198,6 +198,8 @@ class Rover(Node):
                         self.desired_angular_speed = 0.0
                         print(self.time, "rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
+                        if 'homebase' in self.objects_to_follow:
+                            self.objects_to_follow.remove('homebase') # do not immediately follow homebase if it was secondary to give main a chance to report cubesat
                         self.object_reached(artifact_type)
                         
                     elif center_x < 200: # if cubesat near left edge, turn left; if far enough from top, go straight too, otherwise turn in place
