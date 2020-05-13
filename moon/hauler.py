@@ -11,23 +11,20 @@
 # Info
 #  /hauler_n/bin_info
 
+
 import math
 from osgar.lib.mathex import normalizeAnglePIPI
 
 from osgar.node import Node
+from moon.rover import Rover
 
 class Hauler(Rover):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register('cmd', 'bucket_cmd')
-        # TODO: account for working on an incline
         
 
     def update(self):
         channel = super().update()
- 
-
-        
         handler = getattr(self, "on_" + channel, None)
         if handler is not None:
             handler(getattr(self, channel))

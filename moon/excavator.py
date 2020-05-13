@@ -15,10 +15,13 @@
 # Info
 #  /excavator_n/bucket_info
 
+from datetime import timedelta
+
 import math
 from osgar.lib.mathex import normalizeAnglePIPI
 
 from osgar.node import Node
+from moon.rover import Rover
 
 class Excavator(Rover):
     def __init__(self, config, bus):
@@ -43,21 +46,21 @@ class Excavator(Rover):
             [4, [-0.3, -0.8, 0]], # drop
             [4, [-0.6, -0.8, 3.2]] # back to neutral/travel position
         )
-
+        self.bucket_last_status_timestamp = None
+        
     def send_bucket_position(self, bucket_params):
         mount, basearm, distalarm, bucket = bucket_params
         s = '%f %f %f %f\n' % (mount, basearm, distalarm, bucket)
         self.publish('bucket_cmd', bytes('bucket_position ' + s, encoding='ascii'))
         
-    def on_bucket_info(self, timestamp, data):
+    def on_bucket_info(self, data):
         self.bucket_status = data
         
 
     def update(self):
-        channel = super().update()
 
-
-
+        # this is just a demo of scooping periodically;
+        # note that the angles may be off and should take into consideration current pitch and roll of the robot
         if self.time is not None:
             if self.scoop_time is None or self.time > self.scoop_time:
                 if self.bucket_scoop_part:
@@ -78,15 +81,16 @@ class Excavator(Rover):
 
         # print status periodically - location and content of bucket if any
         if self.time is not None:
-            if self.last_status_timestamp is None:
-                self.last_status_timestamp = self.time
-            elif self.time - self.last_status_timestamp > timedelta(seconds=8):
-                self.last_status_timestamp = self.time
+            if self.bucket_last_status_timestamp is None:
+                self.bucket_last_status_timestamp = self.time
+            elif self.time - self.bucket_last_status_timestamp > timedelta(seconds=8):
+                self.bucket_last_status_timestamp = self.time
                 if self.bucket_status is not None and self.bucket_status[1] > 0:
                     print ("Bucket content: Type: %s idx: %d mass: %f" % (self.bucket_status[0], self.bucket_status[1], self.bucket_status[2]))
  
 
         
+        channel = super().update()
         handler = getattr(self, "on_" + channel, None)
         if handler is not None:
             handler(getattr(self, channel))

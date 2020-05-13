@@ -378,25 +378,8 @@ class RospyRoverReqRep(Thread):
                 except rospy.ROSException as exc:
                     print("rospy_rover: /aligned_service not available: " + str(exc))
                     return str(exc)
-            elif vol_type in ['ice', 'ethene', 'methane', 'methanol', 'carbon_dio', 'ammonia', 'hydrogen_sul', 'sulfur_dio']:
-                # Task 1
-                x, y, z = [float(a) for a in s[1:]]
-                pose = geometry_msgs.msg.Point(x, y, z)
-                print ("rospy_rover: Reporting %s at position %f %f %f" % (vol_type, x, y, z))
-                try:
-                    rospy.wait_for_service("/vol_detected_service", timeout=2.0)
-                    report_artf = rospy.ServiceProxy('/vol_detected_service', Qual1ScoreSrv)
-                    resp = report_artf(pose=pose, vol_type=vol_type)
-                    print ("rospy_rover: Volatile report result: %r" % resp.result)
-                    return str(resp)
-                except rospy.ServiceException as exc:
-                    print("rospy_rover: /vol_detected_service exception: " + str(exc))
-                    return str(exc)
-                except rospy.ROSException as exc:
-                    print("rospy_rover: /vol_detected_service not available: " + str(exc))
-                    return str(exc)
         else:
-            return None
+            return ''
 
     def register_handlers(self):
         QSIZE = 10

@@ -31,44 +31,17 @@ def min_dist(laser_data):
         return min(laser_data)/1000.0
     return 0
 
-class LidarCollisionException(Exception):
-    pass
-
-
-class LidarCollisionMonitor:
-    def __init__(self, robot):
-        self.robot = robot
-
-    def update(self, robot, channel):
-        if channel == 'scan':
-            size = len(robot.scan)
-            # measure distance only in 160 degree angle
-            # NASA Lidar 150degrees wide, 50 samples
-            # robot is ~2.21m wide (~1.2m x 2 with wiggle room), with 150 angle need to have 1.2m clearance (x = 1.2 / sin(150/2))
-            if min_dist(robot.scan[60:210]) < 1.2 and not robot.inException:
-                raise LidarCollisionException()
-
-    # context manager functions
-    def __enter__(self):
-        self.callback = self.robot.register(self.update)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.robot.unregister(self.callback)
-
 
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "driving_recovery")
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "request_origin", "driving_recovery")
 
         context = zmq.Context()
         print ("Connecting to ROS REQ/REP server...")
         self.socket_out = context.socket(zmq.REQ)
         self.socket_out.connect ("tcp://localhost:" + str(config["reqrep_port"]))
 
-
-        self.monitors = []
         self.last_position = None
         self.max_speed = 1.0  # oficial max speed is 1.5m/s
         self.max_angular_speed = math.radians(60)
@@ -97,21 +70,19 @@ class SpaceRoboticsChallenge(Node):
         self.score = 0
         self.is_someone_else_driving = False
         
+        self.last_artf = None
+        
         self.inException = False
+        
+        self.last_volatile_distance = None
+        self.last_vol_index = None
 
         self.last_status_timestamp = None
         
         self.virtual_bumper = None
         self.rand = Random(0)
-
-    def register(self, callback):
-        self.monitors.append(callback)
-        return callback
-
-    def unregister(self, callback):
-        assert callback in self.monitors
-        self.monitors.remove(callback)
         
+
     def send_speed_cmd(self, speed, angular_speed):
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
@@ -146,22 +117,14 @@ class SpaceRoboticsChallenge(Node):
                 self.bus.publish('driving_recovery', True)
                 raise VirtualBumperException()
 
+    def on_driving_control(self, timestamp, data):
+        # true if someone else took over driving
+        self.is_someone_else_driving = data
+        print("Someone else is driving %r" % data)
+
     def on_score(self, timestamp, data):
         self.score = data[0]
 
-    def on_object_reached(self, timestamp, data):
-        object_type = data
-        x,y,z = self.xyz
-        print(self.time, "app: Object %s reached" % object_type)
-        self.socket_out.send_string('artf %s %f %f 0.0\n' % (object_type, x, y))
-        response = self.socket_out.recv().decode("ascii") 
-        print(self.time, "app: Volatile report response: %s" % response)
-        if response == 'ok':
-            pass
-        else:
-            # do nothing, ie keep going around and try to match the view
-            pass
-        
     def update(self):
 
         # print status periodically - location
@@ -172,6 +135,8 @@ class SpaceRoboticsChallenge(Node):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
                 print ("Loc: %f %f %f; Score: %d" % (x, y, z, self.score))
+                
+
         
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
@@ -179,14 +144,27 @@ class SpaceRoboticsChallenge(Node):
 #            handler(self.time, data)
         if channel == 'pose2d':
             self.on_pose2d(self.time, self.pose2d)
-        elif channel == 'artf':
-            self.on_artf(self.time, self.artf)
         elif channel == 'score':
             self.on_score(self.time, self.score)
-        elif channel == 'object_reached':
-            self.on_object_reached(self.time, self.object_reached)
+        elif channel == 'driving_control':
+            self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
+        elif channel == 'origin':
+            data = self.origin[:]  # the same name is used for message as internal data
+            self.xyz = data[1:4]
+            
+            qx, qy, qz, qw = data[4:]
+            self.roll = qx
+            self.pitch = qy
+            self.yaw = qz
+
+            print("Origin received, internal position updated")
+            # report location as fake artifact
+            artifact_data = self.last_artf
+            ax, ay, az = self.xyz
+            self.bus.publish('artf_xyz', [[artifact_data, round(ax*1000), round(ay*1000), round(az*1000)]])
+
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]
             if self.yaw_offset is None:
@@ -199,9 +177,6 @@ class SpaceRoboticsChallenge(Node):
                 print ("Excess pitch, going back down")
                 raise VirtualBumperException()
 
-        for m in self.monitors:
-            m(self, channel)
-            
         return channel
 
     def go_straight(self, how_far, timeout=None):
@@ -289,10 +264,10 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            self.socket_out.send_string('request_origin') # response to this is required, if none, rover will be stopped forever
-            message = self.socket_out.recv()
 
-            # TODO: parse and apply origin here
+            self.socket_out.send_string('get_volatile_locations\n')
+            print(self.socket_out.recv())
+
             
             last_walk_start = 0.0
             start_time = self.time
@@ -301,17 +276,12 @@ class SpaceRoboticsChallenge(Node):
                 last_walk_start = self.time
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
-                    with LidarCollisionMonitor(self):
-                        if not self.is_someone_else_driving:
-                            self.go_straight(50.0, timeout=timedelta(minutes=2))
-                        else:
-                            self.wait(timedelta(minutes=2)) # allow for self driving, then timeout   
+                    if not self.is_someone_else_driving:
+                        self.go_straight(100.0, timeout=timedelta(minutes=2))
+                    else:
+                        self.wait(timedelta(seconds=10))   
                     self.update()
-
-                except (VirtualBumperException, LidarCollisionException) as e:
-                    self.inException = True
-# TODO: crashes if an exception (e.g., excess pitch) occurs while handling an exception (e.g., virtual/lidar bump)
-                    print(self.time, repr(e))
+                except VirtualBumperException:
                     last_walk_end = self.time
                     print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
@@ -340,6 +310,10 @@ class SpaceRoboticsChallenge(Node):
                     deg_angle = -deg_angle
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=20), 0.1)
+
+                    # when looking for satellite, do 360 each turn
+                    self.turn(math.radians(360), timeout=timedelta(seconds=40))
+
                     self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
                 except VirtualBumperException:
                     print(self.time, "Turn Virtual Bumper!")
