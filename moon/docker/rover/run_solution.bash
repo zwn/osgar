@@ -14,7 +14,7 @@ while getopts hr: arg; do
 		    ;;
 		"3" )
 		    JSONFILES=("moon-round3.json")
-		    ROVERSCRIPTS=("rospy_rover.py -r scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=6556")
+		    ROVERSCRIPTS=("rospy_scout.py -r scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=6556")
 		;;
 		
 	    esac
