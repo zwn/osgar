@@ -106,7 +106,7 @@ class Rover(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
         bus.register('cmd', 'pose2d', 'object_reached', "driving_control")
-        self.desired_speed = 0.0  # m/s
+        self.desired_linear_speed = 0.0  # m/s
         self.desired_angular_speed = 0.0
         self.joint_name = None  # updated via Node.update()
         self.debug_arr = []
@@ -141,7 +141,7 @@ class Rover(Node):
         self.objects_to_follow = []
 
     def on_desired_speed(self, data):
-        self.desired_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
+        self.desired_linear_speed, self.desired_angular_speed = data[0]/1000.0, math.radians(data[1]/100.0)
 
     def on_driving_recovery(self, data):
         self.in_driving_recovery = data
@@ -202,7 +202,7 @@ class Rover(Node):
                         # stop and report angle and distance from robot
                         # robot moves a little after detection so the angles do not correspond with the true pose we will receive
                         # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
-                        self.desired_speed = 0.0
+                        self.desired_linear_speed = 0.0
                         self.desired_angular_speed = 0.0
                         print(self.time, "rover: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
 
@@ -212,13 +212,13 @@ class Rover(Node):
                         
                     elif center_x < 200: # if cubesat near left edge, turn left; if far enough from top, go straight too, otherwise turn in place
                         self.desired_angular_speed = SPEED_ON
-                        self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
+                        self.desired_linear_speed = SPEED_ON if data[2] > 20 else 0.0
                     elif center_x > 440:
                         self.desired_angular_speed = -SPEED_ON
-                        self.desired_speed = SPEED_ON if data[2] > 20 else 0.0
+                        self.desired_linear_speed = SPEED_ON if data[2] > 20 else 0.0
                     else:
                         # bbox is ahead but too small or position not near the edge, continue straight
-                        self.desired_speed = SPEED_ON
+                        self.desired_linear_speed = SPEED_ON
                         self.desired_angular_speed = 0.0
 
                         
@@ -227,25 +227,25 @@ class Rover(Node):
                         if center_x >= 300 and center_x <= 340:
                             # object reached visually, keep moving forward
                             self.desired_angular_speed = 0.0
-                            self.desired_speed = SPEED_ON
+                            self.desired_linear_speed = SPEED_ON
                             print(self.time, "homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
                             self.homebase_final_approach = True
                         elif center_x < 300: # close but wrong angle, turn in place left
                             self.desired_angular_speed = SPEED_ON
-                            self.desired_speed = 0.0
+                            self.desired_linear_speed = 0.0
                         elif center_x > 340: # close but wrong angle, turn in place right
                             self.desired_angular_speed = -SPEED_ON
-                            self.desired_speed = 0.0
+                            self.desired_linear_speed = 0.0
                     else:
                         if center_x < 300: # if homebase to the left, steer left
                             self.desired_angular_speed = SPEED_ON
-                            self.desired_speed = SPEED_ON
+                            self.desired_linear_speed = SPEED_ON
                         elif center_x > 340:
                             self.desired_angular_speed = -SPEED_ON
-                            self.desired_speed = SPEED_ON
+                            self.desired_linear_speed = SPEED_ON
                         else: # if within angle but object too small, keep going straight
                             self.desired_angular_speed = 0.0
-                            self.desired_speed = SPEED_ON
+                            self.desired_linear_speed = SPEED_ON
 
                 elif self.currently_following_object['object_type'] == 'basemarker':
                     print(self.time, "rover: basemarker identified")
@@ -276,7 +276,7 @@ class Rover(Node):
         diff = [b - a for a, b in zip(self.prev_position, data)]
 
         assert b'bl_wheel_joint' in self.joint_name, self.joint_name
-        if self.desired_speed >= 0:
+        if self.desired_linear_speed >= 0:
             name = b'bl_wheel_joint'
             name2 = b'br_wheel_joint'
         else:
@@ -389,7 +389,7 @@ class Rover(Node):
 
         # if was following an artefact but it disappeared, just go straight until another driver takes over
         if self.currently_following_object['timestamp'] is not None and self.time - self.currently_following_object['timestamp'] > self.object_timeouts[self.currently_following_object['object_type']]:
-            self.desired_speed = SPEED_ON
+            self.desired_linear_speed = SPEED_ON
             self.desired_angular_speed = 0.0
             self.bus.publish('driving_control', None)
             print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
@@ -403,7 +403,7 @@ class Rover(Node):
             return
             
         # only turning
-        if abs(self.desired_speed) < 0.001:
+        if abs(self.desired_linear_speed) < 0.001:
             e = 40 if self.last_artefact_time is None else 20 # when turning to adjust to follow object, do it slowly to receive feedback from cameras; this shouldn't actually happen as we steer and go together when following an object
             if abs(self.desired_angular_speed) < 0.001:
                 effort = [0,] * 4
@@ -416,7 +416,7 @@ class Rover(Node):
                 effort = [e, -e, e, -e]
                 steering = [-CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,CRAB_ROLL_ANGLE,-CRAB_ROLL_ANGLE]
 
-        elif self.desired_speed > 0: # going forward
+        elif self.desired_linear_speed > 0: # going forward
 
             # if pitch too steep, turn diagonally a try to climb this way being able to handle larger pitch
             if self.pitch > 0.3:
