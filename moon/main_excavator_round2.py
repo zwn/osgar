@@ -265,9 +265,9 @@ class SpaceRoboticsChallenge(Node):
             print('done at', self.time)
 
 
-            self.socket_out.send_string('get_volatile_locations\n')
-            print(self.socket_out.recv())
-
+            self.socket_out.send_string('get_volatile_locations')
+            vol_list = self.socket_out.recv().decode('ascii')
+            print (self.time, "main-excavator-round2: Volatiles: %s" % vol_list)
             
             last_walk_start = 0.0
             start_time = self.time

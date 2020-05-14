@@ -5,6 +5,7 @@
 
 import sys
 import rospy
+import yaml
 
 from rospy_excavator import RospyExcavator, RospyExcavatorReqRep, RospyExcavatorPushPull
 from srcp2_msgs.srv import Qual2VolatilesSrv
@@ -25,7 +26,8 @@ class RospyExcavatorRound2ReqRep(RospyExcavatorReqRep):
             message_type = message.split(" ")[0]
             if message_type == "get_volatile_locations":
                 result = self.get_volatile_list()
-                return result
+                vol_list = yaml.safe_load(str(result))
+                return ' '.join((str(e['x']) + " " + str(e['y'])) for e in vol_list['poses'])
             else:
                 return ''
 
@@ -35,7 +37,7 @@ class RospyExcavatorRound2(RospyExcavator):
         super(RospyExcavator, self).launch(RospyExcavatorPushPull, RospyExcavatorRound2ReqRep, argv)
         
 if __name__ == '__main__':
-    re = RospyExcavator()
+    re = RospyExcavatorRound2()
     re.launch(sys.argv[1:])
 
 # vim: expandtab sw=4 ts=4
