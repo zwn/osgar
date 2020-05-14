@@ -3,7 +3,7 @@
   "robot": {
     "modules": {
       "app": {
-          "driver": "moon.main_round3:SpaceRoboticsChallenge",
+          "driver": "moon.controller_round3:SpaceRoboticsChallengeRound3",
           "in": ["pose2d", "driving_control"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "driving_recovery"],
           "init": {"reqrep_port": 5557}
@@ -42,7 +42,7 @@
           }
       },
       "scout": {
-          "driver": "moon.rover:Rover",
+          "driver": "moon.scout:Scout",
           "in": [],
           "out": [],
           "init": {

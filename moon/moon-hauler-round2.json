@@ -3,7 +3,7 @@
   "robot": {
     "modules": {
       "app": {
-          "driver": "moon.main_hauler_round2:SpaceRoboticsChallenge",
+          "driver": "moon.controller_hauler_round2:SpaceRoboticsChallengeHaulerRound2",
           "in": ["pose2d"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin"],
           "init": {"reqrep_port": 6557}

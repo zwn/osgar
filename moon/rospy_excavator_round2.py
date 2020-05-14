@@ -32,12 +32,10 @@ class RospyExcavatorRound2ReqRep(RospyExcavatorReqRep):
                 return ''
 
 class RospyExcavatorRound2(RospyExcavator):
-        
-    def launch(self, argv):
-        super(RospyExcavator, self).launch(RospyExcavatorPushPull, RospyExcavatorRound2ReqRep, argv)
+    pass        
         
 if __name__ == '__main__':
     re = RospyExcavatorRound2()
-    re.launch(sys.argv[1:])
+    re.launch(RospyExcavatorPushPull, RospyExcavatorRound2ReqRep, sys.argv[1:])
 
 # vim: expandtab sw=4 ts=4

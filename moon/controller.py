@@ -15,6 +15,8 @@ from osgar.lib.virtual_bumper import VirtualBumper
 
 from subt.local_planner import LocalPlanner
 
+class ChangeDriverException(Exception):
+    pass
 
 class VirtualBumperException(Exception):
     pass
@@ -94,8 +96,14 @@ class SpaceRoboticsChallenge(Node):
         self.xyz = (0, 0, 0)  # 3D position for mapping artifacts
         self.xyz_quat = [0, 0, 0]
         self.offset = (0, 0, 0)
+        self.use_gimbal = False # try to keep the camera on level as we go over obstacles
+
+        self.brakes_on = False
+        self.camera_change_triggered_time = None
+        self.camera_angle = 0.0
+
         self.score = 0
-        self.is_someone_else_driving = False
+        self.current_driver = None
         
         self.inException = False
 
@@ -117,6 +125,20 @@ class SpaceRoboticsChallenge(Node):
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def set_cam_angle(self, angle):
+        self.socket_out.send_string('set_cam_angle %f\n' % angle)
+        self.socket_out.recv()
+        self.camera_angle = angle
+        print (self.time, "app: Camera angle set to: %f" % angle)
+        self.camera_change_triggered_time = self.time
+        
+    def set_brakes(self, on):
+        assert type(on) is bool, on
+        self.brakes_on = on
+        self.socket_out.send_string('set_brakes %s\n' % ('on' if on else 'off'))
+        self.socket_out.recv()
+        print (self.time, "app: Brakes set to: %s" % on)
+            
     def on_pose2d(self, timestamp, data):
         x, y, heading = data
         pose = (x / 1000.0, y / 1000.0, math.radians(heading / 100.0))
@@ -142,26 +164,16 @@ class SpaceRoboticsChallenge(Node):
         if self.virtual_bumper is not None:
             self.virtual_bumper.update_pose(self.time, pose)
             if not self.inException and self.virtual_bumper.collision():
-                self.inException = True
                 self.bus.publish('driving_recovery', True)
                 raise VirtualBumperException()
+
+    def on_driving_control(self, timestamp, data):
+        # someone else took over driving
+        self.current_driver = data
 
     def on_score(self, timestamp, data):
         self.score = data[0]
 
-    def on_object_reached(self, timestamp, data):
-        object_type = data
-        x,y,z = self.xyz
-        print(self.time, "app: Object %s reached" % object_type)
-        self.socket_out.send_string('artf %s %f %f 0.0\n' % (object_type, x, y))
-        response = self.socket_out.recv().decode("ascii") 
-        print(self.time, "app: Volatile report response: %s" % response)
-        if response == 'ok':
-            pass
-        else:
-            # do nothing, ie keep going around and try to match the view
-            pass
-        
     def update(self):
 
         # print status periodically - location
@@ -171,8 +183,8 @@ class SpaceRoboticsChallenge(Node):
             elif self.time - self.last_status_timestamp > timedelta(seconds=8):
                 self.last_status_timestamp = self.time
                 x, y, z = self.xyz
-                print ("Loc: %f %f %f; Score: %d" % (x, y, z, self.score))
-        
+                print (self.time, "Loc: [%f %f %f] [%f %f %f]; Driver: %s; Score: %d" % (x, y, z, self.roll, self.pitch, self.yaw, self.current_driver, self.score))
+
         channel = super().update()
 #        handler = getattr(self, "on_" + channel, None)
 #        if handler is not None:
@@ -185,6 +197,8 @@ class SpaceRoboticsChallenge(Node):
             self.on_score(self.time, self.score)
         elif channel == 'object_reached':
             self.on_object_reached(self.time, self.object_reached)
+        elif channel == 'driving_control':
+            self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
             self.local_planner.update(self.scan)
         elif channel == 'rot':
@@ -192,11 +206,18 @@ class SpaceRoboticsChallenge(Node):
             if self.yaw_offset is None:
                 self.yaw_offset = -temp_yaw
             self.yaw = temp_yaw + self.yaw_offset
-            if not self.inException and self.pitch > 0.5:
+
+            if self.use_gimbal:
+                # maintain camera level
+                cam_angle = self.camera_angle - self.pitch
+                self.socket_out.send_string('set_cam_angle %f\n' % cam_angle)
+                self.socket_out.recv()
+
+            if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
-                self.inException = True
+                # TODO: robot can also roll if it runs on a side of a rock while already on a slope
                 self.bus.publish('driving_recovery', True)
-                print ("Excess pitch, going back down")
+                print (self.time, "app: Excess pitch, going back down")
                 raise VirtualBumperException()
 
         for m in self.monitors:
@@ -289,10 +310,6 @@ class SpaceRoboticsChallenge(Node):
                 self.update()  # define self.time
             print('done at', self.time)
 
-            self.socket_out.send_string('request_origin') # response to this is required, if none, rover will be stopped forever
-            message = self.socket_out.recv()
-
-            # TODO: parse and apply origin here
             
             last_walk_start = 0.0
             start_time = self.time
@@ -302,18 +319,19 @@ class SpaceRoboticsChallenge(Node):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
                     with LidarCollisionMonitor(self):
-                        if not self.is_someone_else_driving:
+                        if self.current_driver is None and not self.brakes_on:
                             self.go_straight(50.0, timeout=timedelta(minutes=2))
                         else:
                             self.wait(timedelta(minutes=2)) # allow for self driving, then timeout   
                     self.update()
+                except ChangeDriverException as e:
+                    continue
 
                 except (VirtualBumperException, LidarCollisionException) as e:
                     self.inException = True
 # TODO: crashes if an exception (e.g., excess pitch) occurs while handling an exception (e.g., virtual/lidar bump)
                     print(self.time, repr(e))
                     last_walk_end = self.time
-                    print(self.time, "Virtual Bumper!")
                     self.virtual_bumper = None
                     self.go_straight(-2.0, timeout=timedelta(seconds=10))
                     if last_walk_end - last_walk_start > timedelta(seconds=20): # if we went more than 20 secs, try to continue a step to the left
@@ -341,10 +359,14 @@ class SpaceRoboticsChallenge(Node):
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=20), 0.1)
                     self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                except ChangeDriverException as e:
+                    continue
+                    
                 except VirtualBumperException:
+                    self.inException = True
                     print(self.time, "Turn Virtual Bumper!")
                     self.virtual_bumper = None
-                    if self.is_someone_else_driving:
+                    if self.current_driver is not None:
                         # probably didn't throw in previous turn but during self driving
                         self.go_straight(-2.0, timeout=timedelta(seconds=10))
                         self.try_step_around()
@@ -353,15 +375,5 @@ class SpaceRoboticsChallenge(Node):
                     self.bus.publish('driving_recovery', False)
         except BusShutdownException:
             pass
-
-
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Space Robotics Challenge 2')
-    args = parser.parse_args()
-
-if __name__ == "__main__":
-    main()
 
 # vim: expandtab sw=4 ts=4

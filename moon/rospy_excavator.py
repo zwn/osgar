@@ -54,12 +54,10 @@ class RospyExcavatorReqRep(RospyRoverReqRep):
 
 
 class RospyExcavator(RospyRover):
-        
-    def launch(self, argv):
-        super(RospyExcavator, self).launch(RospyExcavatorPushPull, RospyExcavatorReqRep, argv)
+    pass
         
 if __name__ == '__main__':
     re = RospyExcavator()
-    re.launch(sys.argv[1:])
+    re.launch(RospyExcavatorPushPull, RospyExcavatorReqRep, sys.argv[1:])
 
 # vim: expandtab sw=4 ts=4
