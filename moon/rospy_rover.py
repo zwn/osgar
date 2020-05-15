@@ -378,6 +378,8 @@ class RospyRoverReqRep(Thread):
                 except rospy.ROSException as exc:
                     print("rospy_rover: /aligned_service not available: " + str(exc))
                     return str(exc)
+            else:
+                return ''
         else:
             return ''
 
