@@ -22,14 +22,4 @@ class Hauler(Rover):
     def __init__(self, config, bus):
         super().__init__(config, bus)
         
-
-    def update(self):
-        channel = super().update()
-        handler = getattr(self, "on_" + channel, None)
-        if handler is not None:
-            handler(getattr(self, channel))
-
-        return channel
-
-
 # vim: expandtab sw=4 ts=4
