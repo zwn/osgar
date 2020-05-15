@@ -11,7 +11,7 @@ import rospy
 from rospy_scout import RospyScout, RospyScoutReqRep, RospyScoutPushPull
 from srcp2_msgs.msg import Qual1ScoringMsg
 from srcp2_msgs.srv import Qual1ScoreSrv
-
+from geometry_msgs.msg import Point
 
 class RospyScoutRound1PushPull(RospyScoutPushPull):
     pass
@@ -32,7 +32,7 @@ class RospyScoutRound1ReqRep(RospyScoutReqRep):
                 if vol_type in ['ice', 'ethene', 'methane', 'methanol', 'carbon_dio', 'ammonia', 'hydrogen_sul', 'sulfur_dio']:
                     # Task 1
                     x, y, z = [float(a) for a in s[1:]]
-                    pose = geometry_msgs.msg.Point(x, y, z)
+                    pose = Point(x, y, z)
                     print ("rospy_scout: Reporting %s at position %f %f %f" % (vol_type, x, y, z))
                     try:
                         rospy.wait_for_service("/vol_detected_service", timeout=2.0)
