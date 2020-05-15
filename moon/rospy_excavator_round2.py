@@ -15,8 +15,7 @@ class RospyExcavatorRound2ReqRep(RospyExcavatorReqRep):
         super(RospyExcavatorRound2ReqRep, self).__init__(robot_name, reqrep_port)
 
     def register_handlers(self):
-        QSIZE = 10
-
+        super(RospyExcavatorRound2ReqRep, self).register_handlers()
         self.get_volatile_list = rospy.ServiceProxy('/qual_2_services/volatile_locations', Qual2VolatilesSrv)
 
     def process_message(self, message):
@@ -27,7 +26,7 @@ class RospyExcavatorRound2ReqRep(RospyExcavatorReqRep):
             if message_type == "get_volatile_locations":
                 result = self.get_volatile_list()
                 vol_list = yaml.safe_load(str(result))
-                return ' '.join((str(e['x']) + " " + str(e['y'])) for e in vol_list['poses'])
+                return ','.join((str(e['x']) + " " + str(e['y'])) for e in vol_list['poses'])
             else:
                 return ''
 
