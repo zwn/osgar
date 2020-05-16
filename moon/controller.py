@@ -174,6 +174,9 @@ class SpaceRoboticsChallenge(Node):
     def on_score(self, timestamp, data):
         self.score = data[0]
 
+    def on_scan(self, timestamp, data):
+        pass
+
     def update(self):
 
         # print status periodically - location
@@ -195,11 +198,10 @@ class SpaceRoboticsChallenge(Node):
             self.on_artf(self.time, self.artf)
         elif channel == 'score':
             self.on_score(self.time, self.score)
-        elif channel == 'object_reached':
-            self.on_object_reached(self.time, self.object_reached)
         elif channel == 'driving_control':
             self.on_driving_control(self.time, self.driving_control)
         elif channel == 'scan':
+            self.on_scan(self.time, self.scan)
             self.local_planner.update(self.scan)
         elif channel == 'rot':
             temp_yaw, self.pitch, self.roll = [normalizeAnglePIPI(math.radians(x/100)) for x in self.rot]

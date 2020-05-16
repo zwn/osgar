@@ -4,6 +4,7 @@
 import zmq
 
 import math
+from statistics import median
 from datetime import timedelta
 
 import moon.controller
@@ -22,19 +23,95 @@ CAMERA_ANGLE_LOOKING = 0.5
 CAMERA_ANGLE_CUBESAT = 0.78
 CAMERA_ANGLE_HOMEBASE = 0.0
 
+MAX_NR_OF_FARTHER_SCANS = 20
+HOMEBASE_KEEP_DISTANCE = 3 # maintain this distance from home base while approaching and going around
+
+SPEED_ON = 10 # only +/0/- matters
+TURN_ON = 10 # radius of circle when turning
+GO_STRAIGHT = float("inf")
+
+def min_dist(laser_data):
+    if len(laser_data) > 0:
+        # remove ultra near reflections and unlimited values == 0
+        laser_data = [x if x > 10 else 20000 for x in laser_data] # NASA scanner goes up to 15m of valid measurement
+        return min(laser_data)/1000.0
+    return 0
+
+def median_dist(laser_data):
+    if len(laser_data) > 0:
+        # remove ultra near reflections and unlimited values == 0
+        laser_data = [x if x > 10 else 20000 for x in laser_data] # NASA scanner goes up to 15m of valid measurement
+        return median(laser_data)/1000.0
+    return 0
+
+
+
 class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("follow_object")
-
+        bus.register("desired_movement")
+        
         self.cubesat_location = None
         self.homebase_arrival_success = False        
-        self.origin_updated = False
 
         self.cubesat_reached = False
         self.cubesat_success = False
         self.last_cubesat_attempt = None
+
+
+        self.started_turning_for_basemarker_timestamp = None
+        self.basemarker_centered = False
+        self.homebase_final_approach_distance = float("inf")
+        self.homebase_increase_count = 0 # if distance increases X times in a row, we are truly farther and need to restart
         
+        self.currently_following_object = {
+            'object_type': None,
+            'timestamp': None
+            }
+
+        self.trackable_objects = [
+            {
+                "homebase": {
+                    "timeout": timedelta(seconds=5),
+                    "reached": False
+                }
+            },
+            {
+                "cubesat": {
+                    "timeout": timedelta(seconds=5),
+                    "reached": False
+                }
+            },
+            {
+                "basemarker": {
+                    "timeout": timedelta(milliseconds=200),
+                    "reached": False
+                }
+            }
+        ]
+        
+        self.object_timeouts = {
+            'homebase': timedelta(seconds=5), # tracking homebase based on visual
+            'cubesat': timedelta(seconds=5),
+            'basemarker': timedelta(milliseconds=200)
+            }
+
+        
+        self.last_artefact_time = None
+        self.last_tracked_artefact = None
+        
+        self.in_driving_recovery = False
+        self.objects_to_follow = []
+
+
+    def on_driving_recovery(self, data):
+        self.in_driving_recovery = data
+        print (self.time, "Driving recovery changed to: %r" % data)
+
+    def follow_object(self, data):
+        self.objects_to_follow = data
+        print (self.time, "Starting to look for " + ','.join(data))
+
     def on_driving_control(self, timestamp, data):
         super().on_driving_control(timestamp, data)
         
@@ -52,49 +129,13 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
         if not self.inException: # do not interrupt driving if processing an exception
             raise ChangeDriverException(data)
 
-    def on_object_reached(self, timestamp, data):
-        object_type = data
-        print(self.time, "app: Object %s reached" % object_type)
-        if object_type == "cubesat":
-            self.current_driver = "cubesat-finish"
-            self.set_brakes(True)
-            self.set_cam_angle(CAMERA_ANGLE_CUBESAT)
-            self.cubesat_reached = True
-            self.socket_out.send_string('request_origin') # response to this is required, if none, rover will be stopped forever
-            message = self.socket_out.recv()
-            if message.split()[0] == b'origin':
-                origin = [float(x) for x in message.split()[1:]]
-                self.xyz = origin[:3]
+    def object_reached(self, object_type):
+        self.currently_following_object['object_type'] = None
+        self.currently_following_object['timestamp'] = None
 
-                qx, qy, qz, qw = origin[3:]
-
-                print(self.time, "Origin received, internal position updated")
-                # robot should be stopped right now (using brakes once available)
-                # lift camera to max, object should be (back) in view
-                # trigger recognition, get bounding box and calculate fresh angles
-
-                # TODO: this separate storage of reported numbers is temporary, need OSGAR to accept true values and update its own data
-                self.nasa_xyz = self.xyz
-                sinr_cosp = 2 * (qw * qx + qy * qz);
-                cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
-                self.nasa_roll = math.atan2(sinr_cosp, cosr_cosp);
-
-                sinp = 2 * (qw * qy - qz * qx);
-                if abs(sinp) >= 1:
-                    self.nasa_pitch = math.copysign(math.pi / 2, sinp);
-                else:
-                    self.nasa_pitch = math.asin(sinp);
-
-                self.nasa_pitch = - self.nasa_pitch # for subsequent calculations, up is positive and down is negative
-                    
-                siny_cosp = 2 * (qw * qz + qx * qy);
-                cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
-                self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
-                print (self.time, "app: True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (origin[0],origin[1],origin[2],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
-                # once origin is marked as update, next artefact will trigger report
-                self.origin_updated = True
+        self.objects_to_follow.remove(object_type)
             
-        elif object_type == "homebase": # upon handover, robot should be moving straight
+        if object_type == "homebase": # upon handover, robot should be moving straight
             if self.cubesat_success:
                 if not self.homebase_arrival_success:
                     self.socket_out.send_string('artf homebase\n')
@@ -105,16 +146,17 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                         self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
                         self.current_driver = "basemarker"
                         self.homebase_arrival_success = True
-                        self.bus.publish('follow_object', ['basemarker'])
+                        self.follow_object(['basemarker'])
+
                     else:
                         # homebase arrival not accepted, try again
-                        self.bus.publish('follow_object', ['homebase'])
+                        self.follow_object(['homebase'])
 
                 else:
                     # homebase found (again), does not need reporting, just start basemarker search
                     self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
                     self.current_driver = "basemarker"
-                    self.bus.publish('follow_object', ['basemarker'])
+                    self.follow_object(['basemarker'])
                     
             else:
                 print(self.time, "app: Reached reportable home base destination, need to find cubesat first though")
@@ -169,50 +211,290 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
         m = (y2 - y1) / (x2 - x1)
         return m * (pixels - x1) + y1
                     
-        
+    # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, timestamp, data):
+        # vol_type, x, y, w, h
+        # coordinates are pixels of bounding box
         artifact_type = data[0]
+
+        center_x = data[1] + data[3] / 2
+        center_y = data[2] + data[4] / 2
+        bbox_size = (data[3] + data[4]) / 2 # calculate avegage in case of substantially non square matches
         img_x, img_y, img_w, img_h = data[1:5]
         nr_of_black = data[4]
 
-        if self.cubesat_reached and self.time - self.camera_change_triggered_time > timedelta(seconds=3) and artifact_type == "cubesat" and self.origin_updated and not self.cubesat_success and (self.last_cubesat_attempt is None or self.time - self.last_cubesat_attempt > timedelta(minutes=3)):
-            print(self.time, "app: Final frame x=%d y=%d w=%d h=%d, nonblack=%d" % (data[1], data[2], data[3], data[4], data[5]))
-            angle_x = math.atan( (CAMERA_WIDTH / 2 - (img_x + img_w/2) ) / float(CAMERA_FOCAL_LENGTH))
-            angle_y = math.atan( (CAMERA_HEIGHT / 2 - (img_y + img_h/2) ) / float(CAMERA_FOCAL_LENGTH))
-
-            distance = self.interpolate_distance((img_w + img_h) / 2)
-            ax = self.nasa_yaw + angle_x
-            ay = self.nasa_pitch + angle_y + self.camera_angle
-            if self.use_gimbal:
-                # gimbal changes the actual angle dynamically so pitch needs to be offset
-                ay -= self.nasa_pitch
-                
-            x, y, z = self.nasa_xyz
-            print("Using pose: xyz=[%f %f %f] orientation=[%f %f %f]" % (x, y, z, self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
-            print("In combination with view angle %f %f and distance %f" % (ax, ay, distance))
-            ox = math.cos(ax) * math.cos(ay) * distance
-            oy = math.sin(ax) * math.cos(ay) * distance
-            oz = math.sin(ay) * distance
-            self.cubesat_location = (x+ox, y+oy, z+oz)
-            print (self.time, "app: Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
-            print (self.time, "app: Reporting estimated object location at: [%f,%f,%f]" % (x+ox, y+oy, z+oz))
-
-            s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
-            self.socket_out.send(bytes('artf ' + s, encoding='ascii'))
-            response = self.socket_out.recv().decode("ascii") 
-            self.set_brakes(False)
-
-            if response == 'ok':
-                print("app: Apriori object reported correctly")    
-                self.cubesat_success = True
-                # time to start looking for homebase; TODO queue 360 look around as base is somewhere near
-                self.bus.publish('follow_object', ['homebase'])
+        # TODO if detection during turning on the spot, instead of driving straight steering a little, turn back to the direction where the detection happened first
+        
+        if not self.in_driving_recovery and self.objects_to_follow and artifact_type in self.objects_to_follow: # if in exception, let the exception handling take its course
+            if self.currently_following_object['object_type'] is None:
+                self.currently_following_object['object_type'] = artifact_type
+                self.currently_following_object['timestamp'] = self.time
+                print (self.time, "Starting to track %s" % artifact_type)
+                self.on_driving_control(timestamp, artifact_type)
             else:
-                print("app: Estimated object location incorrect, wait before continuing task")
-                self.last_cubesat_attempt = self.time
-            self.current_driver = None
-            if not self.inException:
-                raise ChangeDriverException(None) # interrupt main wait, give driving back
+                for looking_for in self.objects_to_follow:
+                    if self.currently_following_object['object_type'] == looking_for: # detected artefact is top priority and it is the one being followed already, continue what you were doing
+                        break 
+                    elif looking_for == artifact_type: # we are looking for this artifact but it's not the one currently being followed, switch
+                        print (self.time, "Switching to tracking %s" % artifact_type)
+                        self.currently_following_object['object_type'] = artifact_type
+                        self.on_driving_control(timestamp, artifact_type)
+
+            if self.currently_following_object['object_type'] == artifact_type:
+                self.currently_following_object['timestamp'] = self.time
+
+                if self.currently_following_object['object_type'] == 'cubesat':
+                    #            print("Cubesat reported at %d %d %d %d" % (data[1], data[2], data[3], data[4]))
+                    # virtual bumper still applies while this block has control. When triggered, driving will go to recovery and main will take over driving
+
+                    # when cubesat disappears, we need to reset the steering to going straight
+                    # NOTE: light does not shine in corners of viewport, need to report sooner or turn first
+                    if bbox_size > 25 and img_y < 40: # box is big enough to report on and close to the edge, report
+                         # box 25 pixels represents distance about 27m which is as close as we can possibly get for cubesats with high altitude 
+                        # object in center (x axis) and close enough (bbox size)
+                        # stop and report angle and distance from robot
+                        # robot moves a little after detection so the angles do not correspond with the true pose we will receive
+                        # TODO: if found during side sweep, robot will turn some between last frame and true pose messing up the angle
+                        self.set_brakes(True)
+                        self.publish("desired_movement", [0, 0, 0])
+                        print(self.time, "app: cubesat final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+
+                        if 'homebase' in self.objects_to_follow:
+                            self.objects_to_follow.remove('homebase') # do not immediately follow homebase if it was secondary to give main a chance to report cubesat
+
+
+                        self.socket_out.send_string('request_origin') # response to this is required, if none, rover will be stopped forever
+                        message = self.socket_out.recv()
+                        if message.split()[0] == b'origin':
+                            origin = [float(x) for x in message.split()[1:]]
+                            self.xyz = origin[:3]
+                            qx, qy, qz, qw = origin[3:]
+
+                            self.publish('pose3d', [self.xyz, origin[3:]])
+
+                            print(self.time, "Origin received, internal position updated")
+                            # robot should be stopped right now (using brakes once available)
+                            # lift camera to max, object should be (back) in view
+                            # trigger recognition, get bounding box and calculate fresh angles
+
+                            # TODO: this separate storage of reported numbers is temporary, need OSGAR to accept true values and update its own data
+                            self.nasa_xyz = self.xyz
+                            sinr_cosp = 2 * (qw * qx + qy * qz);
+                            cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
+                            self.nasa_roll = math.atan2(sinr_cosp, cosr_cosp);
+
+                            sinp = 2 * (qw * qy - qz * qx);
+                            if abs(sinp) >= 1:
+                                self.nasa_pitch = math.copysign(math.pi / 2, sinp);
+                            else:
+                                self.nasa_pitch = math.asin(sinp);
+
+                            self.nasa_pitch = - self.nasa_pitch # for subsequent calculations, up is positive and down is negative
+
+                            siny_cosp = 2 * (qw * qz + qx * qy);
+                            cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
+                            self.nasa_yaw = math.atan2(siny_cosp, cosy_cosp);
+                            print (self.time, "app: True pose received: xyz=[%f,%f,%f], roll=%f, pitch=%f, yaw=%f" % (origin[0],origin[1],origin[2],self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
+
+                            print(self.time, "app: Final frame x=%d y=%d w=%d h=%d, nonblack=%d" % (data[1], data[2], data[3], data[4], data[5]))
+                            angle_x = math.atan( (CAMERA_WIDTH / 2 - (img_x + img_w/2) ) / float(CAMERA_FOCAL_LENGTH))
+                            angle_y = math.atan( (CAMERA_HEIGHT / 2 - (img_y + img_h/2) ) / float(CAMERA_FOCAL_LENGTH))
+
+                            distance = self.interpolate_distance((img_w + img_h) / 2)
+                            ax = self.nasa_yaw + angle_x
+                            ay = self.nasa_pitch + angle_y + self.camera_angle
+                            if self.use_gimbal:
+                                # gimbal changes the actual angle dynamically so pitch needs to be offset
+                                ay -= self.nasa_pitch
+
+                            x, y, z = self.nasa_xyz
+                            print("Using pose: xyz=[%f %f %f] orientation=[%f %f %f]" % (x, y, z, self.nasa_roll, self.nasa_pitch, self.nasa_yaw))
+                            print("In combination with view angle %f %f and distance %f" % (ax, ay, distance))
+                            ox = math.cos(ax) * math.cos(ay) * distance
+                            oy = math.sin(ax) * math.cos(ay) * distance
+                            oz = math.sin(ay) * distance
+                            self.cubesat_location = (x+ox, y+oy, z+oz)
+                            print (self.time, "app: Object offset calculated at: [%f %f %f]" % (ox, oy, oz))
+                            print (self.time, "app: Reporting estimated object location at: [%f,%f,%f]" % (x+ox, y+oy, z+oz))
+
+                            s = '%s %.2f %.2f %.2f\n' % (artifact_type, x+ox, y+oy, z+oz)
+                            self.socket_out.send(bytes('artf ' + s, encoding='ascii'))
+                            response = self.socket_out.recv().decode("ascii") 
+
+                            if response == 'ok':
+                                print("app: Apriori object reported correctly")    
+                                self.cubesat_success = True
+                                # time to start looking for homebase; TODO queue 360 look around as base is somewhere near
+                                self.follow_object(['homebase'])
+                            else:
+                                print("app: Estimated object location incorrect, wait before continuing task")
+                                self.last_cubesat_attempt = self.time
+
+                        # TODO: object was reached but not necessarily successfully reported;
+                        # for now, just return driving to main which will either drive randomly with no additional purpose if homebase was previously found or will look for homebase
+                        self.object_reached("cubesat")
+                        self.set_brakes(False)
+                        self.current_driver = None
+                        if not self.inException:
+                            raise ChangeDriverException(None) # interrupt main wait, give driving back
+                            
+                        
+                    elif center_x < 200: # if cubesat near left edge, turn left
+                        if img_y > 20: # if far enough from top, go straight too, otherwise turn in place
+                            self.publish("desired_movement", [TURN_ON, 0, SPEED_ON])
+                        else:
+                            self.publish("desired_movement", [0, 0, SPEED_ON])
+                    elif center_x > 440:
+                        if img_y > 20: # if far enough from top, go straight too, otherwise turn in place
+                            self.publish("desired_movement", [-TURN_ON, 0, SPEED_ON])
+                        else:
+                            self.publish("desired_movement", [0, 0, -SPEED_ON])
+                    else:
+                        # bbox is ahead but too small or position not near the edge, continue straight
+                        self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
+
+                        
+                elif math.isinf(self.homebase_final_approach_distance) and self.currently_following_object['object_type'] == 'homebase':
+                    if bbox_size > 200:
+                        if center_x >= 300 and center_x <= 340:
+                            # object reached visually, keep moving forward
+                            self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
+                            print(self.time, "app: homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
+                            self.homebase_final_approach_distance = 30.0
+                            self.currently_following_object['timestamp'] = self.time
+                            
+                        elif center_x < 300: # close but wrong angle, turn in place left
+                            self.publish("desired_movement", [0, 0, SPEED_ON])
+                        elif center_x > 340: # close but wrong angle, turn in place right
+                            self.publish("desired_movement", [0, 0, -SPEED_ON])
+                    else:
+                        if center_x < 300: # if homebase to the left, steer left
+                            self.publish("desired_movement", [TURN_ON, 0, SPEED_ON])
+                        elif center_x > 340:
+                            self.publish("desired_movement", [-TURN_ON, 0, SPEED_ON])
+                        else: # if within angle but object too small, keep going straight
+                            self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
+
+                elif self.currently_following_object['object_type'] == 'basemarker':
+                    print(self.time, "app: basemarker identified")
+
+                    if center_x < 300: # if marker to the left
+                        self.basemarker_centered = False
+                    elif center_x > 340:
+                        self.basemarker_centered = False
+                    else:
+                        self.basemarker_centered = True
+                        
+                        
+        
+    def on_scan(self, timestamp, data):
+        assert len(data) == 180
+        super().on_scan(timestamp, data)
+
+        # if was following an artefact but it disappeared, just go straight until another driver takes over
+        if (
+                self.currently_following_object['timestamp'] is not None and
+                self.time - self.currently_following_object['timestamp'] > self.object_timeouts[self.currently_following_object['object_type']]
+        ):
+            self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
+            print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
+            self.currently_following_object['timestamp'] = None
+            self.currently_following_object['object_type'] = None
+            self.homebase_final_approach_distance = float("inf")
+            self.basemarker_centered = False
+            self.on_driving_control(timestamp, None) # do this last as it raises exception
+
+        # do not control wheels if driven via basemarker search
+        if 'basemarker' in self.objects_to_follow: 
+            return
+            
+        # NASA sends 100 samples over 150 degrees
+        # OSGAR sends 180 points, first and last 40 are zeros
+
+# TODO: if too far from anything, revert to looking for homebase
+        if not self.in_driving_recovery:
+
+            midindex = len(data) // 2
+            # 10 degrees left and right is 6-7 samples before and after the array midpoint
+            straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
+
+            if 'homebase' in self.objects_to_follow and not math.isinf(self.homebase_final_approach_distance):
+#                print ("current distance: %f, min distance so far: %f" % (straight_ahead_dist , self.homebase_final_approach_distance))
+                if straight_ahead_dist > self.homebase_final_approach_distance:
+                    if self.homebase_increase_count < MAX_NR_OF_FARTHER_SCANS:
+                        self.homebase_increase_count += 1
+                    else:
+                        self.homebase_increase_count = 0
+                            # missed it, back to main driving loop in order to try again
+                        self.publish("desired_movement", [0, 0, 0])
+                        print (self.time, "No longer tracking %s, distance increased" % self.currently_following_object['object_type'])
+                        self.currently_following_object['timestamp'] = None
+                        self.currently_following_object['object_type'] = None
+                        self.homebase_final_approach_distance = float("inf")
+                        self.basemarker_centered = False
+                        self.on_driving_control(timestamp, None) # do this last as it possibly raises exception
+                else:
+                    self.homebase_increase_count = 0
+                    self.homebase_final_approach_distance = straight_ahead_dist
+
+                    if straight_ahead_dist < HOMEBASE_KEEP_DISTANCE:
+                        self.publish("desired_movement", [0, 0, 0])
+
+                        print ("app: final homebase distance %f: " % straight_ahead_dist)
+                        self.homebase_final_approach_distance = float("inf")
+                        self.object_reached('homebase')
+                    else:
+                        # keep going straight; for now this means do nothing, keep speed from previous step
+                        self.currently_following_object['timestamp'] = self.time # freshen up timer as we are still following homebase
+
+            # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
+
+            if 'basemarker' in self.objects_to_follow:
+                right_dist = median_dist(data[midindex-8:midindex-6])
+                left_dist = median_dist(data[midindex+6:midindex+8])
+                print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+
+                e = 80
+                if self.started_turning_for_basemarker_timestamp == None:
+                    self.started_turning_for_basemarker_timestamp = self.time
+                elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
+                    e = 0
+
+    #            if left_dist < 9:
+    #                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
+                if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.04: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
+                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
+                    self.bus.publish('cmd', cmd)
+                    self.started_turning_for_basemarker_timestamp = None
+                    self.object_reached('basemarker')
+                    return
+
+                effort = [e, -e, e, -e]
+
+                # estimated radius of homebase is 4m
+                # rover width is 2.2m
+                steering_angle_left = steering_angle_right = math.atan((4 + HOMEBASE_KEEP_DISTANCE) / 1.1)
+
+                if straight_ahead_dist >  1.1 * HOMEBASE_KEEP_DISTANCE:
+                        steering_angle_left -= 0.1
+                        steering_angle_right += 0.1
+                elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
+                elif right_dist > 15.0: # overshot turn, right view is past homebase
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
+                elif left_dist > 0.01 and right_dist > 0.01:
+                    if left_dist < 0.9 * right_dist:  # tighten turn
+                        steering_angle_left -= 0.1
+                        steering_angle_right += 0.1
+                    elif left_dist * 0.9 > right_dist: # loosen turn
+                        steering_angle_left += 0.1
+                        steering_angle_right -= 0.1
+
+                steering = [steering_angle_left, -steering_angle_right, steering_angle_left, -steering_angle_right]
+                cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
+                self.bus.publish('cmd', cmd)
             
         
 
@@ -231,9 +513,14 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
 #            self.bus.publish('follow_object', ['basemarker'])
 #            self.current_driver = 'basemarker'
-#            self.cubesat_success = True
-            self.bus.publish('follow_object', ['cubesat', 'homebase'])
-#            self.bus.publish('follow_object', ['homebase'])
+
+            # skip cubesat 
+            self.cubesat_success = True
+            self.follow_object(['homebase'])
+
+            # regular launch
+#            self.follow_object(['cubesat', 'homebase'])
+
             
             if self.current_driver is None and not self.brakes_on:
                 try:

@@ -43,7 +43,6 @@
 
 
 import math
-from statistics import median
 from datetime import timedelta
 
 from osgar.lib.mathex import normalizeAnglePIPI
@@ -191,7 +190,7 @@ class Rover(Node):
                 effort = [e, e, e, e]
 
             else:
-
+                # TODO: if large change of 'steering' values, allow time to apply before turning on 'effort'
                 camera_angle = math.pi * (self.drive_camera_angle / 100.0) / 180.0
                 fl = fr = rl = rr = 0.0
 
