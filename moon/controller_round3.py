@@ -25,10 +25,20 @@ CAMERA_ANGLE_HOMEBASE = 0.0
 
 MAX_NR_OF_FARTHER_SCANS = 20
 HOMEBASE_KEEP_DISTANCE = 3 # maintain this distance from home base while approaching and going around
+HOMEBASE_RADIUS = 4 # radius of the homebase structure (i.e, estimated 8m diameter)
+
+MAX_BASEMARKER_DISTANCE_HISTORY = 20 # do not act on a single lidar measurement, look at this many at a time and pick the min value
+MAX_BASEMARKER_DISTANCE = 15
 
 SPEED_ON = 10 # only +/0/- matters
 TURN_ON = 10 # radius of circle when turning
 GO_STRAIGHT = float("inf")
+
+# DEBUG launch options
+SKIP_CUBESAT_SUCCESS = False # skip cubesat, try to reach homebase directly
+SKIP_HOMEBASE_SUCCESS = False # do not require successful homebase arrival report in order to look for alignment
+
+ATTEMPT_DELAY = timedelta(seconds=20)
 
 def min_dist(laser_data):
     if len(laser_data) > 0:
@@ -56,13 +66,17 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 
         self.cubesat_reached = False
         self.cubesat_success = False
-        self.last_cubesat_attempt = None
 
-
-        self.started_turning_for_basemarker_timestamp = None
         self.basemarker_centered = False
+        self.basemarker_left_history = []
+        self.basemarker_right_history = []
+        self.basemarker_radius = None
+
+        
         self.homebase_final_approach_distance = float("inf")
         self.homebase_increase_count = 0 # if distance increases X times in a row, we are truly farther and need to restart
+
+        self.last_attempt_timestamp = None
         
         self.currently_following_object = {
             'object_type': None,
@@ -110,6 +124,7 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 
     def follow_object(self, data):
         self.objects_to_follow = data
+        self.last_attempt_timestamp = None
         print (self.time, "Starting to look for " + ','.join(data))
 
     def on_driving_control(self, timestamp, data):
@@ -123,6 +138,8 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
             if self.current_driver == "cubesat":
                 self.set_cam_angle(CAMERA_ANGLE_LOOKING)
             elif self.current_driver == "homebase":
+                self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+            elif self.current_driver == "homebase-final":
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
             else:
                 self.set_cam_angle(CAMERA_ANGLE_DRIVING)
@@ -142,16 +159,17 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     response = self.socket_out.recv().decode("ascii") 
                     print(self.time, "app: Homebase response: %s" % response)
 
-                    if response == 'ok':
+                    if response == 'ok' or SKIP_HOMEBASE_SUCCESS:
                         self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
                         self.current_driver = "basemarker"
                         self.homebase_arrival_success = True
                         self.follow_object(['basemarker'])
 
                     else:
-                        # homebase arrival not accepted, try again
-                        self.follow_object(['homebase'])
-
+                        # homebase arrival not accepted, keep trying after a delay
+                        self.last_attempt_timestamp = self.time
+                        self.on_driving_control(self.time, None) # do this last as it raises exception
+                        
                 else:
                     # homebase found (again), does not need reporting, just start basemarker search
                     self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
@@ -213,6 +231,11 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     
     # used to follow objects (cubesat, processing plant, other robots, etc)
     def on_artf(self, timestamp, data):
+
+
+        if self.last_attempt_timestamp is not None and self.time - self.last_attempt_timestamp < ATTEMPT_DELAY:
+            return
+
         # vol_type, x, y, w, h
         # coordinates are pixels of bounding box
         artifact_type = data[0]
@@ -225,7 +248,11 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 
         # TODO if detection during turning on the spot, instead of driving straight steering a little, turn back to the direction where the detection happened first
         
-        if not self.in_driving_recovery and self.objects_to_follow and artifact_type in self.objects_to_follow: # if in exception, let the exception handling take its course
+        if (
+                not self.in_driving_recovery and
+                self.objects_to_follow and
+                artifact_type in self.objects_to_follow
+        ): # if in exception, let the exception handling take its course
             if self.currently_following_object['object_type'] is None:
                 self.currently_following_object['object_type'] = artifact_type
                 self.currently_following_object['timestamp'] = self.time
@@ -325,18 +352,18 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                                 print("app: Apriori object reported correctly")    
                                 self.cubesat_success = True
                                 # time to start looking for homebase; TODO queue 360 look around as base is somewhere near
+                                self.object_reached("cubesat")
                                 self.follow_object(['homebase'])
                             else:
                                 print("app: Estimated object location incorrect, wait before continuing task")
-                                self.last_cubesat_attempt = self.time
+                                self.last_attempt_timestamp = self.time
+
 
                         # TODO: object was reached but not necessarily successfully reported;
                         # for now, just return driving to main which will either drive randomly with no additional purpose if homebase was previously found or will look for homebase
-                        self.object_reached("cubesat")
                         self.set_brakes(False)
                         self.current_driver = None
-                        if not self.inException:
-                            raise ChangeDriverException(None) # interrupt main wait, give driving back
+                        self.on_driving_control(timestamp, None) # do this last as it raises exception
                             
                         
                     elif center_x < 200: # if cubesat near left edge, turn left
@@ -361,7 +388,7 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                             self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
                             print(self.time, "app: homebase final frame x=%d y=%d w=%d h=%d" % (data[1], data[2], data[3], data[4]))
                             self.homebase_final_approach_distance = 30.0
-                            self.currently_following_object['timestamp'] = self.time
+                            self.on_driving_control(timestamp, "homebase-final")
                             
                         elif center_x < 300: # close but wrong angle, turn in place left
                             self.publish("desired_movement", [0, 0, SPEED_ON])
@@ -391,10 +418,16 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
         assert len(data) == 180
         super().on_scan(timestamp, data)
 
+
+        if self.last_attempt_timestamp is not None and self.time - self.last_attempt_timestamp < ATTEMPT_DELAY:
+            return
+        
         # if was following an artefact but it disappeared, just go straight until another driver takes over
         if (
                 self.currently_following_object['timestamp'] is not None and
-                self.time - self.currently_following_object['timestamp'] > self.object_timeouts[self.currently_following_object['object_type']]
+                self.time - self.currently_following_object['timestamp'] > self.object_timeouts[self.currently_following_object['object_type']] and
+                self.current_driver != "homebase-final" # if in final homebase step, we are not expected to be tracking homebase visually
+                
         ):
             self.publish("desired_movement", [GO_STRAIGHT, 0, SPEED_ON])
             print (self.time, "No longer tracking %s" % self.currently_following_object['object_type'])
@@ -402,12 +435,10 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
             self.currently_following_object['object_type'] = None
             self.homebase_final_approach_distance = float("inf")
             self.basemarker_centered = False
-            self.on_driving_control(timestamp, None) # do this last as it raises exception
+            if self.current_driver != "basemarker": # do not change drivers when basemarker gets out of view because going around will bring it again
+                self.on_driving_control(timestamp, None) # do this last as it raises exception
 
-        # do not control wheels if driven via basemarker search
-        if 'basemarker' in self.objects_to_follow: 
-            return
-            
+           
         # NASA sends 100 samples over 150 degrees
         # OSGAR sends 180 points, first and last 40 are zeros
 
@@ -419,14 +450,13 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
             straight_ahead_dist = min_dist(data[midindex-15:midindex+15])
 
             if 'homebase' in self.objects_to_follow and not math.isinf(self.homebase_final_approach_distance):
-#                print ("current distance: %f, min distance so far: %f" % (straight_ahead_dist , self.homebase_final_approach_distance))
+                print ("current distance: %f, min distance so far: %f" % (straight_ahead_dist , self.homebase_final_approach_distance))
                 if straight_ahead_dist > self.homebase_final_approach_distance:
                     if self.homebase_increase_count < MAX_NR_OF_FARTHER_SCANS:
                         self.homebase_increase_count += 1
                     else:
                         self.homebase_increase_count = 0
-                            # missed it, back to main driving loop in order to try again
-                        self.publish("desired_movement", [0, 0, 0])
+                        # missed it, back to main driving loop in order to try again
                         print (self.time, "No longer tracking %s, distance increased" % self.currently_following_object['object_type'])
                         self.currently_following_object['timestamp'] = None
                         self.currently_following_object['object_type'] = None
@@ -450,52 +480,55 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
             # we expect that lidar bounces off of homebase as if it was a big cylinder, not taking into consideration legs, etc.
 
             if 'basemarker' in self.objects_to_follow:
+
                 right_dist = median_dist(data[midindex-8:midindex-6])
                 left_dist = median_dist(data[midindex+6:midindex+8])
-                print ("rover: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+                self.basemarker_left_history.append(left_dist)
+                self.basemarker_right_history.append(right_dist)
+                if len(self.basemarker_right_history) > MAX_BASEMARKER_DISTANCE_HISTORY:
+                    self.basemarker_right_history.pop(0)
+                if len(self.basemarker_left_history) > MAX_BASEMARKER_DISTANCE_HISTORY:
+                    self.basemarker_left_history.pop(0)
+                left_dist = min(self.basemarker_left_history)
+                right_dist = min(self.basemarker_right_history)
+                
+                print ("app: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
 
-                e = 80
-                if self.started_turning_for_basemarker_timestamp == None:
-                    self.started_turning_for_basemarker_timestamp = self.time
-                elif self.time - self.started_turning_for_basemarker_timestamp < timedelta(seconds=4):
-                    e = 0
-
+                if len(self.basemarker_left_history) > 5 and left_dist > MAX_BASEMARKER_DISTANCE and right_dist > MAX_BASEMARKER_DISTANCE:
+                    # lost contact with homebase, try approach again
+                    print (self.time, "app: No longer going around homebase, distances inconsistent")
+                    self.currently_following_object['timestamp'] = None
+                    self.currently_following_object['object_type'] = None
+                    self.homebase_final_approach_distance = float("inf")
+                    self.basemarker_centered = False
+                    self.basemarker_right_history = self.basemarker_left_history = []
+                    self.follow_object(['homebase'])
+                    self.on_driving_control(timestamp, None) # do this last as it possibly raises exception
+                    
+                
     #            if left_dist < 9:
     #                print ("rover: right / left distance ratio: %f; centered: %r" % (right_dist / left_dist, self.basemarker_centered))
                 if self.basemarker_centered and left_dist < 6 and abs(1.0 - right_dist / left_dist) < 0.04: # cos 20 = dist_r / dist _l is the max ratio in order to be at most 10 degrees off; also needs to be closer than 6m
-                    cmd = b'cmd_rover 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
-                    self.bus.publish('cmd', cmd)
-                    self.started_turning_for_basemarker_timestamp = None
+                    self.publish("desired_movement", [0, -9000, 0])
+                    self.set_brakes(True)
                     self.object_reached('basemarker')
                     return
 
-                effort = [e, -e, e, -e]
+                if left_dist > 10:
+                    self.publish("desired_movement", [0, -9000, -SPEED_ON])
+                elif right_dist > 10:
+                    self.publish("desired_movement", [0, -9000, SPEED_ON])
+                else:                    
+                    if self.basemarker_radius is None:
+                        self.basemarker_radius = HOMEBASE_KEEP_DISTANCE + HOMEBASE_RADIUS # ideal trajectory
 
-                # estimated radius of homebase is 4m
-                # rover width is 2.2m
-                steering_angle_left = steering_angle_right = math.atan((4 + HOMEBASE_KEEP_DISTANCE) / 1.1)
+                    if 1.0 - right_dist / left_dist > 0.04:
+                        self.basemarker_radius -= 0.2
+                    if 1.0 - right_dist / left_dist < -0.04:  #left is closer than right, need to increase the circle
+                        self.basemarker_radius += 0.2
 
-                if straight_ahead_dist >  1.1 * HOMEBASE_KEEP_DISTANCE:
-                        steering_angle_left -= 0.1
-                        steering_angle_right += 0.1
-                elif straight_ahead_dist <  0.9 * HOMEBASE_KEEP_DISTANCE:
-                        steering_angle_left += 0.1
-                        steering_angle_right -= 0.1
-                elif right_dist > 15.0: # overshot turn, right view is past homebase
-                        steering_angle_left += 0.1
-                        steering_angle_right -= 0.1
-                elif left_dist > 0.01 and right_dist > 0.01:
-                    if left_dist < 0.9 * right_dist:  # tighten turn
-                        steering_angle_left -= 0.1
-                        steering_angle_right += 0.1
-                    elif left_dist * 0.9 > right_dist: # loosen turn
-                        steering_angle_left += 0.1
-                        steering_angle_right -= 0.1
+                    self.publish("desired_movement", [-self.basemarker_radius, -9000, SPEED_ON])
 
-                steering = [steering_angle_left, -steering_angle_right, steering_angle_left, -steering_angle_right]
-                cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
-                self.bus.publish('cmd', cmd)
-            
         
 
     def run(self):
@@ -511,43 +544,54 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 #            self.go_straight(-2, timeout=timedelta(seconds=20))
 #            self.turn(math.radians(45), timeout=timedelta(seconds=20))
 #            self.set_cam_angle(CAMERA_ANGLE_HOMEBASE)
-#            self.bus.publish('follow_object', ['basemarker'])
+#            self.follow_object(['basemarker'])
 #            self.current_driver = 'basemarker'
 
-            # skip cubesat 
-            self.cubesat_success = True
-            self.follow_object(['homebase'])
 
-            # regular launch
-#            self.follow_object(['cubesat', 'homebase'])
+            if SKIP_CUBESAT_SUCCESS:
+                # skip cubesat
+                self.cubesat_success = True
+                self.follow_object(['homebase'])
+            else:
+                # regular launch
+                self.follow_object(['cubesat', 'homebase'])
 
-            
-            if self.current_driver is None and not self.brakes_on:
-                try:
-                    self.set_cam_angle(CAMERA_ANGLE_LOOKING)
-                    self.turn(math.radians(360), timeout=timedelta(seconds=20)) # turn bumper needs to be virtually disabled as turns happen in place and bumper measures position change
-                except ChangeDriverException as e:
-                    print(self.time, "Initial turn interrupted by driver: %s" % e)
-                except VirtualBumperException:
-                    self.inException = True
-                    self.set_cam_angle(CAMERA_ANGLE_DRIVING)
-                    print(self.time, "Initial Turn Virtual Bumper!")
-                    # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
-                    # also, it may be simple timeout, not a crash
-                    self.virtual_bumper = None
-                    deg_angle = self.rand.randrange(90, 180)
-                    deg_sign = self.rand.randint(0,1)
-                    if deg_sign:
-                        deg_angle = -deg_angle
-                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=10))
-                    self.inException = False
-                    self.bus.publish('driving_recovery', False)
-                
+#            self.publish("desired_movement", [10, 9000, 10])
+#            self.wait(timedelta(seconds=10))
+                                    
             last_walk_start = 0.0
             start_time = self.time
             while self.time - start_time < timedelta(minutes=40):
                 additional_turn = 0
                 last_walk_start = self.time
+
+                # TURN 360
+                try:
+                    self.virtual_bumper = VirtualBumper(timedelta(seconds=20), 0.1)
+                    with LidarCollisionMonitor(self):
+                        if self.current_driver is None and not self.brakes_on:
+                            # start each straight stretch by looking around first
+                            self.set_cam_angle(CAMERA_ANGLE_LOOKING)
+                            self.turn(math.radians(360), timeout=timedelta(seconds=20))
+                        else:
+                            self.wait(timedelta(minutes=2)) # allow for self driving, then timeout   
+                except ChangeDriverException as e:
+                    print(self.time, "Turn interrupted by driver: %s" % e)
+                    continue
+                except (VirtualBumperException, LidarCollisionException):
+                    self.inException = True
+                    self.set_cam_angle(CAMERA_ANGLE_DRIVING)
+                    print(self.time, "Turn Virtual Bumper!")
+                    # TODO: if detector takes over driving within initial turn, rover may be actually going straight at this moment
+                    # also, it may be simple timeout, not a crash
+                    self.virtual_bumper = None
+                    # recovery from an exception while turning CCW is to turn CW somewhat
+                    deg_angle = self.rand.randrange(-180, -90)
+                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=10))
+                    self.inException = False
+                    self.bus.publish('driving_recovery', False)
+
+                # GO STRAIGHT
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=4), 0.1)
                     with LidarCollisionMonitor(self):
@@ -559,10 +603,9 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     self.update()
                 except ChangeDriverException as e:
                     continue
-
                 except (VirtualBumperException, LidarCollisionException) as e:
                     self.inException = True
-# TODO: crashes if an exception (e.g., excess pitch) occurs while handling an exception (e.g., virtual/lidar bump)
+                    # TODO: crashes if an exception (e.g., excess pitch) occurs while handling an exception (e.g., virtual/lidar bump)
                     print(self.time, repr(e))
                     last_walk_end = self.time
                     self.virtual_bumper = None
@@ -587,21 +630,19 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     # (no need to go straight back or keep going forward)
                     # if part of virtual bumper handling, add 30 degrees to avoid the obstacle more forcefully
 
+
+                # TURN RANDOMLY
                 deg_angle = self.rand.randrange(30 + additional_turn, 150 + additional_turn)
                 deg_sign = self.rand.randint(0,1)
                 if deg_sign:
                     deg_angle = -deg_angle
                 try:
                     self.virtual_bumper = VirtualBumper(timedelta(seconds=20), 0.1)
-
-                    self.set_cam_angle(CAMERA_ANGLE_LOOKING)
-                    self.turn(math.radians(360), timeout=timedelta(seconds=20))
-                    
-                    self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
+                    with LidarCollisionMonitor(self):
+                        self.turn(math.radians(deg_angle), timeout=timedelta(seconds=30))
                 except ChangeDriverException as e:
                     continue
-                    
-                except VirtualBumperException:
+                except (VirtualBumperException, LidarCollisionException):
                     self.inException = True
                     self.set_cam_angle(CAMERA_ANGLE_DRIVING)
                     print(self.time, "Turn Virtual Bumper!")
