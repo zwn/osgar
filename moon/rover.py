@@ -236,6 +236,7 @@ class Rover(Node):
                             fr = -math.pi/2 + temp
                             effort = [e, -e, e, -e]
 
+
                 # steer against slope proportionately to the steepness of the slope
                 fl -= self.roll
                 fr -= self.roll
@@ -243,7 +244,16 @@ class Rover(Node):
                 rr -= self.roll
 
                 steering = [fl, fr, rl, rr]
-                
+
+                # stay put while joint angles are catching up
+                if camera_angle != 0 and self.prev_position is not None:
+                    if (
+                            abs(self.prev_position[self.joint_name.index(b'bl_steering_arm_joint')] - rl) > 0.2 or
+                            abs(self.prev_position[self.joint_name.index(b'br_steering_arm_joint')] - rr) > 0.2 or
+                            abs(self.prev_position[self.joint_name.index(b'fl_steering_arm_joint')] - fl) > 0.2 or
+                            abs(self.prev_position[self.joint_name.index(b'fr_steering_arm_joint')] - fr) > 0.2
+                    ):
+                        effort = [0.0,]*4
 
         cmd = b'cmd_rover %f %f %f %f %f %f %f %f' % tuple(steering + effort)
         self.bus.publish('cmd', cmd)
