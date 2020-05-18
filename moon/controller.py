@@ -200,6 +200,8 @@ class SpaceRoboticsChallenge(Node):
             self.on_score(self.time, self.score)
         elif channel == 'driving_control':
             self.on_driving_control(self.time, self.driving_control)
+        elif channel == 'object_reached':
+            self.on_object_reached(self.time, self.object_reached)
         elif channel == 'scan':
             self.on_scan(self.time, self.scan)
             self.local_planner.update(self.scan)

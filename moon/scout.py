@@ -20,6 +20,7 @@ from moon.rover import Rover
 class Scout(Rover):
     def __init__(self, config, bus):
         super().__init__(config, bus)
+        bus.register('object_reached')
         self.last_volatile_distance = None
         self.last_vol_index = None
 

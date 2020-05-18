@@ -178,6 +178,8 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     
             else:
                 print(self.time, "app: Reached reportable home base destination, need to find cubesat first though")
+                self.on_driving_control(self.time, None) # do this last as it raises exception
+
         elif object_type == 'basemarker':
             print (self.time, "app: Reporting alignment to server")
             self.socket_out.send_string('artf homebase_alignment\n')
@@ -355,9 +357,11 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                                 self.object_reached("cubesat")
                                 self.follow_object(['homebase'])
                             else:
-                                print("app: Estimated object location incorrect, wait before continuing task")
+                                print("app: Estimated object location incorrect, wait before continuing task; response: %s" % str(response))
                                 self.last_attempt_timestamp = self.time
-
+                        else:
+                            print(self.time, "Origin request failed") # TODO: in future, we should try to find the cubesat again based on accurate position tracking
+                            self.last_attempt_timestamp = self.time
 
                         # TODO: object was reached but not necessarily successfully reported;
                         # for now, just return driving to main which will either drive randomly with no additional purpose if homebase was previously found or will look for homebase
@@ -492,7 +496,7 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                 left_dist = min(self.basemarker_left_history)
                 right_dist = min(self.basemarker_right_history)
                 
-                print ("app: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
+                print (self.time, "app: Min dist front: %f, dist left=%f, right=%f" % (straight_ahead_dist, left_dist, right_dist))
 
                 if len(self.basemarker_left_history) > 5 and left_dist > MAX_BASEMARKER_DISTANCE and right_dist > MAX_BASEMARKER_DISTANCE:
                     # lost contact with homebase, try approach again
@@ -522,11 +526,12 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                     if self.basemarker_radius is None:
                         self.basemarker_radius = HOMEBASE_KEEP_DISTANCE + HOMEBASE_RADIUS # ideal trajectory
 
-                    if 1.0 - right_dist / left_dist > 0.04:
+                    if 1.0 - right_dist / left_dist > 0.2:
                         self.basemarker_radius -= 0.2
-                    if 1.0 - right_dist / left_dist < -0.04:  #left is closer than right, need to increase the circle
+                    if 1.0 - right_dist / left_dist < -0.2:  #left is closer than right, need to increase the circle
                         self.basemarker_radius += 0.2
 
+                    # negative radius turns to the right
                     self.publish("desired_movement", [-self.basemarker_radius, -9000, SPEED_ON])
 
         

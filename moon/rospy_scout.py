@@ -11,8 +11,8 @@ from srcp2_msgs.msg import VolSensorMsg
 
 
 class RospyScoutPushPull(RospyRoverPushPull):
-    def __init__(self, robot_name, push_port, pull_port):
-        super(RospyScoutPushPull, self).__init__(robot_name, push_port, pull_port)
+    def __init__(self, argv):
+        super(RospyScoutPushPull, self).__init__(argv)
         
     def register_handlers(self):
         super(RospyScoutPushPull, self).register_handlers()

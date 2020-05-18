@@ -6,15 +6,15 @@ while getopts hr: arg; do
 	    case $OPTARG in
 		"1" )
 		    JSONFILES=("moon-round1.json")
-		    ROVERSCRIPTS=("rospy_scout_round1.py -r scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557")
+		    ROVERSCRIPTS=("rospy_scout_round1.py --robot_name=scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557")
 		    ;;
 		"2" )
 		    JSONFILES=("moon-excavator-round2.json" "moon-hauler-round2.json")
-		    ROVERSCRIPTS=("rospy_excavator_round2.py -r excavator_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557" "rospy_hauler.py -r hauler_1 --push_port=6555 --pull_port=6556 --reqrep_port=6557")
+		    ROVERSCRIPTS=("rospy_excavator_round2.py --robot_name=excavator_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557" "rospy_hauler_round2.py --robot_name=hauler_1 --push_port=6555 --pull_port=6556 --reqrep_port=6557")
 		    ;;
 		"3" )
 		    JSONFILES=("moon-round3.json")
-		    ROVERSCRIPTS=("rospy_scout.py -r scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557")
+		    ROVERSCRIPTS=("rospy_scout_round3.py --robot_name=scout_1 --push_port=5555 --pull_port=5556 --reqrep_port=5557")
 		;;
 		
 	    esac

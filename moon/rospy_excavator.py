@@ -12,8 +12,6 @@ from srcp2_msgs.msg import ExcavatorMsg
 from rospy_rover import RospyRover, RospyRoverReqRep, RospyRoverPushPull
 
 class RospyExcavatorPushPull(RospyRoverPushPull):
-    def __init__(self, robot_name, push_port, pull_port):
-        super(RospyExcavatorPushPull, self).__init__(robot_name, push_port, pull_port)
         
     def register_handlers(self):
         super(RospyExcavatorPushPull, self).register_handlers()
@@ -49,9 +47,7 @@ class RospyExcavatorPushPull(RospyRoverPushPull):
 
 
 class RospyExcavatorReqRep(RospyRoverReqRep):
-    def __init__(self, robot_name, reqrep_port):
-        super(RospyExcavatorReqRep, self).__init__(robot_name, reqrep_port)
-
+    pass
 
 class RospyExcavator(RospyRover):
     pass

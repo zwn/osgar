@@ -9,16 +9,16 @@ import sys
 import rospy
 
 from rospy_scout import RospyScout, RospyScoutReqRep, RospyScoutPushPull
+from rospy_round1 import RospyRound1, RospyRound1ReqRep, RospyRound1PushPull
+
 from srcp2_msgs.msg import Qual1ScoringMsg
 from srcp2_msgs.srv import Qual1ScoreSrv
 from geometry_msgs.msg import Point
 
-class RospyScoutRound1PushPull(RospyScoutPushPull):
+class RospyScoutRound1PushPull(RospyScoutPushPull, RospyRound1PushPull):
     pass
 
-class RospyScoutRound1ReqRep(RospyScoutReqRep):
-    def __init__(self, robot_name, reqrep_port):
-        super(RospyScoutRound1ReqRep, self).__init__(robot_name, reqrep_port)
+class RospyScoutRound1ReqRep(RospyScoutReqRep, RospyRound1ReqRep):
 
     def process_message(self, message):
         result = super(RospyScoutRound1ReqRep, self).process_message(message)
@@ -53,7 +53,7 @@ class RospyScoutRound1ReqRep(RospyScoutReqRep):
         else:
             return result
 
-class RospyScoutRound1(RospyScout):
+class RospyScoutRound1(RospyScout, RospyRound1):
     pass
         
 if __name__ == '__main__':
