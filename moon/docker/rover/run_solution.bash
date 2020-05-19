@@ -59,7 +59,7 @@ export ROSCONSOLE_CONFIG_FILE="${samedir}/rosconsole.config"
 
 for ((i=0; i < ${#ROVERSCRIPTS[@]}; i++)) do
     echo "Starting script '${ROVERSCRIPTS[$i]}'"
-    python ./osgar/moon/${ROVERSCRIPTS[$i]} &
+    python ./osgar/moon/rospy/${ROVERSCRIPTS[$i]} &
     ROS_PIDS+=($!)
 done
 
