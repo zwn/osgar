@@ -6,7 +6,7 @@
           "driver": "moon.controller_round3:SpaceRoboticsChallengeRound3",
           "in": ["pose2d", "driving_control"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "driving_recovery"],
-          "init": {"reqrep_port": 5557}
+          "init": {}
       },
       "transmitter": {
           "driver": "zeromq",
@@ -24,6 +24,16 @@
           "init": {
             "mode": "PULL",
             "endpoint": "tcp://localhost:5555",
+            "save_data": true
+          }
+      },
+      "rpc": {
+          "driver": "zeromq",
+          "in": ["request"],
+          "out": ["response"],
+          "init": {
+            "mode": "REQ",
+            "endpoint": "tcp://localhost:5557",
             "save_data": true
           }
       },
@@ -60,7 +70,7 @@
               ["rosmsg.cmd", "transmitter.raw"],
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
-	      ["rosmsg./qual_3_score", "app.score"],
+              ["rosmsg./qual_3_score", "app.score"],
               ["rosmsg.joint_name", "scout.joint_name"],
               ["rosmsg.joint_position", "scout.joint_position"],
               ["rosmsg.joint_velocity", "scout.joint_velocity"],
@@ -69,10 +79,12 @@
               ["rosmsg./scout_1/camera/left/image_raw/compressed", "detector.left_image"],
               ["rosmsg./scout_1/camera/right/image_raw/compressed", "detector.right_image"],
               ["detector.artf", "app.artf"],
-	      ["app.desired_movement", "scout.desired_movement"],
+              ["app.desired_movement", "scout.desired_movement"],
               ["app.desired_speed", "scout.desired_speed"],
+              ["app.request", "rpc.request"],
+              ["rpc.response", "app.response"],
               ["scout.cmd", "transmitter.raw"],
               ["scout.pose2d", "app.pose2d"]
-	      ]
+    ]
   }
 }

@@ -62,13 +62,7 @@ class LidarCollisionMonitor:
 class SpaceRoboticsChallenge(Node):
     def __init__(self, config, bus):
         super().__init__(config, bus)
-        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "driving_recovery")
-
-        context = zmq.Context()
-        print ("Connecting to ROS REQ/REP server...")
-        self.socket_out = context.socket(zmq.REQ)
-        self.socket_out.connect ("tcp://localhost:" + str(config["reqrep_port"]))
-
+        bus.register("desired_speed", "artf_xyz", "artf_cmd", "pose2d", "pose3d", "driving_recovery", "request")
 
         self.monitors = []
         self.last_position = None
@@ -127,8 +121,12 @@ class SpaceRoboticsChallenge(Node):
 
     def send_request(self, cmd):
         """Send ROS Service Request form a single place"""
-        self.socket_out.send_string(cmd)
-        return self.socket_out.recv()
+        self.publish('request', cmd)
+        while True:
+            dt, channel, data = self.listen()
+            if channel == 'response':
+                return data
+            print(dt, 'ignoring', channel)
 
     def set_cam_angle(self, angle):
         self.send_request('set_cam_angle %f\n' % angle)
