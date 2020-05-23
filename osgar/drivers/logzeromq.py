@@ -11,19 +11,20 @@ from osgar.bus import BusShutdownException
 
 class LogZeroMQ:
     def __init__(self, config, bus):
-        bus.register('raw:gz' if config.get('save_data', False) else 'raw:null')
+        bus.register('raw:gz' if config.get('save_data', False) else 'raw:null', 'response')
         mode = config['mode']
         endpoint = config['endpoint']
 
         self.context = zmq.Context()
-        print("Connecting to hello world server ...")
         if mode == 'PULL':
+            print("Connecting to PULL server ...")
             self.socket = self.context.socket(zmq.PULL)
             if 'timeout' in config:
                 # https://stackoverflow.com/questions/7538988/zeromq-how-to-prevent-infinite-wait
                 self.socket.RCVTIMEO = int(config['timeout'] * 1000) # in milliseconds
             self.thread = Thread(target=self.run_input, daemon=False)
         elif mode == 'PUSH':
+            print("Connecting to PUSH server ...")
             self.socket = self.context.socket(zmq.PUSH)
             # https://stackoverflow.com/questions/24619490/how-do-i-clear-the-buffer-upon-start-exit-in-zmq-socket-to-prevent-server-from
             # ZMQ_LINGER: Set linger period for socket shutdown
@@ -34,6 +35,10 @@ class LogZeroMQ:
             # to a peer.
             self.socket.setsockopt(zmq.LINGER, 100)  # milliseconds
             self.thread = Thread(target=self.run_output, daemon=False)
+        elif mode == 'REQ':
+            print ("Connecting to REQ/REP server...")
+            self.socket = self.context.socket(zmq.REQ)
+            self.thread = Thread(target=self.run_reqrep, daemon=False)
         else:
             assert False, mode  # unknown/unsupported mode
 
@@ -76,6 +81,17 @@ class LogZeroMQ:
         except BusShutdownException:
             pass
         self._close()
+
+    def run_reqrep(self):
+        try:
+            while True:
+                dt, __, data = self.bus.listen()
+                self.socket.send_string(data)
+                self.bus.publish('response', self.socket.recv())
+        except BusShutdownException:
+            pass
+        self._close()
+
 
     def request_stop(self):
         self.bus.shutdown()
