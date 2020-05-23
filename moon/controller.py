@@ -125,9 +125,13 @@ class SpaceRoboticsChallenge(Node):
             self.virtual_bumper.update_desired_speed(speed, angular_speed)
         self.bus.publish('desired_speed', [round(speed*1000), round(math.degrees(angular_speed)*100)])
 
+    def send_request(self, cmd):
+        """Send ROS Service Request form a single place"""
+        self.socket_out.send_string(cmd)
+        return self.socket_out.recv()
+
     def set_cam_angle(self, angle):
-        self.socket_out.send_string('set_cam_angle %f\n' % angle)
-        self.socket_out.recv()
+        self.send_request('set_cam_angle %f\n' % angle)
         self.camera_angle = angle
         print (self.time, "app: Camera angle set to: %f" % angle)
         self.camera_change_triggered_time = self.time
@@ -135,8 +139,7 @@ class SpaceRoboticsChallenge(Node):
     def set_brakes(self, on):
         assert type(on) is bool, on
         self.brakes_on = on
-        self.socket_out.send_string('set_brakes %s\n' % ('on' if on else 'off'))
-        self.socket_out.recv()
+        self.send_request('set_brakes %s\n' % ('on' if on else 'off'))
         print (self.time, "app: Brakes set to: %s" % on)
             
     def on_pose2d(self, timestamp, data):
@@ -214,8 +217,7 @@ class SpaceRoboticsChallenge(Node):
             if self.use_gimbal:
                 # maintain camera level
                 cam_angle = self.camera_angle - self.pitch
-                self.socket_out.send_string('set_cam_angle %f\n' % cam_angle)
-                self.socket_out.recv()
+                self.send_request('set_cam_angle %f\n' % cam_angle)
 
             if not self.inException and self.pitch > 0.6:
                 # TODO pitch can also go the other way if we back into an obstacle
