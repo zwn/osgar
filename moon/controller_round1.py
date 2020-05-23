@@ -14,18 +14,16 @@ class SpaceRoboticsChallengeRound1(SpaceRoboticsChallenge):
         object_type = data
         x,y,z = self.xyz
         print(self.time, "app: Object %s reached" % object_type)
-        self.socket_out.send_string('artf %s %f %f 0.0\n' % (object_type, x, y))
-        response = self.socket_out.recv().decode("ascii") 
+        response = self.send_request('artf %s %f %f 0.0\n' % (object_type, x, y)).decode("ascii") 
         print(self.time, "app: Volatile report response: %s" % response)
         if response == 'ok':
             pass
         else:
             # do nothing, ie keep going around and try to match the view
             pass
-        
+
     def run(self):
-        self.socket_out.send_string('request_origin')
-        message = self.socket_out.recv().decode("ascii") 
+        message = self.send_request('request_origin').decode("ascii") 
         print ("controller round 1: origin received: %s" % message)
 
         super().run()
