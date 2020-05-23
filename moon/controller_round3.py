@@ -70,6 +70,7 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
         self.basemarker_centered = False
         self.basemarker_left_history = []
         self.basemarker_right_history = []
+        self.basemarker_whole_scan_history = []
         self.basemarker_radius = None
 
         
@@ -484,10 +485,13 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
                 left_dist = median_dist(data[midindex+6:midindex+8])
                 self.basemarker_left_history.append(left_dist)
                 self.basemarker_right_history.append(right_dist)
+                self.basemarker_whole_scan_history.append(min_dist(data))
                 if len(self.basemarker_right_history) > MAX_BASEMARKER_DISTANCE_HISTORY:
                     self.basemarker_right_history.pop(0)
                 if len(self.basemarker_left_history) > MAX_BASEMARKER_DISTANCE_HISTORY:
                     self.basemarker_left_history.pop(0)
+                if len(self.basemarker_whole_scan_history) > MAX_BASEMARKER_DISTANCE_HISTORY:
+                    self.basemarker_whole_scan_history.pop(0)
                 left_dist = min(self.basemarker_left_history)
                 right_dist = min(self.basemarker_right_history)
                 
@@ -495,7 +499,7 @@ class SpaceRoboticsChallengeRound3(SpaceRoboticsChallenge):
 
                 if len(self.basemarker_left_history) > 5 and left_dist > MAX_BASEMARKER_DISTANCE and right_dist > MAX_BASEMARKER_DISTANCE:
                     # lost contact with homebase, try approach again
-                    print (self.time, "app: No longer going around homebase, distances inconsistent")
+                    print (self.time, "app: No longer going around homebase, distances inconsistent", self.basemarker_whole_scan_history)
                     self.currently_following_object['timestamp'] = None
                     self.currently_following_object['object_type'] = None
                     self.homebase_final_approach_distance = float("inf")
