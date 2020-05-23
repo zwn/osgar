@@ -11,8 +11,7 @@ class SpaceRoboticsChallengeExcavatorRound2(SpaceRoboticsChallenge):
 
     def run(self):
 
-        self.socket_out.send_string('get_volatile_locations')
-        vol_list = self.socket_out.recv().decode('ascii')
+        vol_list = self.send_request('get_volatile_locations').decode('ascii')
         print (self.time, "main-excavator-round2: Volatiles: %s" % vol_list)
 
         super().run()

@@ -6,7 +6,7 @@
           "driver": "moon.controller_hauler_round2:SpaceRoboticsChallengeHaulerRound2",
           "in": ["pose2d"],
           "out": ["desired_speed", "artf_xyz", "artf_cmd", "pose3d", "request_origin"],
-          "init": {"reqrep_port": 6557}
+          "init": {}
       },
       "transmitter": {
           "driver": "zeromq",
@@ -24,6 +24,16 @@
           "init": {
             "mode": "PULL",
             "endpoint": "tcp://localhost:6555",
+            "save_data": true
+          }
+      },
+      "rpc": {
+          "driver": "zeromq",
+          "in": ["request"],
+          "out": ["response"],
+          "init": {
+            "mode": "REQ",
+            "endpoint": "tcp://localhost:6557",
             "save_data": true
           }
       },
@@ -54,15 +64,17 @@
               ["rosmsg.cmd", "transmitter.raw"],
               ["rosmsg.rot", "app.rot"],
               ["rosmsg.scan", "app.scan"],
-	      ["rosmsg./qual_2_score", "app.score"],
+              ["rosmsg./qual_2_score", "app.score"],
               ["rosmsg.joint_name", "hauler.joint_name"],
               ["rosmsg.joint_position", "hauler.joint_position"],
               ["rosmsg.joint_velocity", "hauler.joint_velocity"],
               ["rosmsg.joint_effort", "hauler.joint_effort"],
               ["rosmsg.rot", "hauler.rot"],
               ["app.desired_speed", "hauler.desired_speed"],
+              ["app.request", "rpc.request"],
+              ["rpc.response", "app.response"],
               ["hauler.cmd", "transmitter.raw"],
               ["hauler.pose2d", "app.pose2d"]
-	     ]
+    ]
   }
 }
