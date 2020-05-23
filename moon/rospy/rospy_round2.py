@@ -9,7 +9,7 @@ import yaml
 
 from rospy_base import RospyBase, RospyBaseReqRep, RospyBasePushPull
 from srcp2_msgs.srv import Qual2VolatilesSrv
-from srcp2_msgs.msg import Qual3ScoringMsg
+from srcp2_msgs.msg import Qual2ScoringMsg
 
 class RospyRound2PushPull(RospyBasePushPull):
 
